@@ -1,52 +1,54 @@
 ---
 name: autoresearch
-description: "Autonomous goal-directed iteration: modify, verify, keep/discard against any metric. Uses /goal for native continuation."
+description: "Autonomous goal-directed iteration: modify, verify, keep/discard against any metric. Uses /goal for native multi-turn continuation."
 version: 0.1.0
 ---
 
 # Autoresearch — Autonomous Goal-Directed Iteration
 
-One metric. Constrained scope. Fast verification. Automatic rollback. Git as memory.
+## Safety Invariants (all subcommands)
+- Never push, publish, or deploy without explicit user approval.
+- Bounded by default (25 iterations). Override with `Iterations: unlimited`.
+- All results logged to `autoresearch-results/` directory.
+- Chain handoff via `handoff.json`. Evals reads `results.tsv`.
+- Never stage `autoresearch-results/` artifacts in experiment commits.
 
-## How It Works With /goal
+## /goal Integration
 
-Autoresearch uses Claude Code's `/goal` command as the native continuation engine:
-
-1. You describe what you want improved.
-2. Autoresearch establishes baseline, scope, metric, verify command.
-3. It sets `/goal` with the completion condition (metric target or zero-errors).
-4. Each turn: read context → ideate → modify one thing → trial commit → verify → keep/discard → log.
-5. `/goal` evaluator checks if condition is met. If not, another turn fires automatically.
-
-You walk away. Come back to a log of experiments and a better codebase.
+This skill uses Claude Code's `/goal` command as the native continuation engine. After setup:
+1. Baseline is measured.
+2. `/goal` is set with the completion condition.
+3. Each turn executes one full iteration of the protocol.
+4. The /goal evaluator checks the condition after each turn — if not met, another turn fires.
+5. Goal clears when condition met, iteration cap reached, or manually cleared on blocker.
 
 ## Subcommands
 
-| Command | Does | Drives With |
+| Command | Does | /goal Condition |
 |---|---|---|
-| `/autoresearch` | Iterate against a metric | `/goal "metric reaches <target>"` |
-| `/autoresearch:plan` | Convert goal → validated config | Interactive (no goal) |
-| `/autoresearch:debug` | Hunt bugs: hypothesize → test → falsify | `/goal "zero failures in <scope>"` |
-| `/autoresearch:fix` | Crush errors one-by-one | `/goal "zero errors remain"` |
-| `/autoresearch:security` | STRIDE + OWASP audit | `/goal "all critical/high findings resolved"` |
-| `/autoresearch:ship` | 8-phase ship workflow | `/goal "PR merged and deploy healthy"` |
-| `/autoresearch:scenario` | Edge case exploration | Bounded iterations |
-| `/autoresearch:predict` | Multi-persona debate | Single turn (no goal) |
-| `/autoresearch:learn` | Auto-generate docs | `/goal "all doc gaps filled"` |
-| `/autoresearch:reason` | Adversarial refinement | `/goal "convergence: incumbent wins 3 consecutive"` |
-| `/autoresearch:probe` | Requirement interrogation | Bounded iterations |
-| `/autoresearch:evals` | Analyze results TSV | Single turn (no goal) |
+| `/autoresearch` | Iterate against a metric | `{metric} {direction} from {baseline} toward {target}` |
+| `/autoresearch:plan` | Convert a goal into validated config | No /goal (interactive) |
+| `/autoresearch:debug` | Hunt bugs: hypothesize → test → falsify | `cumulative findings keep increasing` |
+| `/autoresearch:fix` | Crush errors one-by-one until zero | `error count reaches 0` |
+| `/autoresearch:security` | STRIDE + OWASP audit | `OWASP 10/10 + STRIDE 6/6` |
+| `/autoresearch:ship` | Ship through 8 phases | `all 8 phases passed` |
+| `/autoresearch:scenario` | Generate edge cases across 12 dimensions | `all 12 dimensions saturated` |
+| `/autoresearch:predict` | 5 expert personas debate | No /goal (single analysis pass) |
+| `/autoresearch:learn` | Scout, generate docs, validate | `all doc gaps filled` |
+| `/autoresearch:reason` | Adversarial debate with blind judges | `convergence: incumbent wins N rounds` |
+| `/autoresearch:probe` | 8 personas interrogate requirements | `constraint saturation reached` |
+| `/autoresearch:evals` | Analyze iteration results | No /goal (analysis tool) |
 
 ## Core Protocol (Each Turn)
 
 ### Phase 1: Read (git history as memory)
 - Read last 10-20 lines of `autoresearch-results/results.tsv`
-- Run `git log --oneline -10` to see what worked/failed
-- If last keep → `git diff HEAD~1` to see what improved metric
+- Run `git log --oneline -10` — see what worked/failed
+- If last iteration was "keep" → run `git diff HEAD~1`
 - Consult `autoresearch-results/lessons.md` for strategy insights
 
 ### Phase 2: Ideate
-Choose ONE hypothesis. Good: specific, testable, atomic. Bad: vague, multi-step, untestable.
+ONE specific, testable, atomic hypothesis. Different from all previous.
 
 Priority:
 1. Exploit last successful direction
@@ -62,105 +64,103 @@ ONE focused change within scope. Must fit in one sentence.
 git add -- <scoped-files-only>
 git commit -m "experiment: <what changed and why>"
 ```
+NEVER stage autoresearch-results/ artifacts.
 
 ### Phase 5: Verify
-Run the verify command. Use the helper:
-```bash
-autoresearch verify --command "<verify cmd>"
-```
-Returns JSON: `{"metric": "85.2", "exit_code": 0, "duration_ms": 1200}`
+Run verify command. Final non-empty line = metric value.
+If unparseable: rerun once. Still unparseable → crash.
 
 ### Phase 6: Guard (if configured)
-Run guard command. Must pass regardless of metric improvement.
+Run only after metric improvement. Must exit 0.
+If fails → revert regardless of improvement.
 
 ### Phase 7: Decide
-- **keep** — metric improved + guard passed → commit stays
-- **discard** — metric flat/regressed OR guard failed → `git revert HEAD --no-edit`
-- **crash** — verify/guard errored → revert, log crash
+- **keep** — improved + guard passed → commit stays
+- **discard** — flat/regressed OR guard failed → `git revert HEAD --no-edit`
+- **crash** — command errored → `git revert HEAD --no-edit`
 
-Simplicity override: marginal gain (<1%) + significant complexity = discard.
+Simplicity override: gain < 1% + added complexity = discard.
+Metric unchanged + simpler code = keep.
 
 ### Phase 8: Log
-```bash
-autoresearch log --iteration <N> --commit <sha> --metric <val> --delta <d> --status <keep|discard|crash> --description "<text>"
+Append to `autoresearch-results/results.tsv`:
 ```
-
-## /goal Integration
-
-### Setting the goal
-After config is confirmed, set the goal with the completion condition:
-
+{iteration}\t{commit|-}\t{metric}\t{delta}\t{guard}\t{status}\t{description}
 ```
-/goal <metric> reaches <target> as measured by <verify command>, or stop after <N> turns
-```
+Update `autoresearch-results/state.json`.
 
-Examples:
-```
-/goal test coverage reaches 90% as measured by `npm test -- --coverage | tail -1`, or stop after 50 turns
-/goal zero `any` types remain in src/**/*.ts as measured by `grep -rc 'any' src/ | tail -1`, or stop after 30 turns
-/goal all tests pass as measured by `pytest --tb=short; echo $?` outputting 0, or stop after 20 turns
-```
+### Phase 9: Escalation
+- 3 consecutive discards → **REFINE**: adjust within strategy, consult lessons
+- 5 consecutive discards → **PIVOT**: abandon strategy entirely, fundamentally different approach
+- 2 PIVOTs without keep → **Web search**: look externally
+- 3 PIVOTs without keep → **Soft blocker**: clear /goal, report human input needed
+- 1 keep resets ALL counters
 
-### Bounded vs Unbounded
-- Include "or stop after N turns" for bounded runs.
-- Omit for unbounded (runs until condition met or you interrupt).
+## Critical Rules
 
-### Goal with constraints
-```
-/goal response time under 200ms as measured by `./bench.sh | tail -1` without breaking any existing tests (`npm test` must stay green), or stop after 40 turns
-```
-
-## Escalation (When Stuck)
-
-| Consecutive discards | Action |
-|---------------------|--------|
-| 3 | **REFINE** — adjust within current strategy |
-| 5 | **PIVOT** — fundamentally different approach |
-| 2 PIVOTs without improvement | **Web search** — look externally |
-| 3 PIVOTs without improvement | **Stop** — report blocker, clear goal |
-
-One `keep` resets all counters.
-
-## 8 Critical Rules
-
-1. **One change per turn** — atomic. If it breaks, you know why.
-2. **Read before write** — understand full context before modifying.
-3. **Mechanical verification only** — no "looks good." Run the command.
+1. **One change per turn** — atomic experiments create causality.
+2. **Read before write** — git log + results TSV before modifying.
+3. **Mechanical verification only** — run the command, parse the number.
 4. **Automatic rollback** — `git revert HEAD --no-edit` on failure.
 5. **Simplicity wins** — equal metric + less code = KEEP.
-6. **Git is memory** — read `git log` + `git diff` before each iteration.
-7. **Never stage autoresearch artifacts** — `autoresearch-results/` stays uncommitted.
-8. **When stuck, think harder** — re-read lessons, combine near-misses, try radical changes.
+6. **Git is memory** — experiments committed, failures reverted, TSV logs all.
+7. **Never stage artifacts** — `autoresearch-results/` stays uncommitted.
+8. **When stuck, escalate** — REFINE → PIVOT → Web Search → Stop.
+9. **Never ask after launch** — once /goal is set, keep iterating. Apply best practices on ambiguity.
+10. **Progress every 5 iterations** — report baseline vs current vs best.
 
 ## Results Artifacts
 
 All under `autoresearch-results/` (never committed):
-- `results.tsv` — iteration log
-- `state.json` — resume snapshot
-- `lessons.md` — cross-run learning
 
-## Binary CLI Reference
+| File | Purpose |
+|---|---|
+| `results.tsv` | Every iteration: metric, delta, status, description |
+| `state.json` | Machine-readable resume snapshot |
+| `lessons.md` | Cross-run learning (positive + negative + strategic) |
+| `handoff.json` | Chain handoff to downstream commands |
 
-The `autoresearch` binary handles mechanical operations:
+## TSV Format
 
-| Command | Purpose |
-|---------|---------|
-| `autoresearch verify --command "..."` | Run verify, return JSON metric |
-| `autoresearch log --iteration N ...` | Append row to results.tsv |
-| `autoresearch status` | Show current state.json |
-| `autoresearch hook <name>` | Plugin hook dispatch |
-
-## Quick Start
-
-```
-/autoresearch
-Goal: Increase test coverage from 72% to 90%
-Scope: src/**/*.ts
-Verify: npm test -- --coverage | grep "All files" | awk '{print $10}'
+```tsv
+# metric_direction: higher
+iteration	commit	metric	delta	guard	status	description
+0	a1b2c3d	85.2	0	-	baseline	initial state
+1	b2c3d4e	87.1	+1.9	pass	keep	add auth edge case tests
+2	-	86.5	-0.6	-	discard	refactor broke 2 tests
+3	c3d4e5f	88.3	+1.2	pass	keep	add error handling tests
 ```
 
-The skill:
-1. Runs verify → baseline (72%)
-2. Sets `/goal coverage reaches 90% as measured by verify command, or stop after 50 turns`
-3. Each turn: read → ideate → modify → commit → verify → keep/discard → log
-4. You come back to 90% coverage and a log of every experiment.
+## Eval Checkpoints (--evals flag)
+
+Interval = floor(iterations / 3), min 1. Fixed 10 if unbounded.
+Every interval iterations:
+```
+--- Eval Checkpoint (iterations {X}-{Y}) ---
+Metric: {start} → {end} ({delta}) | Kept: {n}/{total} | Trend: {up/flat/down}
+{one-line recommendation}
+---
+```
+If plateau 3+ checkpoints → recommend clearing /goal early.
+
+## Chain Handoff
+
+Write `handoff.json` after completion:
+```json
+{
+  "version": "0.1.0",
+  "source": "<mode>",
+  "timestamp": "<ISO>",
+  "status": "COMPLETE|GOAL_MET|BOUNDED|BLOCKED|ERROR",
+  "results_tsv": "autoresearch-results/results.tsv",
+  "findings": [],
+  "config": {}
+}
+```
+Invoke next --chain target. Propagate --evals.
+
+## References
+
+- `references/security-checklist.md` — STRIDE + OWASP checklist for security mode
+- `references/predict-personas.md` — Persona definitions for predict mode
+- `references/reason-judge-protocol.md` — Judge protocol for reason mode
