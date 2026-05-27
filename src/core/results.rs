@@ -1,0 +1,227 @@
+use anyhow::{Context, Result};
+use chrono::Utc;
+use rust_decimal::Decimal;
+use std::fmt::Write as FmtWrite;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
+use std::path::{Path, PathBuf};
+
+use super::config::Direction;
+use super::state::IterationStatus;
+
+/// TSV header comment + column header.
+pub fn tsv_header(direction: Direction) -> String {
+    format!(
+        "# metric_direction: {}\niteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription",
+        direction.as_str()
+    )
+}
+
+/// A single row in the results TSV.
+#[derive(Debug, Clone)]
+pub struct ResultRow {
+    pub iteration: u32,
+    pub commit: Option<String>,
+    pub metric: Decimal,
+    pub delta: Decimal,
+    pub guard: GuardResult,
+    pub status: IterationStatus,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GuardResult {
+    Pass,
+    Fail,
+    Skip,
+}
+
+impl GuardResult {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Pass => "pass",
+            Self::Fail => "fail",
+            Self::Skip => "-",
+        }
+    }
+}
+
+impl ResultRow {
+    pub fn to_tsv(&self) -> String {
+        let commit = self.commit.as_deref().unwrap_or("-");
+        let delta_str = if self.delta.is_zero() {
+            "0".to_string()
+        } else if self.delta.is_sign_positive() {
+            format!("+{}", self.delta)
+        } else {
+            self.delta.to_string()
+        };
+
+        format!(
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+            self.iteration,
+            commit,
+            self.metric,
+            delta_str,
+            self.guard.as_str(),
+            self.status.as_str(),
+            self.description,
+        )
+    }
+}
+
+/// Results log manager.
+pub struct ResultsLog {
+    path: PathBuf,
+}
+
+impl ResultsLog {
+    /// Create a new results log at the given path with the TSV header.
+    pub fn create(dir: &Path, direction: Direction) -> Result<Self> {
+        fs::create_dir_all(dir).context("Failed to create results directory")?;
+        let path = dir.join("results.tsv");
+        let header = tsv_header(direction);
+        fs::write(&path, format!("{header}\n")).context("Failed to write results header")?;
+        Ok(Self { path })
+    }
+
+    /// Open an existing results log.
+    pub fn open(path: PathBuf) -> Result<Self> {
+        if !path.exists() {
+            anyhow::bail!("Results file does not exist: {}", path.display());
+        }
+        Ok(Self { path })
+    }
+
+    /// Append a row to the log.
+    pub fn append(&self, row: &ResultRow) -> Result<()> {
+        let mut file = OpenOptions::new()
+            .append(true)
+            .open(&self.path)
+            .context("Failed to open results TSV for append")?;
+        writeln!(file, "{}", row.to_tsv()).context("Failed to write result row")?;
+        Ok(())
+    }
+
+    /// Read the last N data rows from the log.
+    pub fn tail(&self, n: usize) -> Result<Vec<String>> {
+        let content = fs::read_to_string(&self.path).context("Failed to read results TSV")?;
+        let rows: Vec<&str> = content
+            .lines()
+            .filter(|l| !l.starts_with('#') && !l.starts_with("iteration\t") && !l.is_empty())
+            .collect();
+        let start = rows.len().saturating_sub(n);
+        Ok(rows[start..].iter().map(|s| s.to_string()).collect())
+    }
+
+    /// Count total data rows.
+    pub fn count(&self) -> Result<usize> {
+        let content = fs::read_to_string(&self.path).context("Failed to read results TSV")?;
+        Ok(content
+            .lines()
+            .filter(|l| !l.starts_with('#') && !l.starts_with("iteration\t") && !l.is_empty())
+            .count())
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+/// Generate a completion summary.
+pub fn completion_summary(
+    baseline: Decimal,
+    final_metric: Decimal,
+    best: Decimal,
+    keeps: u32,
+    discards: u32,
+    crashes: u32,
+    total: u32,
+    direction: Direction,
+) -> String {
+    let mut out = String::new();
+    let improvement = final_metric - baseline;
+    let pct = if !baseline.is_zero() {
+        (improvement / baseline * Decimal::from(100)).round_dp(1)
+    } else {
+        Decimal::ZERO
+    };
+
+    writeln!(out, "## Autoresearch Complete").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "| Stat | Value |").unwrap();
+    writeln!(out, "|------|-------|").unwrap();
+    writeln!(out, "| Iterations | {total} |").unwrap();
+    writeln!(out, "| Kept | {keeps} |").unwrap();
+    writeln!(out, "| Discarded | {discards} |").unwrap();
+    writeln!(out, "| Crashes | {crashes} |").unwrap();
+    writeln!(
+        out,
+        "| Baseline | {baseline} |"
+    )
+    .unwrap();
+    writeln!(out, "| Final | {final_metric} |").unwrap();
+    writeln!(out, "| Best | {best} |").unwrap();
+    writeln!(
+        out,
+        "| Improvement | {improvement} ({pct}% {}) |",
+        direction.as_str()
+    )
+    .unwrap();
+
+    out
+}
+
+/// Artifact directory name for a run.
+pub fn artifact_dir_name() -> &'static str {
+    "autoresearch-results"
+}
+
+/// Get or create the results directory.
+pub fn results_dir(workspace_root: &Path) -> PathBuf {
+    workspace_root.join(artifact_dir_name())
+}
+
+/// Generate a timestamped run tag.
+pub fn generate_run_tag() -> String {
+    Utc::now().format("%y%m%d-%H%M").to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_result_row_to_tsv() {
+        let row = ResultRow {
+            iteration: 1,
+            commit: Some("abc1234".to_string()),
+            metric: Decimal::from(87),
+            delta: Decimal::from(2),
+            guard: GuardResult::Pass,
+            status: IterationStatus::Keep,
+            description: "add auth tests".to_string(),
+        };
+        assert_eq!(
+            row.to_tsv(),
+            "1\tabc1234\t87\t+2\tpass\tkeep\tadd auth tests"
+        );
+    }
+
+    #[test]
+    fn test_result_row_discard() {
+        let row = ResultRow {
+            iteration: 2,
+            commit: None,
+            metric: Decimal::from(84),
+            delta: Decimal::from(-1),
+            guard: GuardResult::Skip,
+            status: IterationStatus::Discard,
+            description: "refactor broke tests".to_string(),
+        };
+        assert_eq!(
+            row.to_tsv(),
+            "2\t-\t84\t-1\t-\tdiscard\trefactor broke tests"
+        );
+    }
+}

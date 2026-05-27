@@ -1,0 +1,19 @@
+{
+  "name": "autoresearch",
+  "description": "Autonomous iteration engine. Modify → Verify → Keep/Discard → Repeat. 12 modes: loop, plan, debug, fix, security, ship, scenario, predict, learn, reason, probe, evals.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Coder Company",
+    "url": "https://github.com/coder-company"
+  },
+  "repository": "https://github.com/coder-company/agent-autoresearch",
+  "license": "MIT",
+  "keywords": [
+    "autonomous",
+    "iteration",
+    "optimization",
+    "debugging",
+    "security-audit",
+    "research"
+  ]
+}

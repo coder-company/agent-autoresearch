@@ -1,0 +1,21 @@
+name: autoresearch
+description: "Autonomous goal-directed iteration for Codex CLI"
+model: codex
+tools:
+  - type: function
+    function:
+      name: autoresearch
+      description: "Run the autoresearch loop"
+      parameters:
+        type: object
+        properties:
+          mode:
+            type: string
+            enum: [loop, plan, debug, fix, security, ship, scenario, predict, learn, reason, probe, exec]
+          goal:
+            type: string
+          scope:
+            type: string
+          iterations:
+            type: integer
+        required: [mode]
