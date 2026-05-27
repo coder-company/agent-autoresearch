@@ -7,12 +7,12 @@
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook scout-block",
-            "timeout": 3
+            "timeout": 5
           },
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook privacy-block",
-            "timeout": 3
+            "timeout": 5
           }
         ]
       },
@@ -22,12 +22,44 @@
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook scout-block",
-            "timeout": 3
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook privacy-block",
+            "timeout": 5
           },
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook dangerous-cmd-block",
-            "timeout": 3
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Glob|Grep|Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook scout-block",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook privacy-block",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook verify-capture",
+            "timeout": 5
           }
         ]
       }
@@ -38,12 +70,12 @@
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook iteration-context",
-            "timeout": 3
+            "timeout": 5
           },
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook simplify-gate",
-            "timeout": 3
+            "timeout": 5
           }
         ]
       }
@@ -65,7 +97,7 @@
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook compaction-reanchor",
-            "timeout": 3
+            "timeout": 5
           }
         ]
       }
@@ -76,7 +108,18 @@
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook subagent-context",
-            "timeout": 3
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook subagent-collect",
+            "timeout": 5
           }
         ]
       }
@@ -87,6 +130,39 @@
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook session-init",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook session-end",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook pre-compact-snapshot",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook notification-relay",
             "timeout": 3
           }
         ]

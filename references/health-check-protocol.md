@@ -5,7 +5,7 @@ Self-monitoring system that validates environment and run integrity at managed-r
 The executable companions are:
 
 - `autoresearch status ...`
-- `python3 <skill-root>/scripts/autoresearch_commit_gate.py`
+- `autoresearch status (includes commit gate check)`
 
 `autoresearch_health_check.py` is the canonical lightweight integrity checker. It must:
 

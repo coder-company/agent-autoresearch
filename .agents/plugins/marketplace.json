@@ -1,0 +1,6 @@
+{
+  "name": "autoresearch",
+  "version": "0.1.0",
+  "description": "Autonomous goal-directed iteration for Codex CLI",
+  "repository": "https://github.com/coder-company/agent-autoresearch"
+}

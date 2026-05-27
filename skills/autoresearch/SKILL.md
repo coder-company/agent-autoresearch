@@ -8,7 +8,7 @@ version: 0.1.0
 
 ## Safety Invariants (all subcommands)
 - Never push, publish, or deploy without explicit user approval.
-- Bounded by default (25 iterations). Override with `Iterations: unlimited`.
+- Bounded by default (500 iterations). Override with `Iterations: unlimited`.
 - All results logged to `autoresearch-results/` directory.
 - Chain handoff via `handoff.json`. Evals reads `results.tsv`.
 - Never stage `autoresearch-results/` artifacts in experiment commits.
@@ -161,6 +161,40 @@ Invoke next --chain target. Propagate --evals.
 
 ## References
 
-- `references/security-checklist.md` — STRIDE + OWASP checklist for security mode
-- `references/predict-personas.md` — Persona definitions for predict mode
-- `references/reason-judge-protocol.md` — Judge protocol for reason mode
+Load only what the current mode requires:
+
+### Always loaded
+- `references/core-principles.md` — 8 foundational rules
+- `references/runtime-protocol.md` — Closeout order, state machine, TSV/verify contracts
+- `references/runtime-hard-invariants.md` — Primary execution checklist during active runs
+
+### Before launch
+- `references/interaction-wizard.md` — Scan → questions → confirm → launch
+- `references/session-resume.md` — Detect and recover interrupted runs
+
+### Mode-specific workflows
+- `references/loop-workflow.md` — Core iteration loop
+- `references/autonomous-loop-protocol.md` — Full loop detail (setup, recovery, escalation)
+- `references/debug-workflow.md` — Bug hunting protocol
+- `references/fix-workflow.md` — Error crushing protocol
+- `references/security-workflow.md` — STRIDE + OWASP audit workflow
+- `references/plan-workflow.md` — Goal → config conversion
+- `references/ship-workflow.md` — 8-phase ship workflow
+
+### Cross-cutting protocols
+- `references/escalation.md` — REFINE → PIVOT → Web Search → Stop
+- `references/pivot-protocol.md` — Full escalation ladder detail
+- `references/lessons-protocol.md` — Cross-run learning extraction
+- `references/results-logging.md` — TSV schema, row semantics, state contract
+- `references/structured-output-spec.md` — Output formatting for all modes
+- `references/health-check-protocol.md` — Disk, git, verify, integrity checks
+- `references/parallel-experiments-protocol.md` — Git worktree parallel experiments
+- `references/hypothesis-perspectives.md` — 4-lens hypothesis generation
+- `references/environment-awareness.md` — Hardware/toolchain detection
+- `references/web-search-protocol.md` — External research when stuck
+- `references/exec-workflow.md` — Non-interactive CI/CD mode
+
+### Domain-specific
+- `references/security-checklist.md` — STRIDE + OWASP tables
+- `references/predict-personas.md` — Expert persona definitions
+- `references/reason-judge-protocol.md` — Adversarial debate judge protocol

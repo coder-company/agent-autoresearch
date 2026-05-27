@@ -1,0 +1,7 @@
+{
+  "name": "autoresearch",
+  "slug": "coder-company/agent-autoresearch",
+  "tagline": "Autonomous goal-directed iteration: modify → verify → keep/discard → repeat",
+  "categories": ["development", "testing", "security", "automation"],
+  "install_command": "claude plugin add coder-company/agent-autoresearch"
+}

@@ -129,6 +129,7 @@ impl ResultsLog {
 }
 
 /// Generate a completion summary.
+#[allow(clippy::too_many_arguments)]
 pub fn completion_summary(
     baseline: Decimal,
     final_metric: Decimal,
@@ -180,6 +181,47 @@ pub fn artifact_dir_name() -> &'static str {
 /// Get or create the results directory.
 pub fn results_dir(workspace_root: &Path) -> PathBuf {
     workspace_root.join(artifact_dir_name())
+}
+
+/// Create `autoresearch-results/` and protect it from git staging.
+///
+/// 1. Creates the directory
+/// 2. Writes `autoresearch-results/.gitignore` containing `*\n!.gitignore\n`
+/// 3. If `<workspace>/.gitignore` exists and doesn't contain `autoresearch-results/`, appends it
+/// 4. If no `.gitignore` exists, creates one with `autoresearch-results/\n`
+pub fn ensure_results_dir_protected(workspace: &Path) -> Result<PathBuf> {
+    let results = workspace.join(artifact_dir_name());
+    fs::create_dir_all(&results).context("Failed to create autoresearch-results directory")?;
+
+    // Write inner .gitignore to ignore everything except itself
+    let inner_gitignore = results.join(".gitignore");
+    fs::write(&inner_gitignore, "*\n!.gitignore\n")
+        .context("Failed to write autoresearch-results/.gitignore")?;
+
+    // Protect from workspace-level git staging
+    let ws_gitignore = workspace.join(".gitignore");
+    let entry = "autoresearch-results/";
+    if ws_gitignore.exists() {
+        let content = fs::read_to_string(&ws_gitignore)
+            .context("Failed to read workspace .gitignore")?;
+        if !content.lines().any(|l| l.trim() == entry) {
+            use std::io::Write;
+            let mut file = OpenOptions::new()
+                .append(true)
+                .open(&ws_gitignore)
+                .context("Failed to open workspace .gitignore for append")?;
+            // Ensure we start on a new line
+            if !content.ends_with('\n') && !content.is_empty() {
+                writeln!(file)?;
+            }
+            writeln!(file, "{entry}")?;
+        }
+    } else {
+        fs::write(&ws_gitignore, format!("{entry}\n"))
+            .context("Failed to create workspace .gitignore")?;
+    }
+
+    Ok(results)
 }
 
 /// Generate a timestamped run tag.

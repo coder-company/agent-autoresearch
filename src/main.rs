@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use autoresearch::core::config::{Direction, RollbackStrategy, RunConfig, VerifyFormat};
-use autoresearch::core::git::GitRepo;
-use autoresearch::core::results::{GuardResult, ResultRow, ResultsLog};
+use autoresearch::core::git::{GitRepo, WorktreeStatus};
+use autoresearch::core::results::{ensure_results_dir_protected, GuardResult, ResultRow, ResultsLog};
 use autoresearch::core::state::{IterationStatus, RunPhase, RunState};
 use autoresearch::core::verify;
 use autoresearch::escalation::lessons::{self, LessonsLog};
@@ -41,6 +41,18 @@ enum Commands {
         /// Primary metric key (for metrics_json)
         #[arg(long)]
         key: Option<String>,
+        /// Goal description
+        #[arg(long)]
+        goal: Option<String>,
+        /// Scope glob patterns (repeatable)
+        #[arg(long)]
+        scope: Option<Vec<String>>,
+        /// Metric description
+        #[arg(long)]
+        metric: Option<String>,
+        /// Guard command
+        #[arg(long)]
+        guard: Option<String>,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -199,6 +211,16 @@ enum Commands {
         #[arg(long)]
         cwd: Option<PathBuf>,
     },
+
+    /// Non-interactive CI/CD mode: read config from stdin, run loop, emit JSON lines
+    Exec {
+        /// Maximum iterations (required in exec mode)
+        #[arg(long)]
+        iterations: u32,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
 }
 
 fn main() -> Result<()> {
@@ -210,8 +232,12 @@ fn main() -> Result<()> {
             direction,
             format,
             key,
+            goal,
+            scope,
+            metric,
+            guard,
             cwd,
-        } => cmd_init(&verify_cmd, &direction, &format, key.as_deref(), cwd),
+        } => cmd_init(&verify_cmd, &direction, &format, key.as_deref(), goal.as_deref(), scope, metric.as_deref(), guard.as_deref(), cwd),
 
         Commands::Verify {
             command,
@@ -273,16 +299,23 @@ fn main() -> Result<()> {
             config,
             cwd,
         } => cmd_handoff(&source, &status, findings.as_deref(), config.as_deref(), cwd),
+
+        Commands::Exec { iterations, cwd } => cmd_exec(iterations, cwd),
     }
 }
 
 // ── Init ──────────────────────────────────────────────────────────────
 
+#[allow(clippy::too_many_arguments)]
 fn cmd_init(
     verify_cmd: &str,
     direction_str: &str,
     format_str: &str,
     key: Option<&str>,
+    goal: Option<&str>,
+    scope: Option<Vec<String>>,
+    metric_desc: Option<&str>,
+    guard: Option<&str>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let workspace = resolve_cwd(cwd);
@@ -300,9 +333,8 @@ fn cmd_init(
     let result = verify::run_verify(verify_cmd, fmt, key, &workspace)
         .context("Baseline verification failed")?;
 
-    // Create results directory + artifacts
-    let results_dir = workspace.join("autoresearch-results");
-    std::fs::create_dir_all(&results_dir)?;
+    // Create results directory + protect from git staging
+    let results_dir = ensure_results_dir_protected(&workspace)?;
 
     // Write TSV with header + baseline row
     let log = ResultsLog::create(&results_dir, direction)?;
@@ -319,12 +351,12 @@ fn cmd_init(
 
     // Build run config from init parameters
     let run_config = RunConfig {
-        goal: String::new(),
-        scope: Vec::new(),
-        metric: String::new(),
+        goal: goal.unwrap_or("").to_string(),
+        scope: scope.unwrap_or_default(),
+        metric: metric_desc.unwrap_or("").to_string(),
         direction,
         verify: verify_cmd.to_string(),
-        guard: None,
+        guard: guard.map(|g| g.to_string()),
         iterations: None,
         run_tag: None,
         stop_condition: None,
@@ -398,7 +430,10 @@ fn cmd_guard(command: &str, cwd: Option<PathBuf>) -> Result<()> {
 }
 
 // ── Log ───────────────────────────────────────────────────────────────
+// NOTE: `decide` is the primary closeout path for iterations.
+// `log` is the low-level escape hatch for manually recording rows.
 
+#[allow(clippy::too_many_arguments)]
 fn cmd_log(
     iteration: u32,
     commit: &str,
@@ -411,6 +446,20 @@ fn cmd_log(
 ) -> Result<()> {
     let workspace = resolve_cwd(cwd);
     let results_dir = workspace.join("autoresearch-results");
+
+    // Validate iteration sequence to prevent double-counting with cmd_decide
+    let state_path = results_dir.join("state.json");
+    if state_path.exists() {
+        let content = std::fs::read_to_string(&state_path)?;
+        let existing: RunState = serde_json::from_str(&content)?;
+        let expected = existing.iteration + 1;
+        if iteration != expected {
+            anyhow::bail!(
+                "Iteration mismatch: requested {iteration} but state expects {expected}. \
+                 Use `decide` for normal closeout; `log` is the low-level escape hatch."
+            );
+        }
+    }
 
     let metric = Decimal::from_str(metric_str)
         .with_context(|| format!("Invalid metric: {metric_str}"))?;
@@ -528,9 +577,19 @@ fn cmd_decide(
     let git = GitRepo::open(&workspace)?;
     let iteration = state.iteration + 1;
 
+    // Resolve the actual commit for keep decisions (Bug 4 fix)
+    let resolved_commit: Option<String> = if decision == "keep" {
+        Some(match commit {
+            Some(c) => c.to_string(),
+            None => git.head_short()?,
+        })
+    } else {
+        commit.map(|s| s.to_string())
+    };
+
     let (status, needs_rollback, escalation_action) = match decision {
         "keep" => {
-            state.record_keep(metric, commit.unwrap_or("-").to_string());
+            state.record_keep(metric, resolved_commit.clone().unwrap());
             escalation.record_keep();
 
             // Extract positive lesson
@@ -540,7 +599,7 @@ fn cmd_decide(
             (IterationStatus::Keep, false, None)
         }
         "discard" => {
-            state.record_discard(metric, commit.map(|s| s.to_string()));
+            state.record_discard(metric, resolved_commit.clone());
             let action = escalation.record_discard();
             (IterationStatus::Discard, true, Some(action))
         }
@@ -574,6 +633,8 @@ fn cmd_decide(
                 git.revert_head()?;
             }
         }
+        // Update state to reflect actual HEAD after rollback
+        state.last_commit = git.head_short()?;
     }
 
     // Append to TSV
@@ -581,7 +642,7 @@ fn cmd_decide(
     log.append(&ResultRow {
         iteration,
         commit: if status == IterationStatus::Keep {
-            commit.map(|s| s.to_string())
+            resolved_commit.clone()
         } else {
             None
         },
@@ -718,7 +779,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
             }
         })
         .collect();
-    top_keeps.sort_by(|a, b| b.0.cmp(&a.0));
+    top_keeps.sort_by_key(|entry| std::cmp::Reverse(entry.0));
 
     let efficiency = if total > 1 {
         (keeps as f64 / (total - 1) as f64 * 100.0).round() as u32
@@ -1081,6 +1142,80 @@ fn cmd_handoff(
     std::fs::write(&handoff_path, serde_json::to_string_pretty(&handoff)?)?;
 
     println!(r#"{{"status":"ok","path":"autoresearch-results/handoff.json"}}"#);
+    Ok(())
+}
+
+// ── Exec ─────────────────────────────────────────────────────────────
+
+fn cmd_exec(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
+    let workspace = resolve_cwd(cwd);
+
+    // Read config from stdin
+    let config: RunConfig = serde_json::from_reader(std::io::stdin().lock())
+        .context("exec: failed to parse RunConfig from stdin")?;
+
+    // Extract display values before moving config
+    let direction = config.direction;
+    let verify_cmd = config.verify.clone();
+    let fmt = config.verify_format;
+    let primary_key = config.primary_metric_key.clone();
+
+    // Screen
+    if let Err(e) = verify::screen_command(&verify_cmd) {
+        let out = serde_json::json!({"type":"error","code":"unsafe_command","reason":e.to_string()});
+        println!("{}", serde_json::to_string(&out)?);
+        std::process::exit(2);
+    }
+
+    // Git check
+    let git = GitRepo::open(&workspace).context("exec: requires a git repository")?;
+    match git.worktree_status()? {
+        WorktreeStatus::Clean | WorktreeStatus::OnlyArtifacts => {}
+        WorktreeStatus::Dirty(files) => {
+            let out = serde_json::json!({"type":"error","code":"dirty_worktree","files":files});
+            println!("{}", serde_json::to_string(&out)?);
+            std::process::exit(2);
+        }
+    }
+
+    // Baseline
+    let result = verify::run_verify(&verify_cmd, fmt, primary_key.as_deref(), &workspace)
+        .context("exec: baseline verification failed")?;
+    let head = git.head_short()?;
+
+    // Init artifacts + protect from git staging
+    let results_dir = ensure_results_dir_protected(&workspace)?;
+
+    let log = ResultsLog::create(&results_dir, direction)?;
+    log.append(&ResultRow {
+        iteration: 0,
+        commit: Some(head.clone()),
+        metric: result.metric,
+        delta: Decimal::ZERO,
+        guard: GuardResult::Skip,
+        status: IterationStatus::Baseline,
+        description: "initial state".to_string(),
+    })?;
+
+    let state = RunState::from_baseline(result.metric, head.clone(), Some(config));
+    std::fs::write(
+        results_dir.join("state.json"),
+        serde_json::to_string_pretty(&state)?,
+    )?;
+    LessonsLog::open_or_create(&results_dir)?;
+
+    // Emit JSON line
+    let out = serde_json::json!({
+        "type": "started",
+        "baseline": result.metric.to_string(),
+        "commit": head,
+        "direction": direction.as_str(),
+        "iterations": iterations,
+        "results_dir": "autoresearch-results",
+        "verify_duration_ms": result.duration.as_millis(),
+    });
+    println!("{}", serde_json::to_string(&out)?);
+
     Ok(())
 }
 

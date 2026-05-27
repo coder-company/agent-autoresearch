@@ -1,0 +1,70 @@
+# How Autoresearch Projects Compare
+
+There are several autoresearch implementations. Here's how they differ and when to use each.
+
+---
+
+## The Origin
+
+Andrej Karpathy shared a 630-line Python script that ran **700 experiments overnight** against a single metric — modify, check, keep or discard, repeat. It found 20 optimizations no human spotted. He called it "autoresearch."
+
+The idea was simple enough that several people generalized it:
+
+- **uditgoenka/autoresearch** — turned it into a full Claude Code command system with 12 modes (debug, fix, security, scenario, etc.)
+- **codex-autoresearch** — ported it to OpenAI's Codex with support for background runs
+- **this project** — combines the best of both into a compiled binary that works with any agent
+
+---
+
+## Quick Comparison
+
+| | Karpathy's | uditgoenka | codex-autoresearch | **This** |
+|---|---|---|---|---|
+| What it does | ML training loops | Any metric, 12 commands | Any metric, background mode | Any metric, 12 commands |
+| Install | Clone + Python | Copy .md files | Skill installer | Single binary |
+| Works with | Standalone | Claude Code | Codex CLI | **Claude Code, Codex, any agent** |
+| Commands | 1 (the loop) | 12 | 4 | **12 + exec mode** |
+| When it gets stuck | You restart | Refine → Pivot → Stop | You restart | **Refine → Pivot → Web Search → Stop** |
+| Remembers across runs | No | Yes (lessons.md) | Yes (cross-run learning) | **Yes (lessons.md)** |
+| Background runs | No | No | Yes (daemon) | Planned (v0.2) |
+| Parallel experiments | No | No | Yes | Planned (v0.2) |
+
+---
+
+## When to Use What
+
+**Use Karpathy's script** if you're doing ML research and want the simplest possible loop against `train.py`.
+
+**Use uditgoenka/autoresearch** if you're on Claude Code and want something that works right now with no compilation step. It's pure markdown — the agent reads the instructions and follows the protocol. Great command surface.
+
+**Use codex-autoresearch** if you're on Codex CLI and want background/overnight runs. It has a daemon mode where you can sleep while it works.
+
+**Use this project** if:
+- You want to use it with **multiple agents** (Claude Code, Codex, or anything else)
+- You care about **hook speed** — the safety checks fire on every tool call, and they're fast enough to be invisible
+- You want a **single binary** with no Python/Node.js dependency chain
+- You want the full 12-command surface **plus** the escalation system and cross-run learning
+
+---
+
+## What We Borrowed
+
+From **Karpathy**: the core philosophy — one metric, one change at a time, mechanical verification, automatic rollback, git as the experiment log.
+
+From **uditgoenka/autoresearch**: the 12-command surface (debug, fix, security, scenario, predict, learn, reason, probe, evals, ship, plan, improve), the escalation ladder, the lessons log, and structured outputs per mode.
+
+From **codex-autoresearch**: the exec mode for CI/CD, the idea of background runs (on our roadmap), and multi-agent design patterns.
+
+---
+
+## Lineage
+
+```
+Karpathy's autoresearch
+     │
+     ├── uditgoenka/autoresearch (generalized to any metric, 12 commands)
+     │
+     ├── codex-autoresearch (background mode, parallel experiments)
+     │
+     └── coder-company/agent-autoresearch (compiled binary, all agents)
+```

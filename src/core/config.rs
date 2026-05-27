@@ -46,18 +46,15 @@ pub enum VerifyFormat {
 /// Rollback strategy approved during setup.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum RollbackStrategy {
     /// `git reset --hard HEAD~1` — only for dedicated experiment branches.
     HardReset,
     /// `git revert --no-edit HEAD` — safe for shared branches.
+    #[default]
     Revert,
 }
 
-impl Default for RollbackStrategy {
-    fn default() -> Self {
-        Self::Revert
-    }
-}
 
 /// Complete run configuration for the autoresearch loop.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -123,14 +120,14 @@ pub enum Mode {
 impl Mode {
     pub fn default_iterations(&self) -> Option<u32> {
         match self {
-            Mode::Loop => Some(25),
-            Mode::Debug => Some(15),
-            Mode::Fix => Some(20),
-            Mode::Security => Some(15),
-            Mode::Scenario => Some(20),
-            Mode::Learn => Some(10),
-            Mode::Reason => Some(8),
-            Mode::Probe => Some(15),
+            Mode::Loop => Some(500),
+            Mode::Debug => Some(500),
+            Mode::Fix => Some(500),
+            Mode::Security => Some(500),
+            Mode::Scenario => Some(500),
+            Mode::Learn => Some(500),
+            Mode::Reason => Some(500),
+            Mode::Probe => Some(500),
             Mode::Plan | Mode::Ship | Mode::Predict | Mode::Evals | Mode::Exec => None,
         }
     }

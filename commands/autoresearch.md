@@ -15,7 +15,7 @@ Extract from $ARGUMENTS:
 - `Direction:` — higher_is_better (default) or lower_is_better
 - `Verify:` — shell command that outputs a number on its final non-empty line
 - `Guard:` — optional safety command (must exit 0)
-- `Iterations:` or `--iterations` — integer N for bounded mode (default: 25). "unlimited" for unbounded.
+- `Iterations:` or `--iterations` — integer N for bounded mode (default: 500). "unlimited" for unbounded.
 - `--evals` — enable mid-loop checkpoints
 - `--evals-interval N` — checkpoint frequency override
 - `--chain <targets>` — comma-separated downstream commands

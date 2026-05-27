@@ -11,11 +11,38 @@ tools:
         properties:
           mode:
             type: string
-            enum: [loop, plan, debug, fix, security, ship, scenario, predict, learn, reason, probe, exec]
+            enum: [loop, plan, debug, fix, security, ship, scenario, predict, learn, reason, probe, improve, evals]
+            description: "Operating mode: loop (core metric iteration), plan (goal→config), debug (bug hunting), fix (error crushing), security (STRIDE+OWASP), ship (8-phase deploy), scenario (edge cases), predict (persona debate), learn (doc generation), reason (adversarial refinement), probe (requirement interrogation), improve (ICP-driven product improvement), evals (results analysis)"
           goal:
             type: string
+            description: "What to achieve or improve"
           scope:
             type: string
+            description: "File globs to operate on"
+          metric:
+            type: string
+            description: "What to measure (for loop mode)"
+          verify:
+            type: string
+            description: "Shell command that outputs metric on final line"
+          guard:
+            type: string
+            description: "Safety command that must exit 0"
           iterations:
             type: integer
+            description: "Max iterations (default varies by mode)"
+          direction:
+            type: string
+            enum: [higher_is_better, lower_is_better]
+            description: "Metric optimization direction"
+          depth:
+            type: string
+            enum: [shallow, standard, deep]
+            description: "Analysis depth (for debug, security, predict, scenario, probe, improve)"
+          evals:
+            type: boolean
+            description: "Enable mid-loop eval checkpoints"
+          chain:
+            type: string
+            description: "Comma-separated downstream commands to chain"
         required: [mode]

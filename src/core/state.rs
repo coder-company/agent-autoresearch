@@ -1,7 +1,7 @@
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
-use super::config::RunConfig;
+use super::config::{Direction, RunConfig};
 
 /// The state machine for an autoresearch run.
 /// Invalid transitions are impossible at the type level.
@@ -56,14 +56,25 @@ pub struct RunState {
     pub pivot_count: u32,
     pub last_status: IterationStatus,
     pub phase: RunPhase,
+    /// Metric optimization direction.
+    #[serde(default = "default_direction")]
+    pub direction: Direction,
     /// Run configuration for resume support.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub config: Option<RunConfig>,
 }
 
+fn default_direction() -> Direction {
+    Direction::Higher
+}
+
 impl RunState {
     /// Create initial state from baseline measurement.
     pub fn from_baseline(metric: Decimal, commit: String, config: Option<RunConfig>) -> Self {
+        let direction = config
+            .as_ref()
+            .map(|c| c.direction)
+            .unwrap_or(Direction::Higher);
         Self {
             iteration: 0,
             baseline_metric: metric,
@@ -82,6 +93,7 @@ impl RunState {
             pivot_count: 0,
             last_status: IterationStatus::Baseline,
             phase: RunPhase::Baseline { metric },
+            direction,
             config,
         }
     }
@@ -97,7 +109,7 @@ impl RunState {
         self.consecutive_discards = 0;
         self.last_status = IterationStatus::Keep;
 
-        if self.is_new_best(metric) {
+        if self.is_new_best(metric, self.direction) {
             self.best_metric = metric;
             self.best_iteration = self.iteration;
         }
@@ -175,10 +187,11 @@ impl RunState {
         self.consecutive_discards = 0;
     }
 
-    fn is_new_best(&self, metric: Decimal) -> bool {
-        // We don't know direction here — caller should check.
-        // For now, compare absolute difference from baseline.
-        metric != self.best_metric
+    fn is_new_best(&self, metric: Decimal, direction: Direction) -> bool {
+        match direction {
+            Direction::Higher => metric > self.best_metric,
+            Direction::Lower => metric < self.best_metric,
+        }
     }
 }
 

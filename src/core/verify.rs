@@ -102,7 +102,7 @@ pub fn screen_command(command: &str) -> Result<()> {
 
     // Check for piped execution patterns
     if lower.contains('|') {
-        let after_pipe = lower.split('|').last().unwrap_or("").trim();
+        let after_pipe = lower.split('|').next_back().unwrap_or("").trim();
         if ["sh", "bash", "zsh", "eval"].contains(&after_pipe) {
             anyhow::bail!("Verify command pipes to shell interpreter: {after_pipe}");
         }
