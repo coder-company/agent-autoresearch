@@ -156,11 +156,7 @@ pub fn completion_summary(
     writeln!(out, "| Kept | {keeps} |").unwrap();
     writeln!(out, "| Discarded | {discards} |").unwrap();
     writeln!(out, "| Crashes | {crashes} |").unwrap();
-    writeln!(
-        out,
-        "| Baseline | {baseline} |"
-    )
-    .unwrap();
+    writeln!(out, "| Baseline | {baseline} |").unwrap();
     writeln!(out, "| Final | {final_metric} |").unwrap();
     writeln!(out, "| Best | {best} |").unwrap();
     writeln!(
@@ -202,8 +198,8 @@ pub fn ensure_results_dir_protected(workspace: &Path) -> Result<PathBuf> {
     let ws_gitignore = workspace.join(".gitignore");
     let entry = "autoresearch-results/";
     if ws_gitignore.exists() {
-        let content = fs::read_to_string(&ws_gitignore)
-            .context("Failed to read workspace .gitignore")?;
+        let content =
+            fs::read_to_string(&ws_gitignore).context("Failed to read workspace .gitignore")?;
         if !content.lines().any(|l| l.trim() == entry) {
             use std::io::Write;
             let mut file = OpenOptions::new()

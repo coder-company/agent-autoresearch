@@ -46,7 +46,8 @@ pub fn builtin_suggestions() -> Vec<MetricSuggestion> {
         MetricSuggestion {
             name: "Lint Warnings".into(),
             metric: "warnings".into(),
-            verify_command: "npx eslint src/ --format compact 2>&1 | tail -1 | grep -oP '\\d+' | head -1".into(),
+            verify_command:
+                "npx eslint src/ --format compact 2>&1 | tail -1 | grep -oP '\\d+' | head -1".into(),
             direction: "lower",
             rationale: "Found linter configuration".into(),
         },
@@ -105,7 +106,10 @@ pub fn suggest_metrics(found_files: &[String]) -> Vec<MetricSuggestion> {
         let prefix = pattern_base.trim_end_matches('*');
         if found_files.iter().any(|f| f.starts_with(prefix)) {
             if let Some(suggestion) = all.iter().find(|s| s.name == *metric_name) {
-                if !relevant.iter().any(|r: &MetricSuggestion| r.name == suggestion.name) {
+                if !relevant
+                    .iter()
+                    .any(|r: &MetricSuggestion| r.name == suggestion.name)
+                {
                     relevant.push(suggestion.clone());
                 }
             }

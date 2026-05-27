@@ -98,14 +98,9 @@ impl GitRepo {
         let parent = self.repo.head()?.peel_to_commit()?;
 
         let full_message = format!("experiment: {message}");
-        let oid = self.repo.commit(
-            Some("HEAD"),
-            &sig,
-            &sig,
-            &full_message,
-            &tree,
-            &[&parent],
-        )?;
+        let oid = self
+            .repo
+            .commit(Some("HEAD"), &sig, &sig, &full_message, &tree, &[&parent])?;
 
         Ok(oid.to_string()[..7].to_string())
     }
@@ -122,7 +117,10 @@ impl GitRepo {
         let sig = self.signature()?;
         let parent = self.repo.head()?.peel_to_commit()?;
 
-        let msg = format!("Revert \"{}\"", head_commit.summary().unwrap_or("experiment"));
+        let msg = format!(
+            "Revert \"{}\"",
+            head_commit.summary().unwrap_or("experiment")
+        );
         self.repo
             .commit(Some("HEAD"), &sig, &sig, &msg, &tree, &[&parent])?;
 

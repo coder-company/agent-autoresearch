@@ -38,11 +38,7 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
             }
             let status = parts[5];
             let delta = parts[3].trim_start_matches('+');
-            status == "keep"
-                && delta
-                    .parse::<f64>()
-                    .map(|d| d.abs() < 1.0)
-                    .unwrap_or(false)
+            status == "keep" && delta.parse::<f64>().map(|d| d.abs() < 1.0).unwrap_or(false)
         })
         .count();
 

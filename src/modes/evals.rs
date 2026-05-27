@@ -93,7 +93,9 @@ pub fn parse_results_tsv(content: &str) -> Result<Vec<ParsedRow>> {
             continue;
         }
 
-        let iteration = parts[0].parse::<u32>().context("Invalid iteration number")?;
+        let iteration = parts[0]
+            .parse::<u32>()
+            .context("Invalid iteration number")?;
         let commit = if parts[1] == "-" {
             None
         } else {
@@ -196,7 +198,11 @@ pub fn compute_efficiency(rows: &[ParsedRow]) -> EfficiencyMetrics {
 }
 
 /// Generate a recommendation based on analysis.
-pub fn recommend(trend: Trend, plateau_at: Option<u32>, efficiency: &EfficiencyMetrics) -> Recommendation {
+pub fn recommend(
+    trend: Trend,
+    plateau_at: Option<u32>,
+    efficiency: &EfficiencyMetrics,
+) -> Recommendation {
     if plateau_at.is_some() {
         return Recommendation::ChangeStrategy;
     }
@@ -358,9 +364,30 @@ mod tests {
     #[test]
     fn test_efficiency_metrics() {
         let rows = vec![
-            ParsedRow { iteration: 1, commit: Some("a".into()), metric: Decimal::from(82), delta: Decimal::from(2), status: "keep".into(), description: "t".into() },
-            ParsedRow { iteration: 2, commit: None, metric: Decimal::from(80), delta: Decimal::from(-2), status: "discard".into(), description: "t".into() },
-            ParsedRow { iteration: 3, commit: Some("b".into()), metric: Decimal::from(83), delta: Decimal::from(3), status: "keep".into(), description: "t".into() },
+            ParsedRow {
+                iteration: 1,
+                commit: Some("a".into()),
+                metric: Decimal::from(82),
+                delta: Decimal::from(2),
+                status: "keep".into(),
+                description: "t".into(),
+            },
+            ParsedRow {
+                iteration: 2,
+                commit: None,
+                metric: Decimal::from(80),
+                delta: Decimal::from(-2),
+                status: "discard".into(),
+                description: "t".into(),
+            },
+            ParsedRow {
+                iteration: 3,
+                commit: Some("b".into()),
+                metric: Decimal::from(83),
+                delta: Decimal::from(3),
+                status: "keep".into(),
+                description: "t".into(),
+            },
         ];
         let eff = compute_efficiency(&rows);
         assert_eq!(eff.total_iterations, 3);
@@ -378,7 +405,10 @@ mod tests {
             total_improvement: Decimal::from(10),
             avg_improvement_per_keep: Some(Decimal::from(2)),
         };
-        assert_eq!(recommend(Trend::Improving, None, &eff), Recommendation::Continue);
+        assert_eq!(
+            recommend(Trend::Improving, None, &eff),
+            Recommendation::Continue
+        );
     }
 
     #[test]
@@ -391,6 +421,9 @@ mod tests {
             total_improvement: Decimal::from(1),
             avg_improvement_per_keep: Some(Decimal::from(1)),
         };
-        assert_eq!(recommend(Trend::Flat, Some(10), &eff), Recommendation::ChangeStrategy);
+        assert_eq!(
+            recommend(Trend::Flat, Some(10), &eff),
+            Recommendation::ChangeStrategy
+        );
     }
 }

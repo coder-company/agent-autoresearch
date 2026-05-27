@@ -114,13 +114,7 @@ pub fn screen_command(command: &str) -> Result<()> {
     }
 
     // Check for credential leaks
-    let credential_patterns = [
-        "password=",
-        "api_key=",
-        "secret=",
-        "token=",
-        "AWS_SECRET",
-    ];
+    let credential_patterns = ["password=", "api_key=", "secret=", "token=", "AWS_SECRET"];
     for pattern in &credential_patterns {
         if command.contains(pattern) {
             anyhow::bail!("Verify command may contain embedded credentials: {pattern}");

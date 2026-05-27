@@ -91,10 +91,7 @@ mod tests {
 
     #[test]
     fn test_parse_scalar_metric_integer() {
-        assert_eq!(
-            parse_scalar_metric("47\n").unwrap(),
-            Decimal::from(47)
-        );
+        assert_eq!(parse_scalar_metric("47\n").unwrap(), Decimal::from(47));
     }
 
     #[test]

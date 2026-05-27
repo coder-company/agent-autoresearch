@@ -123,7 +123,10 @@ impl ImproveSession {
 
     /// Filter improvements by tier.
     pub fn by_tier(&self, tier: ImprovementTier) -> Vec<&Improvement> {
-        self.improvements.iter().filter(|i| i.tier == tier).collect()
+        self.improvements
+            .iter()
+            .filter(|i| i.tier == tier)
+            .collect()
     }
 
     /// Count improvements per tier.
@@ -224,7 +227,12 @@ mod tests {
             title: "Low score".into(),
             description: "Low".into(),
             tier: ImprovementTier::Moonshot,
-            score: ImpactScore { user_impact: 2, business_impact: 2, effort: 8, confidence: 5 },
+            score: ImpactScore {
+                user_impact: 2,
+                business_impact: 2,
+                effort: 8,
+                confidence: 5,
+            },
             evidence: vec![],
             icp_challenge: None,
             relevant_areas: vec![],
@@ -233,7 +241,12 @@ mod tests {
             title: "High score".into(),
             description: "High".into(),
             tier: ImprovementTier::MustHave,
-            score: ImpactScore { user_impact: 9, business_impact: 9, effort: 1, confidence: 9 },
+            score: ImpactScore {
+                user_impact: 9,
+                business_impact: 9,
+                effort: 1,
+                confidence: 9,
+            },
             evidence: vec![],
             icp_challenge: None,
             relevant_areas: vec![],

@@ -26,10 +26,7 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
         Err(_) => return HookResponse::allow(),
     };
 
-    let lines: Vec<&str> = content
-        .lines()
-        .filter(|l| !l.is_empty())
-        .collect();
+    let lines: Vec<&str> = content.lines().filter(|l| !l.is_empty()).collect();
 
     let header = lines
         .iter()

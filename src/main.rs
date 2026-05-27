@@ -6,7 +6,9 @@ use std::str::FromStr;
 
 use autoresearch::core::config::{Direction, RollbackStrategy, RunConfig, VerifyFormat};
 use autoresearch::core::git::{GitRepo, WorktreeStatus};
-use autoresearch::core::results::{ensure_results_dir_protected, GuardResult, ResultRow, ResultsLog};
+use autoresearch::core::results::{
+    ensure_results_dir_protected, GuardResult, ResultRow, ResultsLog,
+};
 use autoresearch::core::state::{IterationStatus, RunPhase, RunState};
 use autoresearch::core::verify;
 use autoresearch::escalation::lessons::{self, LessonsLog};
@@ -237,7 +239,17 @@ fn main() -> Result<()> {
             metric,
             guard,
             cwd,
-        } => cmd_init(&verify_cmd, &direction, &format, key.as_deref(), goal.as_deref(), scope, metric.as_deref(), guard.as_deref(), cwd),
+        } => cmd_init(
+            &verify_cmd,
+            &direction,
+            &format,
+            key.as_deref(),
+            goal.as_deref(),
+            scope,
+            metric.as_deref(),
+            guard.as_deref(),
+            cwd,
+        ),
 
         Commands::Verify {
             command,
@@ -276,7 +288,15 @@ fn main() -> Result<()> {
             rollback,
             guard,
             cwd,
-        } => cmd_decide(&decision, &metric, commit.as_deref(), &description, &rollback, &guard, cwd),
+        } => cmd_decide(
+            &decision,
+            &metric,
+            commit.as_deref(),
+            &description,
+            &rollback,
+            &guard,
+            cwd,
+        ),
 
         Commands::Evals { path, format } => cmd_evals(path, &format),
 
@@ -298,7 +318,13 @@ fn main() -> Result<()> {
             findings,
             config,
             cwd,
-        } => cmd_handoff(&source, &status, findings.as_deref(), config.as_deref(), cwd),
+        } => cmd_handoff(
+            &source,
+            &status,
+            findings.as_deref(),
+            config.as_deref(),
+            cwd,
+        ),
 
         Commands::Exec { iterations, cwd } => cmd_exec(iterations, cwd),
     }
@@ -461,8 +487,8 @@ fn cmd_log(
         }
     }
 
-    let metric = Decimal::from_str(metric_str)
-        .with_context(|| format!("Invalid metric: {metric_str}"))?;
+    let metric =
+        Decimal::from_str(metric_str).with_context(|| format!("Invalid metric: {metric_str}"))?;
     let delta = Decimal::from_str(delta_str.trim_start_matches('+'))
         .with_context(|| format!("Invalid delta: {delta_str}"))?;
 
@@ -540,8 +566,8 @@ fn cmd_decide(
     let results_dir = workspace.join("autoresearch-results");
     let state_path = results_dir.join("state.json");
 
-    let metric = Decimal::from_str(metric_str)
-        .with_context(|| format!("Invalid metric: {metric_str}"))?;
+    let metric =
+        Decimal::from_str(metric_str).with_context(|| format!("Invalid metric: {metric_str}"))?;
 
     // Parse guard result
     let guard = match guard_str {
@@ -593,7 +619,10 @@ fn cmd_decide(
             escalation.record_keep();
 
             // Extract positive lesson
-            let lesson = lessons::extract_keep_lesson(description, &autoresearch::core::metrics::format_delta(delta));
+            let lesson = lessons::extract_keep_lesson(
+                description,
+                &autoresearch::core::metrics::format_delta(delta),
+            );
             let _ = lessons_log.append(&lesson);
 
             (IterationStatus::Keep, false, None)
@@ -860,7 +889,9 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 println!("- ⚠️ More crashes than keeps. Check verify command reliability.");
             }
             if efficiency < 20 && total > 10 {
-                println!("- ⚠️ Low efficiency ({efficiency}%). Hypotheses may need better grounding.");
+                println!(
+                    "- ⚠️ Low efficiency ({efficiency}%). Hypotheses may need better grounding."
+                );
             }
             if trend == "declining" {
                 println!("- ⚠️ Declining trend. Recent changes may be counterproductive.");
@@ -960,8 +991,7 @@ fn cmd_resume(cwd: Option<PathBuf>) -> Result<()> {
         return Ok(());
     }
 
-    let state: RunState =
-        serde_json::from_str(&std::fs::read_to_string(&state_path)?)?;
+    let state: RunState = serde_json::from_str(&std::fs::read_to_string(&state_path)?)?;
 
     let is_iterating = matches!(state.phase, RunPhase::Iterating { .. });
 
@@ -1027,14 +1057,12 @@ fn cmd_progress(cwd: Option<PathBuf>) -> Result<()> {
         anyhow::bail!("No active run (state.json not found)");
     }
 
-    let state: RunState =
-        serde_json::from_str(&std::fs::read_to_string(&state_path)?)?;
+    let state: RunState = serde_json::from_str(&std::fs::read_to_string(&state_path)?)?;
 
     // Determine escalation level
     let esc_path = results_dir.join("escalation.json");
     let escalation_label = if esc_path.exists() {
-        let esc: EscalationState =
-            serde_json::from_str(&std::fs::read_to_string(&esc_path)?)?;
+        let esc: EscalationState = serde_json::from_str(&std::fs::read_to_string(&esc_path)?)?;
         format!("{:?}", esc.last_action).to_lowercase()
     } else {
         "none".to_string()
@@ -1101,7 +1129,14 @@ fn cmd_lessons(search: Option<&str>, last: Option<usize>, cwd: Option<PathBuf>) 
     };
 
     let n = last.unwrap_or(10);
-    let tail: Vec<&String> = entries.iter().rev().take(n).collect::<Vec<_>>().into_iter().rev().collect();
+    let tail: Vec<&String> = entries
+        .iter()
+        .rev()
+        .take(n)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect();
 
     let out = serde_json::to_string_pretty(&tail)?;
     println!("{out}");
@@ -1162,7 +1197,8 @@ fn cmd_exec(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
 
     // Screen
     if let Err(e) = verify::screen_command(&verify_cmd) {
-        let out = serde_json::json!({"type":"error","code":"unsafe_command","reason":e.to_string()});
+        let out =
+            serde_json::json!({"type":"error","code":"unsafe_command","reason":e.to_string()});
         println!("{}", serde_json::to_string(&out)?);
         std::process::exit(2);
     }
@@ -1254,5 +1290,3 @@ fn parse_status(s: &str) -> Result<IterationStatus> {
         _ => anyhow::bail!("Unknown status: {s}"),
     }
 }
-
-

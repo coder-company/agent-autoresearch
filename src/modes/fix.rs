@@ -118,12 +118,36 @@ impl FixSession {
 /// Common verify commands for detecting errors by category.
 pub fn detect_commands() -> Vec<(ErrorCategory, &'static str, &'static str)> {
     vec![
-        (ErrorCategory::TestFailure, "npm test 2>&1 | grep -c 'FAIL' || echo 0", "Node.js test failures"),
-        (ErrorCategory::TestFailure, "cargo test 2>&1 | grep -c 'FAILED' || echo 0", "Rust test failures"),
-        (ErrorCategory::TypeError, "npx tsc --noEmit 2>&1 | grep -c 'error TS' || echo 0", "TypeScript type errors"),
-        (ErrorCategory::TypeError, "cargo build 2>&1 | grep -c '^error' || echo 0", "Rust compilation errors"),
-        (ErrorCategory::LintError, "npx eslint . --format compact 2>&1 | grep -c 'Error' || echo 0", "ESLint errors"),
-        (ErrorCategory::LintError, "cargo clippy 2>&1 | grep -c '^error' || echo 0", "Clippy errors"),
+        (
+            ErrorCategory::TestFailure,
+            "npm test 2>&1 | grep -c 'FAIL' || echo 0",
+            "Node.js test failures",
+        ),
+        (
+            ErrorCategory::TestFailure,
+            "cargo test 2>&1 | grep -c 'FAILED' || echo 0",
+            "Rust test failures",
+        ),
+        (
+            ErrorCategory::TypeError,
+            "npx tsc --noEmit 2>&1 | grep -c 'error TS' || echo 0",
+            "TypeScript type errors",
+        ),
+        (
+            ErrorCategory::TypeError,
+            "cargo build 2>&1 | grep -c '^error' || echo 0",
+            "Rust compilation errors",
+        ),
+        (
+            ErrorCategory::LintError,
+            "npx eslint . --format compact 2>&1 | grep -c 'Error' || echo 0",
+            "ESLint errors",
+        ),
+        (
+            ErrorCategory::LintError,
+            "cargo clippy 2>&1 | grep -c '^error' || echo 0",
+            "Clippy errors",
+        ),
     ]
 }
 

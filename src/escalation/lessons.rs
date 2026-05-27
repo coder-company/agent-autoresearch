@@ -16,9 +16,9 @@ pub struct Lesson {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LessonCategory {
-    Positive,   // Strategy that worked
-    Negative,   // Strategy that consistently failed
-    Strategic,  // Pivot-level insight
+    Positive,  // Strategy that worked
+    Negative,  // Strategy that consistently failed
+    Strategic, // Pivot-level insight
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

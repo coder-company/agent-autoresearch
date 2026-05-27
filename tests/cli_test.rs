@@ -106,16 +106,8 @@ fn test_evals_with_sample_tsv() {
     )
     .unwrap();
     writeln!(file, "0\tabc1234\t50\t0\t-\tbaseline\tinitial state").unwrap();
-    writeln!(
-        file,
-        "1\tbcd2345\t55\t+5\tpass\tkeep\tadd auth tests"
-    )
-    .unwrap();
-    writeln!(
-        file,
-        "2\t-\t48\t-7\t-\tdiscard\trefactor broke tests"
-    )
-    .unwrap();
+    writeln!(file, "1\tbcd2345\t55\t+5\tpass\tkeep\tadd auth tests").unwrap();
+    writeln!(file, "2\t-\t48\t-7\t-\tdiscard\trefactor broke tests").unwrap();
     writeln!(
         file,
         "3\tcde3456\t60\t+5\tpass\tkeep\tadd integration tests"

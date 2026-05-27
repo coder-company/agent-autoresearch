@@ -20,9 +20,7 @@ impl AgentType {
             return Self::ClaudeCode;
         }
         // Codex sets CODEX_SKILL_ROOT or similar
-        if std::env::var("CODEX_SKILL_ROOT").is_ok()
-            || std::env::var("CODEX_SESSION").is_ok()
-        {
+        if std::env::var("CODEX_SKILL_ROOT").is_ok() || std::env::var("CODEX_SESSION").is_ok() {
             return Self::Codex;
         }
         Self::Generic

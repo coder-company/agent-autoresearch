@@ -159,7 +159,10 @@ impl ScenarioSession {
 
     /// Count scenarios per dimension.
     pub fn count_by_dimension(&self, dimension: Dimension) -> usize {
-        self.scenarios.iter().filter(|s| s.dimension == dimension).count()
+        self.scenarios
+            .iter()
+            .filter(|s| s.dimension == dimension)
+            .count()
     }
 
     /// Total scenario count.

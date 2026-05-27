@@ -196,7 +196,10 @@ impl SecuritySession {
 
     /// Count findings by severity.
     pub fn count_by_severity(&self, severity: Severity) -> usize {
-        self.findings.iter().filter(|f| f.severity == severity).count()
+        self.findings
+            .iter()
+            .filter(|f| f.severity == severity)
+            .count()
     }
 
     /// Total unfixed findings.

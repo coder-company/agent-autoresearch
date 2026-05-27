@@ -266,9 +266,24 @@ mod tests {
             3,
         );
 
-        session.verdicts.push(Verdict { round: 1, winner_id: 1, rationale: "A".into(), confidence: 7 });
-        session.verdicts.push(Verdict { round: 2, winner_id: 2, rationale: "B".into(), confidence: 6 });
-        session.verdicts.push(Verdict { round: 3, winner_id: 1, rationale: "A".into(), confidence: 8 });
+        session.verdicts.push(Verdict {
+            round: 1,
+            winner_id: 1,
+            rationale: "A".into(),
+            confidence: 7,
+        });
+        session.verdicts.push(Verdict {
+            round: 2,
+            winner_id: 2,
+            rationale: "B".into(),
+            confidence: 6,
+        });
+        session.verdicts.push(Verdict {
+            round: 3,
+            winner_id: 1,
+            rationale: "A".into(),
+            confidence: 8,
+        });
 
         assert!(!session.check_convergence());
         assert!(session.winner.is_none());

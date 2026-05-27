@@ -55,7 +55,6 @@ pub enum RollbackStrategy {
     Revert,
 }
 
-
 /// Complete run configuration for the autoresearch loop.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunConfig {

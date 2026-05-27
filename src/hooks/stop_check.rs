@@ -51,7 +51,10 @@ pub fn run(_input: Option<&HookInput>) -> HookResponse {
     let esc_path = cwd.join("autoresearch-results/escalation.json");
     let escalation_hint = if let Ok(esc_content) = std::fs::read_to_string(&esc_path) {
         if let Ok(esc) = serde_json::from_str::<serde_json::Value>(&esc_content) {
-            let pivots = esc.get("pivots_since_last_keep").and_then(|p| p.as_u64()).unwrap_or(0);
+            let pivots = esc
+                .get("pivots_since_last_keep")
+                .and_then(|p| p.as_u64())
+                .unwrap_or(0);
             if pivots >= 3 {
                 "\n⚠️ SOFT BLOCKER: 3+ PIVOTs without progress. Consider stopping."
             } else if consecutive >= 5 {

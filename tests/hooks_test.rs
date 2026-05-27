@@ -187,14 +187,12 @@ fn test_iteration_context_injects_state() {
         "prompt": "What should I do next?"
     });
 
-    run_hook("iteration-context", &input.to_string())
-        .success();
+    run_hook("iteration-context", &input.to_string()).success();
     // It either injects context (if TSV exists) or allows (if not)
     // Both are valid responses — the hook should not crash
 }
 
 #[test]
 fn test_iteration_context_handles_empty_input() {
-    run_hook("iteration-context", "{}")
-        .success();
+    run_hook("iteration-context", "{}").success();
 }

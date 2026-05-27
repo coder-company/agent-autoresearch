@@ -83,8 +83,7 @@ pub struct PhaseRecord {
 }
 
 /// Ship mode flags.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 pub struct ShipFlags {
     /// Run all steps but don't actually push/commit.
     pub dry_run: bool,
@@ -93,7 +92,6 @@ pub struct ShipFlags {
     /// Auto-approve all interactive prompts.
     pub auto: bool,
 }
-
 
 /// Ship session state.
 #[derive(Debug, Clone, Serialize, Deserialize)]

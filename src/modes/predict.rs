@@ -52,7 +52,9 @@ impl Persona {
             Self::SecurityExpert => "Attack surface, trust boundaries, data protection",
             Self::PerformanceEngineer => "Latency, throughput, resource usage, scalability",
             Self::UxDesigner => "User experience, accessibility, cognitive load, delight",
-            Self::DevilsAdvocate => "Failure modes, worst cases, hidden assumptions, what could go wrong",
+            Self::DevilsAdvocate => {
+                "Failure modes, worst cases, hidden assumptions, what could go wrong"
+            }
         }
     }
 }
