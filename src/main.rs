@@ -4,7 +4,7 @@ use rust_decimal::Decimal;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use autoresearch::core::config::{Direction, RollbackStrategy, VerifyFormat};
+use autoresearch::core::config::{Direction, RollbackStrategy, RunConfig, VerifyFormat};
 use autoresearch::core::git::GitRepo;
 use autoresearch::core::results::{GuardResult, ResultRow, ResultsLog};
 use autoresearch::core::state::{IterationStatus, RunPhase, RunState};
@@ -117,6 +117,9 @@ enum Commands {
         /// Rollback strategy: revert or hard-reset
         #[arg(long, default_value = "revert")]
         rollback: String,
+        /// Guard result: pass, fail, or skip
+        #[arg(long, default_value = "skip")]
+        guard: String,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -245,8 +248,9 @@ fn main() -> Result<()> {
             commit,
             description,
             rollback,
+            guard,
             cwd,
-        } => cmd_decide(&decision, &metric, commit.as_deref(), &description, &rollback, cwd),
+        } => cmd_decide(&decision, &metric, commit.as_deref(), &description, &rollback, &guard, cwd),
 
         Commands::Evals { path, format } => cmd_evals(path, &format),
 
@@ -313,8 +317,27 @@ fn cmd_init(
     };
     log.append(&baseline_row)?;
 
+    // Build run config from init parameters
+    let run_config = RunConfig {
+        goal: String::new(),
+        scope: Vec::new(),
+        metric: String::new(),
+        direction,
+        verify: verify_cmd.to_string(),
+        guard: None,
+        iterations: None,
+        run_tag: None,
+        stop_condition: None,
+        verify_format: fmt,
+        primary_metric_key: key.map(|k| k.to_string()),
+        rollback_strategy: RollbackStrategy::default(),
+        run_mode: None,
+        workspace_root: None,
+        primary_repo: None,
+    };
+
     // Write state.json
-    let state = RunState::from_baseline(result.metric, head.clone());
+    let state = RunState::from_baseline(result.metric, head.clone(), Some(run_config));
     let state_json = serde_json::to_string_pretty(&state)?;
     std::fs::write(results_dir.join("state.json"), &state_json)?;
 
@@ -461,6 +484,7 @@ fn cmd_decide(
     commit: Option<&str>,
     description: &str,
     rollback_str: &str,
+    guard_str: &str,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let workspace = resolve_cwd(cwd);
@@ -469,6 +493,20 @@ fn cmd_decide(
 
     let metric = Decimal::from_str(metric_str)
         .with_context(|| format!("Invalid metric: {metric_str}"))?;
+
+    // Parse guard result
+    let guard = match guard_str {
+        "pass" => GuardResult::Pass,
+        "fail" => GuardResult::Fail,
+        _ => GuardResult::Skip,
+    };
+
+    // Guard failure overrides keep → discard
+    let decision = if guard == GuardResult::Fail && decision == "keep" {
+        "discard"
+    } else {
+        decision
+    };
 
     // Load state
     let content = std::fs::read_to_string(&state_path)
@@ -540,7 +578,6 @@ fn cmd_decide(
 
     // Append to TSV
     let log = ResultsLog::open(results_dir.join("results.tsv"))?;
-    let guard = GuardResult::Skip; // Guard result should be passed separately
     log.append(&ResultRow {
         iteration,
         commit: if status == IterationStatus::Keep {

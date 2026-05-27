@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: [self-hosted, linux, x64, vps]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+
+      - name: Test
+        run: cargo test
+
+      - name: Build release
+        run: cargo build --release
+
+      - name: Binary size check
+        run: |
+          SIZE=$(stat -c%s target/release/autoresearch 2>/dev/null || stat -f%z target/release/autoresearch)
+          echo "Binary size: $((SIZE / 1024 / 1024))MB"
+          if [ "$SIZE" -gt 5242880 ]; then
+            echo "::warning::Binary exceeds 5MB"
+          fi
+
+      - name: E2E smoke test
+        run: |
+          BIN=target/release/autoresearch
+          TMPDIR=$(mktemp -d)
+          cd "$TMPDIR"
+          git init -q && git config user.email "ci@test" && git config user.name "CI"
+          echo "50" > metric.txt && git add . && git commit -qm "initial"
+
+          $BIN init --verify "cat metric.txt" --direction higher --cwd "$TMPDIR"
+          $BIN verify --command "cat metric.txt" --cwd "$TMPDIR"
+          
+          echo "60" > metric.txt && git add . && git commit -qm "experiment: bump"
+          $BIN decide --decision keep --metric 60 --commit "$(git rev-parse --short HEAD)" --description "bump" --cwd "$TMPDIR"
+          
+          $BIN status --cwd "$TMPDIR" | grep '"active":true'
+          $BIN progress --cwd "$TMPDIR" | grep "Metric: 50"
+          $BIN resume --cwd "$TMPDIR" | grep '"resumable":true'
+          $BIN evals "$TMPDIR/autoresearch-results/results.tsv" --format json | grep '"keeps":1'
+          
+          echo '{}' | $BIN hook session-init > /dev/null
+          echo '{}' | $BIN hook stop-check | grep "additionalContext"
+          
+          rm -rf "$TMPDIR"
+          echo "E2E passed"

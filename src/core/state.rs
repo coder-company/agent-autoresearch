@@ -1,6 +1,8 @@
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
+use super::config::RunConfig;
+
 /// The state machine for an autoresearch run.
 /// Invalid transitions are impossible at the type level.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -54,11 +56,14 @@ pub struct RunState {
     pub pivot_count: u32,
     pub last_status: IterationStatus,
     pub phase: RunPhase,
+    /// Run configuration for resume support.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub config: Option<RunConfig>,
 }
 
 impl RunState {
     /// Create initial state from baseline measurement.
-    pub fn from_baseline(metric: Decimal, commit: String) -> Self {
+    pub fn from_baseline(metric: Decimal, commit: String, config: Option<RunConfig>) -> Self {
         Self {
             iteration: 0,
             baseline_metric: metric,
@@ -77,6 +82,7 @@ impl RunState {
             pivot_count: 0,
             last_status: IterationStatus::Baseline,
             phase: RunPhase::Baseline { metric },
+            config,
         }
     }
 
