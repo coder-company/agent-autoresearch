@@ -1,3 +1,4 @@
+pub mod compaction_reanchor;
 pub mod dangerous_cmd;
 pub mod dev_rules_reminder;
 pub mod iteration_context;
@@ -6,6 +7,7 @@ pub mod scout_block;
 pub mod session_init;
 pub mod session_end;
 pub mod simplify_gate;
+pub mod stop_check;
 pub mod subagent_context;
 
 use anyhow::Result;
@@ -93,6 +95,8 @@ pub fn dispatch(hook_name: &str) -> Result<()> {
         "session-init" => session_init::run(input.as_ref()),
         "session-end" => session_end::run(input.as_ref()),
         "simplify-gate" => simplify_gate::run(input.as_ref()),
+        "stop-check" => stop_check::run(input.as_ref()),
+        "compaction-reanchor" => compaction_reanchor::run(input.as_ref()),
         "subagent-context" => subagent_context::run(input.as_ref()),
         "dev-rules-reminder" => dev_rules_reminder::run(input.as_ref()),
         _ => HookResponse::allow(),

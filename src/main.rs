@@ -7,7 +7,7 @@ use std::str::FromStr;
 use autoresearch::core::config::{Direction, RollbackStrategy, VerifyFormat};
 use autoresearch::core::git::GitRepo;
 use autoresearch::core::results::{GuardResult, ResultRow, ResultsLog};
-use autoresearch::core::state::{IterationStatus, RunState};
+use autoresearch::core::state::{IterationStatus, RunPhase, RunState};
 use autoresearch::core::verify;
 use autoresearch::escalation::lessons::{self, LessonsLog};
 use autoresearch::escalation::pivot::EscalationState;
@@ -150,6 +150,52 @@ enum Commands {
         /// Hook name
         name: String,
     },
+
+    /// Detect if an interrupted run exists and return its state
+    Resume {
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
+    /// Generate a mid-run progress summary
+    Progress {
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
+    /// Query the lessons.md file for relevant strategies
+    Lessons {
+        /// Filter lessons containing this query (case-insensitive)
+        #[arg(long)]
+        search: Option<String>,
+        /// Return last N lessons
+        #[arg(long)]
+        last: Option<usize>,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
+    /// Write a chain handoff.json file for downstream commands
+    Handoff {
+        /// Source mode (e.g. iterate, search, refine)
+        #[arg(long)]
+        source: String,
+        /// Status: COMPLETE, GOAL_MET, BOUNDED, BLOCKED, ERROR
+        #[arg(long)]
+        status: String,
+        /// Findings as JSON array string
+        #[arg(long)]
+        findings: Option<String>,
+        /// Config as JSON object string
+        #[arg(long)]
+        config: Option<String>,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
 }
 
 fn main() -> Result<()> {
@@ -209,6 +255,20 @@ fn main() -> Result<()> {
         Commands::Screen { command } => cmd_screen(&command),
 
         Commands::Hook { name } => hooks::dispatch(&name),
+
+        Commands::Resume { cwd } => cmd_resume(cwd),
+
+        Commands::Progress { cwd } => cmd_progress(cwd),
+
+        Commands::Lessons { search, last, cwd } => cmd_lessons(search.as_deref(), last, cwd),
+
+        Commands::Handoff {
+            source,
+            status,
+            findings,
+            config,
+            cwd,
+        } => cmd_handoff(&source, &status, findings.as_deref(), config.as_deref(), cwd),
     }
 }
 
@@ -787,6 +847,203 @@ fn cmd_screen(command: &str) -> Result<()> {
             std::process::exit(2);
         }
     }
+    Ok(())
+}
+
+// ── Resume ────────────────────────────────────────────────────────────
+
+fn cmd_resume(cwd: Option<PathBuf>) -> Result<()> {
+    let workspace = resolve_cwd(cwd);
+    let results_dir = workspace.join("autoresearch-results");
+    let state_path = results_dir.join("state.json");
+
+    if !state_path.exists() {
+        println!(r#"{{"resumable":false}}"#);
+        return Ok(());
+    }
+
+    let state: RunState =
+        serde_json::from_str(&std::fs::read_to_string(&state_path)?)?;
+
+    let is_iterating = matches!(state.phase, RunPhase::Iterating { .. });
+
+    // Read last 5 rows from results.tsv
+    let tsv_path = results_dir.join("results.tsv");
+    let recent_rows: Vec<String> = if tsv_path.exists() {
+        let log = ResultsLog::open(tsv_path)?;
+        log.tail(5)?
+    } else {
+        vec![]
+    };
+
+    // Read last 5 lessons
+    let lessons_path = results_dir.join("lessons.md");
+    let recent_lessons: Vec<String> = if lessons_path.exists() {
+        let content = std::fs::read_to_string(&lessons_path)?;
+        content
+            .lines()
+            .filter(|l| l.starts_with("- "))
+            .map(|l| l.to_string())
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .take(5)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .collect()
+    } else {
+        vec![]
+    };
+
+    let recommendation = if is_iterating && state.consecutive_discards < 10 {
+        "resume"
+    } else {
+        "fresh_start"
+    };
+
+    let out = serde_json::json!({
+        "resumable": is_iterating,
+        "iteration": state.iteration,
+        "current_metric": state.current_metric.to_string(),
+        "best_metric": state.best_metric.to_string(),
+        "keeps": state.keeps,
+        "discards": state.discards,
+        "last_status": state.last_status.as_str(),
+        "recent_rows": recent_rows,
+        "recent_lessons": recent_lessons,
+        "recommendation": recommendation,
+    });
+    println!("{}", serde_json::to_string_pretty(&out)?);
+    Ok(())
+}
+
+// ── Progress ─────────────────────────────────────────────────────────
+
+fn cmd_progress(cwd: Option<PathBuf>) -> Result<()> {
+    let workspace = resolve_cwd(cwd);
+    let results_dir = workspace.join("autoresearch-results");
+    let state_path = results_dir.join("state.json");
+
+    if !state_path.exists() {
+        anyhow::bail!("No active run (state.json not found)");
+    }
+
+    let state: RunState =
+        serde_json::from_str(&std::fs::read_to_string(&state_path)?)?;
+
+    // Determine escalation level
+    let esc_path = results_dir.join("escalation.json");
+    let escalation_label = if esc_path.exists() {
+        let esc: EscalationState =
+            serde_json::from_str(&std::fs::read_to_string(&esc_path)?)?;
+        format!("{:?}", esc.last_action).to_lowercase()
+    } else {
+        "none".to_string()
+    };
+
+    // Compute trend from last 5 keep metrics in TSV
+    let tsv_path = results_dir.join("results.tsv");
+    let trend = if tsv_path.exists() {
+        let content = std::fs::read_to_string(&tsv_path)?;
+        let keep_metrics: Vec<Decimal> = content
+            .lines()
+            .filter(|l| l.contains("\tkeep\t"))
+            .filter_map(|l| {
+                let cols: Vec<&str> = l.split('\t').collect();
+                if cols.len() >= 3 {
+                    Decimal::from_str(cols[2]).ok()
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let last5: Vec<&Decimal> = keep_metrics.iter().rev().take(5).collect();
+        if last5.len() < 2 {
+            "insufficient_data"
+        } else if last5.windows(2).all(|w| w[0] >= w[1]) {
+            "improving"
+        } else if last5.windows(2).all(|w| w[0] <= w[1]) {
+            "declining"
+        } else {
+            "flat"
+        }
+    } else {
+        "insufficient_data"
+    };
+
+    println!("--- Progress (iteration {}) ---", state.iteration);
+    println!(
+        "Metric: {} → {} (best: {})",
+        state.baseline_metric, state.current_metric, state.best_metric
+    );
+    println!(
+        "Kept: {} | Discarded: {} | Crashes: {}",
+        state.keeps, state.discards, state.crashes
+    );
+    println!(
+        "Trend: {} | Consecutive discards: {}",
+        trend, state.consecutive_discards
+    );
+    println!("Escalation: {}", escalation_label);
+    println!("---");
+    Ok(())
+}
+
+// ── Lessons ──────────────────────────────────────────────────────────
+
+fn cmd_lessons(search: Option<&str>, last: Option<usize>, cwd: Option<PathBuf>) -> Result<()> {
+    let workspace = resolve_cwd(cwd);
+    let results_dir = workspace.join("autoresearch-results");
+    let log = LessonsLog::open_or_create(&results_dir)?;
+
+    let entries = match search {
+        Some(q) => log.search(q)?,
+        None => log.read_all()?,
+    };
+
+    let n = last.unwrap_or(10);
+    let tail: Vec<&String> = entries.iter().rev().take(n).collect::<Vec<_>>().into_iter().rev().collect();
+
+    let out = serde_json::to_string_pretty(&tail)?;
+    println!("{out}");
+    Ok(())
+}
+
+// ── Handoff ──────────────────────────────────────────────────────────
+
+fn cmd_handoff(
+    source: &str,
+    status: &str,
+    findings: Option<&str>,
+    config: Option<&str>,
+    cwd: Option<PathBuf>,
+) -> Result<()> {
+    let workspace = resolve_cwd(cwd);
+    let results_dir = workspace.join("autoresearch-results");
+    std::fs::create_dir_all(&results_dir)?;
+
+    let findings_val: serde_json::Value =
+        serde_json::from_str(findings.unwrap_or("[]")).context("Invalid findings JSON")?;
+    let config_val: serde_json::Value =
+        serde_json::from_str(config.unwrap_or("{}")).context("Invalid config JSON")?;
+
+    let timestamp = chrono::Utc::now().to_rfc3339();
+
+    let handoff = serde_json::json!({
+        "version": "0.1.0",
+        "source": source,
+        "timestamp": timestamp,
+        "status": status,
+        "results_tsv": "autoresearch-results/results.tsv",
+        "findings": findings_val,
+        "config": config_val,
+    });
+
+    let handoff_path = results_dir.join("handoff.json");
+    std::fs::write(&handoff_path, serde_json::to_string_pretty(&handoff)?)?;
+
+    println!(r#"{{"status":"ok","path":"autoresearch-results/handoff.json"}}"#);
     Ok(())
 }
 

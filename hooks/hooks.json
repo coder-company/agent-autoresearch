@@ -48,6 +48,28 @@
         ]
       }
     ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook stop-check",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook compaction-reanchor",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
     "SubagentStart": [
       {
         "hooks": [
