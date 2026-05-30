@@ -46,6 +46,10 @@ cargo test test_escalation_ladder
 
 # Run tests with output
 cargo test -- --nocapture
+
+# Optional manual hook smoke test (requires jq and target/debug/autoresearch)
+cargo build
+./tests/test-hooks.sh
 ```
 
 Unit tests live alongside their modules in `src/`. Integration tests live in `tests/`.
