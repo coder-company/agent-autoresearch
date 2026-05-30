@@ -157,6 +157,55 @@ fn test_scout_block_blocks_bash_reads_of_ignored_paths() {
 }
 
 #[test]
+fn test_scout_block_honors_ckignore_patterns_from_repo_root() {
+    let dir = tempfile::tempdir().unwrap();
+    init_git_repo(dir.path());
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+    std::fs::write(
+        dir.path().join(".ckignore"),
+        "# local project ignores\nsnapshots/\n*.trace\n!snapshots/keep.trace\n",
+    )
+    .unwrap();
+
+    for path in ["snapshots/run/output.txt", "logs/session.trace"] {
+        let input = serde_json::json!({
+            "tool_name": "Read",
+            "tool_input": {
+                "path": path
+            }
+        });
+
+        run_hook_in(&subdir, "scout-block", &input.to_string())
+            .success()
+            .stdout(predicate::str::contains("\"decision\":\"block\""));
+    }
+
+    let allowed = serde_json::json!({
+        "tool_name": "Read",
+        "tool_input": {
+            "path": dir.path().join("snapshots/keep.trace").to_str().unwrap()
+        }
+    });
+    run_hook_in(&subdir, "scout-block", &allowed.to_string())
+        .success()
+        .stdout(predicate::str::contains("\"decision\":\"block\"").not());
+
+    let bash = serde_json::json!({
+        "tool_name": "Bash",
+        "tool_input": {
+            "command": format!(
+                "head {}",
+                dir.path().join("snapshots/run/output.txt").to_str().unwrap()
+            )
+        }
+    });
+    run_hook_in(&subdir, "scout-block", &bash.to_string())
+        .success()
+        .stdout(predicate::str::contains("\"decision\":\"block\""));
+}
+
+#[test]
 fn test_scout_block_allows_bash_build_commands_and_plain_text() {
     for command in [
         "npm test",

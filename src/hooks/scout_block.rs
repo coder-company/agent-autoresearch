@@ -38,6 +38,7 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
         Err(_) => return HookResponse::allow(),
     };
     let project_root = git_output(&cwd, &["rev-parse", "--show-toplevel"]).unwrap_or(cwd.clone());
+    let blocked_patterns = load_blocked_patterns(&project_root);
 
     let tool = input.tool_name.as_deref().unwrap_or("");
     if matches!(
@@ -46,7 +47,7 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
     ) {
         if let Some(target) = target_path(input) {
             if let Some(relative_target) = normalize_target_path(target, &cwd, &project_root) {
-                if matches_scope(&relative_target, BASELINE_BLOCKED_PATTERNS) {
+                if is_ignored_by_patterns(&relative_target, &blocked_patterns) {
                     return HookResponse::block(format!(
                         "Blocked {tool}: `{relative_target}` matches generated, vendor, or sensitive path pattern"
                     ));
@@ -61,7 +62,9 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
             .and_then(|value| value.get("command").or_else(|| value.get("cmd")))
             .and_then(|value| value.as_str())
         {
-            if let Some(blocked_path) = blocked_bash_path(command, &cwd, &project_root) {
+            if let Some(blocked_path) =
+                blocked_bash_path(command, &cwd, &project_root, &blocked_patterns)
+            {
                 return HookResponse::block(format!(
                     "Blocked Bash: `{blocked_path}` matches generated, vendor, or sensitive path pattern"
                 ));
@@ -134,6 +137,54 @@ fn scope_array(value: Option<&serde_json::Value>) -> Option<Vec<String>> {
     Some(scope)
 }
 
+fn load_blocked_patterns(project_root: &Path) -> Vec<String> {
+    let mut patterns = BASELINE_BLOCKED_PATTERNS
+        .iter()
+        .map(|pattern| (*pattern).to_string())
+        .collect::<Vec<_>>();
+    let Ok(content) = std::fs::read_to_string(project_root.join(".ckignore")) else {
+        return patterns;
+    };
+
+    patterns.extend(
+        content
+            .lines()
+            .filter_map(normalize_ignore_pattern)
+            .collect::<Vec<_>>(),
+    );
+    patterns
+}
+
+fn normalize_ignore_pattern(line: &str) -> Option<String> {
+    let line = line.trim();
+    if line.is_empty() || line.starts_with('#') {
+        return None;
+    }
+
+    let (negated, pattern) = line
+        .strip_prefix('!')
+        .map(|pattern| (true, pattern.trim()))
+        .unwrap_or((false, line));
+    if pattern.is_empty() || pattern.starts_with('#') {
+        return None;
+    }
+
+    let mut pattern = pattern.replace('\\', "/");
+    while let Some(stripped) = pattern.strip_prefix("./") {
+        pattern = stripped.to_string();
+    }
+    pattern = pattern.trim_start_matches('/').to_string();
+    if pattern.ends_with('/') {
+        pattern.push_str("**");
+    }
+
+    if negated {
+        Some(format!("!{pattern}"))
+    } else {
+        Some(pattern)
+    }
+}
+
 fn target_path(input: &HookInput) -> Option<&str> {
     input
         .tool_input
@@ -197,24 +248,44 @@ fn matches_scope<T: AsRef<str>>(path: &str, scope: &[T]) -> bool {
         .any(|pattern| pattern_matches_path(pattern.as_ref(), path))
 }
 
+fn is_ignored_by_patterns(path: &str, patterns: &[String]) -> bool {
+    let mut ignored = false;
+    for pattern in patterns {
+        if let Some(allowed) = pattern.strip_prefix('!') {
+            if pattern_matches_path(allowed, path) {
+                ignored = false;
+            }
+        } else if pattern_matches_path(pattern, path) {
+            ignored = true;
+        }
+    }
+    ignored
+}
+
 fn pattern_matches_path(pattern: &str, path: &str) -> bool {
     if matches!(pattern, "." | "**" | "**/*") {
         return true;
     }
 
     if let Some(prefix) = pattern.strip_suffix("/**") {
-        if path == prefix || path.starts_with(&format!("{prefix}/")) {
+        if path_segments_match(prefix, path) {
             return true;
         }
     }
     if let Some(prefix) = pattern.strip_suffix("/**/*") {
-        if path == prefix || path.starts_with(&format!("{prefix}/")) {
+        if path_segments_match(prefix, path) {
             return true;
         }
     }
 
-    if !pattern_contains_glob(pattern)
-        && (path == pattern || path.starts_with(&format!("{pattern}/")))
+    if !pattern_contains_glob(pattern) && path_segments_match(pattern, path) {
+        return true;
+    }
+
+    if !pattern.contains('/')
+        && Pattern::new(pattern)
+            .ok()
+            .is_some_and(|compiled| path.rsplit('/').any(|part| compiled.matches(part)))
     {
         return true;
     }
@@ -230,11 +301,24 @@ fn pattern_matches_path(pattern: &str, path: &str) -> bool {
         .is_some_and(|compiled| compiled.matches(path))
 }
 
+fn path_segments_match(pattern: &str, path: &str) -> bool {
+    if pattern.contains('/') {
+        return path == pattern || path.starts_with(&format!("{pattern}/"));
+    }
+
+    path.split('/').any(|part| part == pattern)
+}
+
 fn pattern_contains_glob(pattern: &str) -> bool {
     pattern.contains('*') || pattern.contains('?') || pattern.contains('[')
 }
 
-fn blocked_bash_path(command: &str, cwd: &Path, project_root: &Path) -> Option<String> {
+fn blocked_bash_path(
+    command: &str,
+    cwd: &Path,
+    project_root: &Path,
+    blocked_patterns: &[String],
+) -> Option<String> {
     let words = shell_words(command)?;
     let command_index = words.iter().position(|word| !is_env_assignment(word))?;
     let executable = Path::new(&words[command_index])
@@ -250,7 +334,7 @@ fn blocked_bash_path(command: &str, cwd: &Path, project_root: &Path) -> Option<S
         .skip(command_index + 1)
         .filter(|word| !word.starts_with('-') && !matches!(word.as_str(), "|" | "<" | ">" | "2>"))
         .filter_map(|word| normalize_target_path(word, cwd, project_root))
-        .find(|path| matches_scope(path, BASELINE_BLOCKED_PATTERNS))
+        .find(|path| is_ignored_by_patterns(path, blocked_patterns))
 }
 
 fn shell_words(command: &str) -> Option<Vec<String>> {
