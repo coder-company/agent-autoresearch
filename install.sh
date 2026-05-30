@@ -194,9 +194,7 @@ install_opencode_assets() {
     case "${answer:-Y}" in
         [Yy]*)
             local target_root
-            if [[ -d ".opencode" ]]; then
-                target_root=".opencode"
-            elif [[ -n "${OPENCODE_CONFIG_DIR:-}" ]]; then
+            if [[ -n "${OPENCODE_CONFIG_DIR:-}" ]]; then
                 target_root="$OPENCODE_CONFIG_DIR"
             elif [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
                 target_root="$XDG_CONFIG_HOME/opencode"
@@ -233,10 +231,10 @@ install_codex_skill() {
     case "${answer:-Y}" in
         [Yy]*)
             local target_dir
-            if [[ -d ".agents/skills" ]]; then
-                target_dir=".agents/skills/autoresearch"
+            if [[ -n "${CODEX_HOME:-}" ]]; then
+                target_dir="$CODEX_HOME/skills/autoresearch"
             else
-                target_dir="$HOME/.agents/skills/autoresearch"
+                target_dir="$HOME/.codex/skills/autoresearch"
             fi
 
             read -rp "  Skill install path [$target_dir]: " skill_dir
