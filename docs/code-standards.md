@@ -38,6 +38,7 @@ Rust conventions for the autoresearch codebase.
 - Run `cargo clippy -- -D warnings` before every commit. Zero warnings.
 - Run `cargo fmt` before every commit.
 - Run `./scripts/run_contributor_gate.sh` before opening a PR.
+- Run `./scripts/validate_distribution.sh` after changing skill, command, reference, or agent metadata files.
 - Max line length: 100 characters (soft), 120 characters (hard).
 - Prefer `match` over `if let` chains for exhaustive enum handling.
 - Prefer `&str` over `String` in function parameters when ownership isn't needed.

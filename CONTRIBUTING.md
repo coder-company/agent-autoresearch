@@ -63,6 +63,14 @@ OpenCode command files are generated from the canonical `commands/` tree:
 
 The script rewrites `.opencode/commands/` with underscore command names and refreshes `.opencode/skills/autoresearch/SKILL.md`. It does not rewrite `.agents/`; the Codex skill there is maintained directly because it uses `$autoresearch` mention syntax instead of slash commands.
 
+Validate the generated and maintained distributions without rewriting files:
+
+```bash
+./scripts/validate_distribution.sh
+```
+
+This checks required package files, Codex metadata, `$autoresearch` invocation examples, and closed/synced reference links in `.agents/` and `.opencode/`.
+
 ---
 
 ## Project Structure
