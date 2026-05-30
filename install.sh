@@ -158,7 +158,10 @@ check_rust() {
     echo "    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
     echo ""
 
-    read -rp "  Install Rust now via rustup? [Y/n] " answer
+    local answer="Y"
+    if [[ "$ASSUME_YES" -eq 0 ]]; then
+        read -rp "  Install Rust now via rustup? [Y/n] " answer
+    fi
     case "${answer:-Y}" in
         [Yy]*)
             info "Installing Rust via rustup..."
