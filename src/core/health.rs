@@ -121,6 +121,8 @@ pub fn run_health_check(
     let mut main_rows = 0usize;
     let mut expected_rows = None;
     let mut state_verify = None;
+    let mut results_usable = false;
+    let mut state_usable = false;
 
     if has_results {
         let log = ResultsLog::open(tsv_path.clone())?;
@@ -129,6 +131,8 @@ pub fn run_health_check(
                 code: "results_corrupt",
                 message: err.to_string(),
             });
+        } else {
+            results_usable = true;
         }
         main_rows = log.count()?;
     }
@@ -138,6 +142,7 @@ pub fn run_health_check(
                 Ok(state) => {
                     expected_rows = Some(state.iteration + 1);
                     state_verify = state.config.as_ref().map(|config| config.verify.clone());
+                    state_usable = true;
                 }
                 Err(err) => blockers.push(HealthFinding {
                     code: "state_corrupt",
@@ -260,18 +265,21 @@ pub fn run_health_check(
         git_state,
         free_mb,
         verify_command: effective_verify,
-        resume_decision: health_resume_decision(has_results, has_state),
+        resume_decision: health_resume_decision(results_usable, state_usable, has_results),
         warnings,
         blockers,
     })
 }
 
-fn health_resume_decision(has_results: bool, has_state: bool) -> &'static str {
-    match (has_results, has_state) {
-        (true, true) => "full_resume",
-        (true, false) => "tsv_fallback",
-        (false, true) => "fresh_start",
-        (false, false) => "fresh_start",
+fn health_resume_decision(
+    results_usable: bool,
+    state_usable: bool,
+    has_results: bool,
+) -> &'static str {
+    match (results_usable, state_usable, has_results) {
+        (true, true, _) => "full_resume",
+        (true, false, _) => "tsv_fallback",
+        _ => "fresh_start",
     }
 }
 

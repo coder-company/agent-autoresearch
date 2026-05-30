@@ -1168,6 +1168,9 @@ fn test_health_reports_corrupt_state_as_blocker() {
         .assert()
         .code(2)
         .stdout(predicate::str::contains("\"decision\": \"block\""))
+        .stdout(predicate::str::contains(
+            "\"resume_decision\": \"tsv_fallback\"",
+        ))
         .stdout(predicate::str::contains("state_corrupt"));
 }
 
