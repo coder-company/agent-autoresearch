@@ -59,8 +59,9 @@ The contributor gate also checks formatting, installer shell syntax, generated d
 
 ## Regenerating Agent Distribution Assets
 
-OpenCode command files are generated from the canonical `commands/` tree, the
-OpenCode `docs-manager` helper agent is maintained directly in `.opencode/agents/`,
+Claude local commands, Claude local skill references, and OpenCode command files
+are generated from the canonical `commands/`, `skills/`, and `references/` trees.
+The OpenCode `docs-manager` helper agent is maintained directly in `.opencode/agents/`,
 and Codex reference/plugin packages are generated from the maintained `.agents`
 skill package plus canonical `references/`:
 
@@ -68,10 +69,11 @@ skill package plus canonical `references/`:
 ./scripts/transform.sh
 ```
 
-The script rewrites `.opencode/commands/` with underscore command names,
-refreshes `.opencode/skills/autoresearch/`, preserves `.opencode/agents/`, syncs
-`.agents/skills/autoresearch/references/` and skill-local agent metadata, and rebuilds
-`plugins/autoresearch/skills/autoresearch/` from `.agents/skills/autoresearch/`.
+The script rewrites `.claude/commands/`, `.claude/skills/autoresearch/`,
+`.opencode/commands/` with underscore command names, refreshes
+`.opencode/skills/autoresearch/`, preserves `.opencode/agents/`, syncs
+`.agents/skills/autoresearch/references/` and skill-local agent metadata, and
+rebuilds `plugins/autoresearch/skills/autoresearch/` from `.agents/skills/autoresearch/`.
 Edit `.agents/skills/autoresearch/SKILL.md` directly when changing the Codex
 entrypoint; edit `references/` for shared protocol docs.
 

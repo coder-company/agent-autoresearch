@@ -194,3 +194,36 @@ fn claude_marketplace_points_to_repo_plugin_package() {
     assert!(root.join("hooks/hooks.json").is_file());
     assert!(plugin_manifest_path.is_file());
 }
+
+#[test]
+fn claude_local_package_is_synced_and_reference_closed() {
+    let root = repo_root();
+    assert_eq!(
+        fs::read_to_string(root.join("skills/autoresearch/SKILL.md")).unwrap(),
+        fs::read_to_string(root.join(".claude/skills/autoresearch/SKILL.md")).unwrap(),
+        "Claude local skill drifted from canonical skill"
+    );
+    assert_eq!(
+        fs::read_to_string(root.join("commands/autoresearch.md")).unwrap(),
+        fs::read_to_string(root.join(".claude/commands/autoresearch.md")).unwrap(),
+        "Claude local root command drifted from canonical command"
+    );
+
+    for entry in fs::read_dir(root.join("commands/autoresearch")).unwrap() {
+        let entry = entry.unwrap();
+        let filename = entry.file_name();
+        let canonical = fs::read_to_string(entry.path()).unwrap();
+        let packaged =
+            fs::read_to_string(root.join(".claude/commands/autoresearch").join(filename)).unwrap();
+        assert_eq!(canonical, packaged, "Claude local subcommand drifted");
+    }
+
+    let package_root = root.join(".claude/skills/autoresearch");
+    let skill = fs::read_to_string(package_root.join("SKILL.md")).unwrap();
+    for reference in extract_reference_links(&skill) {
+        assert!(
+            package_root.join(&reference).is_file(),
+            "Claude local skill lists {reference}, but the packaged file is missing"
+        );
+    }
+}

@@ -60,6 +60,9 @@ required_paths=(
     .claude-plugin/plugin.json
     .agents/plugins/marketplace.json
     .agents/skills/autoresearch/agents/openai.yaml
+    .claude/commands/autoresearch/evals.md
+    .claude/skills/autoresearch/references/core-principles.md
+    .claude/skills/autoresearch/references/runtime-protocol.md
     .opencode/agents/docs-manager.md
     commands/autoresearch.md
     hooks/hooks.json
@@ -108,6 +111,13 @@ cmp -s "$ROOT/.agents/skills/autoresearch/SKILL.md" "$ROOT/plugins/autoresearch/
     || fail "plugins/autoresearch skill entrypoint drifted from .agents skill"
 cmp -s "$ROOT/.agents/skills/autoresearch/agents/openai.yaml" "$ROOT/plugins/autoresearch/skills/autoresearch/agents/openai.yaml" \
     || fail "plugins/autoresearch agent metadata drifted from .agents skill"
+cmp -s "$ROOT/skills/autoresearch/SKILL.md" "$ROOT/.claude/skills/autoresearch/SKILL.md" \
+    || fail ".claude skill entrypoint drifted from skills/autoresearch/SKILL.md"
+for command in "$ROOT"/commands/autoresearch.md "$ROOT"/commands/autoresearch/*.md; do
+    relative="${command#"$ROOT"/commands/}"
+    cmp -s "$command" "$ROOT/.claude/commands/$relative" \
+        || fail ".claude command $relative drifted from commands/$relative"
+done
 
 require_grep '\$autoresearch' .agents/skills/autoresearch/SKILL.md
 require_grep 'autoresearch runtime run' .agents/skills/autoresearch/SKILL.md
@@ -183,6 +193,8 @@ require_grep 'parallel-smoke --clean' docs/INSTALL.md
 require_grep 'runtime-smoke --clean' docs/code-standards.md
 require_grep 'parallel-smoke --clean' docs/code-standards.md
 require_grep 'plugins/autoresearch/skills/autoresearch' CONTRIBUTING.md
+require_grep '\.claude/commands/' CONTRIBUTING.md
+require_grep '\.claude/skills/autoresearch/' CONTRIBUTING.md
 require_grep '\.opencode/' CONTRIBUTING.md
 require_grep '\./scripts/release\.sh <version>' CONTRIBUTING.md
 require_grep 'Codex plugin package' docs/system-architecture.md
@@ -228,5 +240,6 @@ fi
 check_synced_reference_package "$ROOT/.agents/skills/autoresearch"
 check_synced_reference_package "$ROOT/plugins/autoresearch/skills/autoresearch"
 check_synced_reference_package "$ROOT/.opencode/skills/autoresearch"
+check_synced_reference_package "$ROOT/.claude/skills/autoresearch"
 
 echo "Distribution validation passed."

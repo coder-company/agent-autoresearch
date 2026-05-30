@@ -8,7 +8,7 @@ version: 0.1.0
 
 ## Safety Invariants (all subcommands)
 - Never push, publish, or deploy without explicit user approval.
-- Bounded by default (25 iterations). Override with `Iterations: unlimited`.
+- Bounded by default (25 iterations for the root loop; subcommands document their own defaults). Override with `Iterations: unlimited`.
 - All results logged to `autoresearch-results/` directory.
 - Chain handoff via `handoff.json`. Evals reads `results.tsv`.
 - Never stage `autoresearch-results/` or `.codex-autoresearch/` artifacts in experiment commits.
@@ -37,6 +37,7 @@ This skill uses Claude Code's `/goal` command as the native continuation engine.
 | `/autoresearch:learn` | Scout, generate docs, validate | `all doc gaps filled` |
 | `/autoresearch:reason` | Adversarial debate with blind judges | `convergence: incumbent wins N rounds` |
 | `/autoresearch:probe` | 8 personas interrogate requirements | `constraint saturation reached` |
+| `/autoresearch:improve` | Research ICP needs and generate product improvement PRDs | `validated improvements identified` |
 | `/autoresearch:evals` | Analyze iteration results | No /goal (analysis tool) |
 
 ## Core Protocol (Each Turn)
@@ -77,6 +78,7 @@ If fails → revert regardless of improvement.
 
 ### Phase 7: Decide
 - Prefer `autoresearch decide --decision auto --metric <value> --metrics-json '<json>' --commit <sha>`.
+- For parallel worker batches, use `autoresearch parallel prepare` to create worktrees and prompts, `autoresearch parallel run --timeout-seconds <seconds>` to launch workers and record crashes/timeouts, `autoresearch parallel closeout --batch-file <workers.json>` to cherry-pick, verify, and retain one result, and `autoresearch parallel cleanup` after closeout. Use `autoresearch parallel template` only when worker branches already exist.
 - **keep** — improved + guard passed + required keep criteria passed → commit stays
 - **discard** — flat/regressed OR guard/criteria failed → binary reverts the experiment commit
 - **crash** — command errored → binary reverts the experiment commit
@@ -128,6 +130,7 @@ All under `autoresearch-results/` (never committed):
 
 Additionally `.codex-autoresearch/pointer.json` points tools to the canonical context artifact and must stay uncommitted.
 For multi-repo runs, pass `--companion-repo-scope PATH=SCOPE` during `autoresearch init` so each clean companion repo is recorded in context and gets its own pointer.
+Use `autoresearch watch --lines 20` from another terminal to tail the active results log during long-running sessions.
 
 ## TSV Format
 

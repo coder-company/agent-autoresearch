@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# transform.sh — Generate OpenCode distribution assets from canonical sources.
+# transform.sh — Generate agent distribution assets from canonical sources.
 #
-# Copies commands/ and skills/ into the OpenCode naming conventions. The
-# .opencode/agents package is maintained directly for OpenCode subagents.
+# Copies commands/ and skills/ into Claude local and OpenCode package layouts.
+# The .opencode/agents package is maintained directly for OpenCode subagents.
 # The .agents Codex skill entrypoint is maintained directly because it uses
 # a different invocation model, but its reference package is synced from the
 # same canonical references/ directory as OpenCode.
@@ -13,10 +13,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-
-# ── .opencode distribution ──────────────────────────────────────────
-
-echo "Building .opencode/ distribution..."
 
 adapt_opencode() {
     sed \
@@ -77,6 +73,31 @@ check_reference_links "$ROOT" \
     "$ROOT"/commands/autoresearch/*.md \
     "$ROOT"/references/*.md
 
+# ── Claude local distribution ────────────────────────────────────────
+
+echo "Building .claude/ distribution..."
+
+rm -rf "$ROOT/.claude/commands" "$ROOT/.claude/skills/autoresearch"
+mkdir -p "$ROOT/.claude/commands/autoresearch"
+mkdir -p "$ROOT/.claude/skills/autoresearch/references"
+
+cp "$ROOT/commands/autoresearch.md" "$ROOT/.claude/commands/autoresearch.md"
+cp "$ROOT"/commands/autoresearch/*.md "$ROOT/.claude/commands/autoresearch/"
+cp "$ROOT/skills/autoresearch/SKILL.md" "$ROOT/.claude/skills/autoresearch/SKILL.md"
+cp "$ROOT"/references/*.md "$ROOT/.claude/skills/autoresearch/references/"
+
+check_reference_links "$ROOT/.claude/skills/autoresearch" \
+    "$ROOT"/.claude/skills/autoresearch/SKILL.md \
+    "$ROOT"/.claude/skills/autoresearch/references/*.md \
+    "$ROOT"/.claude/commands/autoresearch.md \
+    "$ROOT"/.claude/commands/autoresearch/*.md
+
+claude_count=$(find "$ROOT/.claude" -type f | wc -l)
+
+# ── .opencode distribution ──────────────────────────────────────────
+
+echo "Building .opencode/ distribution..."
+
 # Commands: colon → underscore rename
 rm -rf "$ROOT/.opencode/commands"
 mkdir -p "$ROOT/.opencode/commands"
@@ -135,11 +156,14 @@ plugin_count=$(find "$ROOT/plugins/autoresearch" -type f | wc -l)
 
 echo ""
 echo "=== Transform Complete ==="
+echo ".claude/    : $claude_count files"
 echo ".opencode/  : $opencode_count files"
 echo ".agents/    : $agents_count files"
 echo "plugin      : $plugin_count files"
 echo ""
 echo "Distributions:"
+echo "  .claude/commands/     — Claude local command surface"
+echo "  .claude/skills/       — Claude local skill definitions"
 echo "  .opencode/commands/    — OpenCode command surface"
 echo "  .opencode/skills/      — OpenCode skill definitions"
 echo "  .opencode/agents/      — OpenCode helper subagents"
