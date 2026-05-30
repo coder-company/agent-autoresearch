@@ -1435,7 +1435,7 @@ fn test_handoff_defaults_to_repo_root_results_from_subdir() {
             "--findings",
             r#"[{"title":"fixed"}]"#,
             "--config",
-            r#"{"goal":"fix login","scope":["src/auth/**"],"metric":"bug count","direction":"lower","verify":"cargo test","guard":"cargo fmt -- --check","verify_format":"metrics_json","primary_metric_key":"bugs","iterations":12,"stop_condition":"all auth bugs fixed","acceptance_criteria":[{"metric_key":"bugs","operator":"<=","target":"0"}],"hypothesis_queue":["check auth"],"summary":{"risk":"low"}}"#,
+            r#"{"goal":"fix login","scope":["src/auth/**"],"metric":"bug count","direction":"lower","verify":"cargo test","guard":"cargo fmt -- --check","verify_format":"metrics_json","primary_metric_key":"bugs","iterations":12,"stop_condition":"all auth bugs fixed","acceptance_criteria":[{"metric_key":"bugs","operator":"<=","target":"0"}],"required_keep_criteria":[{"metric_key":"tests","operator":">=","target":"1"}],"hypothesis_queue":["check auth"],"summary":{"risk":"low"}}"#,
             "--chain",
             "scenario,fix",
             "--evals",
@@ -1470,6 +1470,8 @@ fn test_handoff_defaults_to_repo_root_results_from_subdir() {
     assert!(handoff.contains("\"stop_condition\": \"all auth bugs fixed\""));
     assert!(handoff.contains("\"acceptance_criteria\": ["));
     assert!(handoff.contains("\"metric_key\": \"bugs\""));
+    assert!(handoff.contains("\"required_keep_criteria\": ["));
+    assert!(handoff.contains("\"metric_key\": \"tests\""));
     assert!(handoff.contains("\"hypothesis_queue\": ["));
     assert!(handoff.contains("\"summary\": {"));
     assert!(handoff.contains("\"workspace_root\":"));
