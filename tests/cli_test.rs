@@ -224,6 +224,7 @@ fn test_evals_with_sample_tsv() {
         .stdout(predicate::str::contains("\"keeps\": 2"))
         .stdout(predicate::str::contains("\"improvement\": \"10\""))
         .stdout(predicate::str::contains("\"improvement_pct\": \"20.00\""))
+        .stdout(predicate::str::contains("\"recommendation\": \"continue\""))
         .stdout(predicate::str::contains("\"top_regressions\""))
         .stdout(predicate::str::contains("refactor broke tests"));
 

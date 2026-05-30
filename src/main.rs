@@ -1349,6 +1349,14 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
             _ => "flat",
         }
     };
+    let recommendation = evals_recommendation(
+        longest_plateau,
+        crashes,
+        keeps,
+        efficiency,
+        total_iterations,
+        trend,
+    );
     let summary_dir = tsv_path.parent().unwrap_or_else(|| Path::new("."));
 
     match format {
@@ -1371,6 +1379,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 "efficiency_pct": efficiency,
                 "longest_plateau": longest_plateau,
                 "trend": trend,
+                "recommendation": recommendation,
                 "top_improvements": top_keeps.iter().take(5).map(|(d, desc)| {
                     serde_json::json!({"delta": d.to_string(), "description": desc})
                 }).collect::<Vec<_>>(),
@@ -1612,6 +1621,23 @@ fn format_optional_percent(value: Option<&str>) -> String {
     value
         .map(|pct| format!("{pct}%"))
         .unwrap_or_else(|| "n/a".to_string())
+}
+
+fn evals_recommendation(
+    longest_plateau: u32,
+    crashes: usize,
+    keeps: usize,
+    efficiency: u32,
+    total_iterations: usize,
+    trend: &str,
+) -> &'static str {
+    if longest_plateau >= 5 || trend == "declining" || (efficiency < 20 && total_iterations > 10) {
+        "change_strategy"
+    } else if crashes > keeps {
+        "check_verify"
+    } else {
+        "continue"
+    }
 }
 
 // ── Status ────────────────────────────────────────────────────────────
