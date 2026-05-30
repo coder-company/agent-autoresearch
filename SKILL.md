@@ -115,6 +115,7 @@ Optional:
 | `autoresearch verify --format metrics_json --key coverage --command "..."` | Parse structured metrics and select the optimization key |
 | `autoresearch guard --command "..."` | Run guard → JSON `{passed, duration_ms}` |
 | `autoresearch decide --decision auto --metric X --metrics-json '{...}' --description "..."` | Evaluate keep/discard, criteria gates, rollback, and escalation |
+| `autoresearch parallel closeout --batch-file workers.json` | Select a parallel worker winner, log audit rows, and update retained state once |
 | `autoresearch log --iteration N --status keep --metric X --description "..."` | Append TSV row (alternative to decide) |
 | `autoresearch status` | Show full state JSON |
 | `autoresearch progress` | Formatted progress summary |

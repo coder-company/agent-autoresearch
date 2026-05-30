@@ -393,7 +393,11 @@ Do not hand-edit `autoresearch-results/results.tsv` or `autoresearch-results/sta
   ```bash
   autoresearch decide ...
   ```
-- Parallel batch native closeout is not implemented yet. Until it is, use serial `autoresearch decide` closeout. Do not hand-edit worker/main rows.
+- For parallel batches, use:
+  ```bash
+  autoresearch parallel closeout --batch-file <workers.json> --cwd <workspace_root>
+  ```
+  It appends worker audit rows and one authoritative main row, then updates JSON state once for the batch. Do not hand-edit worker/main rows.
 
 Binary closeout keeps these semantics consistent:
 

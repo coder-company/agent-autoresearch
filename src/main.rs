@@ -209,6 +209,12 @@ enum Commands {
         command: RuntimeCommands,
     },
 
+    /// Close out parallel experiment worker batches
+    Parallel {
+        #[command(subcommand)]
+        command: ParallelCommands,
+    },
+
     /// Screen a command for dangerous patterns
     Screen {
         /// Command to screen
@@ -340,6 +346,19 @@ enum RuntimeCommands {
     },
 }
 
+#[derive(Subcommand)]
+enum ParallelCommands {
+    /// Select the best worker result and record the batch as one authoritative iteration
+    Closeout {
+        /// JSON array of worker results
+        #[arg(long)]
+        batch_file: PathBuf,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -444,6 +463,8 @@ fn main() -> Result<()> {
         } => cmd_health(verify.as_deref(), min_free_mb, cwd),
 
         Commands::Runtime { command } => cmd_runtime(command),
+
+        Commands::Parallel { command } => cmd_parallel(command),
 
         Commands::Screen { command } => cmd_screen(&command),
 
@@ -992,6 +1013,11 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
     let rows: Vec<&str> = content
         .lines()
         .filter(|l| !l.starts_with('#') && !l.starts_with("iteration\t") && !l.is_empty())
+        .filter(|l| {
+            l.split('\t')
+                .next()
+                .is_some_and(|iteration| iteration.parse::<u32>().is_ok())
+        })
         .collect();
 
     if rows.is_empty() {
@@ -1306,6 +1332,374 @@ fn cmd_runtime(command: RuntimeCommands) -> Result<()> {
     Ok(())
 }
 
+// ── Parallel ──────────────────────────────────────────────────────────
+
+#[derive(Debug, serde::Deserialize)]
+struct ParallelWorkerInput {
+    worker_id: String,
+    description: String,
+    #[serde(default = "default_completed_status")]
+    status: String,
+    #[serde(default)]
+    guard: Option<String>,
+    #[serde(default)]
+    commit: Option<String>,
+    #[serde(default)]
+    metric: Option<serde_json::Value>,
+    #[serde(default)]
+    diff_size: Option<u64>,
+}
+
+#[derive(Debug, Clone)]
+struct ParallelWorkerRecord {
+    worker_id: String,
+    description: String,
+    commit: Option<String>,
+    metric: Decimal,
+    guard: GuardResult,
+    status: IterationStatus,
+    diff_size: u64,
+}
+
+fn default_completed_status() -> String {
+    "completed".to_string()
+}
+
+fn cmd_parallel(command: ParallelCommands) -> Result<()> {
+    match command {
+        ParallelCommands::Closeout { batch_file, cwd } => {
+            let workspace = resolve_cwd(cwd);
+            let out = cmd_parallel_closeout(&workspace, &batch_file)?;
+            println!("{}", serde_json::to_string_pretty(&out)?);
+        }
+    }
+    Ok(())
+}
+
+fn cmd_parallel_closeout(
+    workspace: &std::path::Path,
+    batch_file: &std::path::Path,
+) -> Result<serde_json::Value> {
+    let results_dir = workspace.join("autoresearch-results");
+    let state_path = results_dir.join("state.json");
+    let tsv_path = results_dir.join("results.tsv");
+
+    let health = health::run_health_check(workspace, None, 500)?;
+    if health.has_blockers() {
+        let codes = health
+            .blockers
+            .iter()
+            .map(|finding| finding.code)
+            .collect::<Vec<_>>()
+            .join(", ");
+        anyhow::bail!("parallel batch preflight blocked: {codes}");
+    }
+
+    let mut state: RunState = serde_json::from_str(
+        &std::fs::read_to_string(&state_path)
+            .with_context(|| format!("failed to read {}", state_path.display()))?,
+    )?;
+    let batch: Vec<ParallelWorkerInput> = serde_json::from_str(
+        &std::fs::read_to_string(batch_file)
+            .with_context(|| format!("failed to read {}", batch_file.display()))?,
+    )
+    .with_context(|| format!("failed to parse {}", batch_file.display()))?;
+    if batch.is_empty() {
+        anyhow::bail!("parallel batch file must contain at least one worker result");
+    }
+
+    let next_iteration = state.iteration + 1;
+    let current_metric = state.current_metric;
+    let mut records = Vec::with_capacity(batch.len());
+    let mut candidates = Vec::new();
+
+    for item in batch {
+        validate_worker_id(&item.worker_id)?;
+        let guard = parse_guard_result(item.guard.as_deref())?;
+        let normalized_status = item.status.trim().to_ascii_lowercase();
+        let status = match normalized_status.as_str() {
+            "completed" => {
+                let metric_value = item
+                    .metric
+                    .as_ref()
+                    .with_context(|| format!("worker {} is missing metric", item.worker_id))?;
+                let metric = parse_decimal_json(metric_value)
+                    .with_context(|| format!("invalid metric for worker {}", item.worker_id))?;
+                let delta = metric - current_metric;
+                let status = if guard == GuardResult::Fail {
+                    IterationStatus::Discard
+                } else if state.direction.is_improvement(delta) {
+                    IterationStatus::Keep
+                } else {
+                    IterationStatus::Discard
+                };
+                let record = ParallelWorkerRecord {
+                    worker_id: item.worker_id,
+                    description: item.description,
+                    commit: normalize_optional_commit(item.commit),
+                    metric,
+                    guard,
+                    status,
+                    diff_size: item.diff_size.unwrap_or(u64::MAX),
+                };
+                if status == IterationStatus::Keep {
+                    candidates.push(record.clone());
+                }
+                records.push(record);
+                continue;
+            }
+            "crash" | "timeout" => IterationStatus::Crash,
+            other => anyhow::bail!(
+                "worker {} has unsupported status {other:?}; use completed, crash, or timeout",
+                item.worker_id
+            ),
+        };
+        records.push(ParallelWorkerRecord {
+            worker_id: item.worker_id,
+            description: item.description,
+            commit: normalize_optional_commit(item.commit),
+            metric: current_metric,
+            guard,
+            status,
+            diff_size: item.diff_size.unwrap_or(u64::MAX),
+        });
+    }
+
+    let winner = select_parallel_winner(&candidates, state.direction);
+    let selected_worker = winner.as_ref().map(|record| record.worker_id.clone());
+    let best_completed = if winner.is_none() {
+        select_best_completed_worker(&records, state.direction)
+    } else {
+        None
+    };
+
+    let mut worker_rows = Vec::with_capacity(records.len());
+    for record in &records {
+        let row_status = if record.status == IterationStatus::Keep {
+            if Some(&record.worker_id) == selected_worker.as_ref() {
+                IterationStatus::Keep
+            } else {
+                IterationStatus::Discard
+            }
+        } else {
+            record.status
+        };
+        worker_rows.push((
+            format!("{next_iteration}{}", record.worker_id),
+            ResultRow {
+                iteration: next_iteration,
+                commit: if row_status == IterationStatus::Keep {
+                    record.commit.clone()
+                } else {
+                    None
+                },
+                metric: record.metric,
+                delta: record.metric - current_metric,
+                guard: record.guard,
+                status: row_status,
+                description: format!(
+                    "[PARALLEL worker-{}] {}",
+                    record.worker_id, record.description
+                ),
+            },
+        ));
+    }
+
+    let (main_status, main_metric, main_commit, main_guard, main_description) = match winner {
+        Some(winner_record) => {
+            let Some(commit) = winner_record.commit.clone() else {
+                anyhow::bail!(
+                    "worker {} improved the metric but did not report a commit",
+                    winner_record.worker_id
+                );
+            };
+            (
+                IterationStatus::Keep,
+                winner_record.metric,
+                Some(commit),
+                winner_record.guard,
+                format!(
+                    "[PARALLEL batch] selected worker-{}: {}",
+                    winner_record.worker_id, winner_record.description
+                ),
+            )
+        }
+        None => match best_completed {
+            Some(best) => (
+                IterationStatus::Discard,
+                best.metric,
+                best.commit.clone(),
+                best.guard,
+                format!(
+                    "[PARALLEL batch] no worker produced a keepable improvement; best discarded worker-{}: {}",
+                    best.worker_id, best.description
+                ),
+            ),
+            None => (
+                IterationStatus::Discard,
+                current_metric,
+                None,
+                GuardResult::Skip,
+                "[PARALLEL batch] no worker completed successfully".to_string(),
+            ),
+        },
+    };
+
+    let main_row = ResultRow {
+        iteration: next_iteration,
+        commit: if main_status == IterationStatus::Keep {
+            main_commit.clone()
+        } else {
+            None
+        },
+        metric: main_metric,
+        delta: main_metric - current_metric,
+        guard: main_guard,
+        status: main_status,
+        description: main_description,
+    };
+
+    let log = ResultsLog::open(tsv_path)?;
+    for (label, row) in &worker_rows {
+        log.append_labeled(label, row)?;
+    }
+    log.append(&main_row)?;
+
+    let esc_path = results_dir.join("escalation.json");
+    let mut escalation: EscalationState = if esc_path.exists() {
+        serde_json::from_str(&std::fs::read_to_string(&esc_path)?)?
+    } else {
+        EscalationState::default()
+    };
+    let lessons_log = LessonsLog::open_or_create(&results_dir)?;
+
+    match main_status {
+        IterationStatus::Keep => {
+            state.record_keep(main_metric, main_commit.clone().unwrap());
+            escalation.record_keep();
+            let lesson = lessons::extract_keep_lesson(
+                &main_row.description,
+                &autoresearch::core::metrics::format_delta(main_row.delta),
+            );
+            let _ = lessons_log.append(&lesson);
+        }
+        IterationStatus::Discard => {
+            state.record_discard(main_metric, main_commit.clone());
+            if escalation.record_discard() == EscalationAction::Pivot {
+                let lesson = lessons::extract_pivot_lesson(
+                    &main_row.description,
+                    EscalationAction::Pivot.guidance(),
+                );
+                let _ = lessons_log.append(&lesson);
+                escalation.acknowledge_pivot();
+            }
+            state.pivot_count = escalation.pivot_count;
+            state.consecutive_discards = escalation.consecutive_discards;
+        }
+        _ => {}
+    }
+
+    std::fs::write(&state_path, serde_json::to_string_pretty(&state)?)?;
+    std::fs::write(&esc_path, serde_json::to_string_pretty(&escalation)?)?;
+
+    Ok(serde_json::json!({
+        "status": "ok",
+        "iteration": next_iteration,
+        "selected_worker": selected_worker,
+        "decision": main_status.as_str(),
+        "main_status": main_status.as_str(),
+        "retained_metric": state.current_metric.to_string(),
+        "trial_metric": state.last_trial_metric.map(|metric| metric.to_string()),
+        "batch_file": batch_file.display().to_string(),
+        "message": format!("Parallel batch recorded at iteration {next_iteration}."),
+    }))
+}
+
+fn validate_worker_id(worker_id: &str) -> Result<()> {
+    if worker_id.is_empty()
+        || !worker_id
+            .chars()
+            .all(|ch| ch.is_ascii_lowercase() && ch.is_ascii_alphabetic())
+    {
+        anyhow::bail!("worker_id must contain only lowercase ASCII letters: {worker_id:?}");
+    }
+    Ok(())
+}
+
+fn parse_guard_result(value: Option<&str>) -> Result<GuardResult> {
+    let normalized = value.unwrap_or("-").trim().to_ascii_lowercase();
+    match normalized.as_str() {
+        "pass" => Ok(GuardResult::Pass),
+        "fail" => Ok(GuardResult::Fail),
+        "-" | "skip" => Ok(GuardResult::Skip),
+        other => anyhow::bail!("unknown guard result {other:?}; use pass, fail, or skip"),
+    }
+}
+
+fn normalize_optional_commit(commit: Option<String>) -> Option<String> {
+    commit.and_then(|commit| {
+        let trimmed = commit.trim();
+        if trimmed.is_empty() || trimmed == "-" {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    })
+}
+
+fn parse_decimal_json(value: &serde_json::Value) -> Result<Decimal> {
+    match value {
+        serde_json::Value::String(text) => Decimal::from_str(text),
+        serde_json::Value::Number(number) => Decimal::from_str(&number.to_string()),
+        _ => anyhow::bail!("metric must be a JSON string or number"),
+    }
+    .context("invalid decimal")
+}
+
+fn select_parallel_winner(
+    candidates: &[ParallelWorkerRecord],
+    direction: Direction,
+) -> Option<ParallelWorkerRecord> {
+    candidates
+        .iter()
+        .cloned()
+        .min_by(|left, right| compare_parallel_records(left, right, direction))
+}
+
+fn select_best_completed_worker(
+    records: &[ParallelWorkerRecord],
+    direction: Direction,
+) -> Option<ParallelWorkerRecord> {
+    records
+        .iter()
+        .filter(|record| record.status != IterationStatus::Crash)
+        .cloned()
+        .min_by(|left, right| compare_parallel_records(left, right, direction))
+}
+
+fn compare_parallel_records(
+    left: &ParallelWorkerRecord,
+    right: &ParallelWorkerRecord,
+    direction: Direction,
+) -> std::cmp::Ordering {
+    let metric_order = match direction {
+        Direction::Higher => right.metric.cmp(&left.metric),
+        Direction::Lower => left.metric.cmp(&right.metric),
+    };
+    metric_order
+        .then_with(|| guard_rank(left.guard).cmp(&guard_rank(right.guard)))
+        .then_with(|| left.diff_size.cmp(&right.diff_size))
+        .then_with(|| left.worker_id.cmp(&right.worker_id))
+}
+
+fn guard_rank(guard: GuardResult) -> u8 {
+    match guard {
+        GuardResult::Pass => 0,
+        GuardResult::Skip => 1,
+        GuardResult::Fail => 2,
+    }
+}
+
 // ── Screen ────────────────────────────────────────────────────────────
 
 fn cmd_screen(command: &str) -> Result<()> {
@@ -1423,6 +1817,11 @@ fn cmd_progress(cwd: Option<PathBuf>) -> Result<()> {
         let keep_metrics: Vec<Decimal> = content
             .lines()
             .filter(|l| l.contains("\tkeep\t"))
+            .filter(|l| {
+                l.split('\t')
+                    .next()
+                    .is_some_and(|iteration| iteration.parse::<u32>().is_ok())
+            })
             .filter_map(|l| {
                 let cols: Vec<&str> = l.split('\t').collect();
                 if cols.len() >= 3 {

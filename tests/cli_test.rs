@@ -956,6 +956,143 @@ fn test_runtime_supervise_stop_condition_prefers_explicit_operator() {
         ));
 }
 
+// ── Parallel Command ─────────────────────────────────────────────────
+
+#[test]
+fn test_parallel_closeout_selects_best_worker() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+    std::fs::write(dir.path().join("metric.txt"), "41\n").unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "lower",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let batch_path = dir.path().join("parallel-batch.json");
+    std::fs::write(
+        &batch_path,
+        r#"[
+  {"worker_id":"a","metric":"38","guard":"pass","commit":"abc1234","description":"narrowed auth types","diff_size":10},
+  {"worker_id":"b","metric":"42","guard":"pass","commit":"def5678","description":"wrapper approach","diff_size":3},
+  {"worker_id":"c","status":"crash","description":"timeout"}
+]"#,
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "parallel",
+            "closeout",
+            "--batch-file",
+            batch_path.to_str().unwrap(),
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"selected_worker\": \"a\""))
+        .stdout(predicate::str::contains("\"decision\": \"keep\""));
+
+    let results =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/results.tsv")).unwrap();
+    assert!(results
+        .contains("1a\tabc1234\t38\t-3\tpass\tkeep\t[PARALLEL worker-a] narrowed auth types"));
+    assert!(results.contains("1b\t-\t42\t+1\tpass\tdiscard\t[PARALLEL worker-b] wrapper approach"));
+    assert!(results.contains("1c\t-\t41\t0\t-\tcrash\t[PARALLEL worker-c] timeout"));
+    assert!(results.contains(
+        "1\tabc1234\t38\t-3\tpass\tkeep\t[PARALLEL batch] selected worker-a: narrowed auth types"
+    ));
+
+    let state =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap();
+    assert!(state.contains("\"iteration\": 1"));
+    assert!(state.contains("\"current_metric\": \"38\""));
+
+    cmd()
+        .args([
+            "evals",
+            dir.path()
+                .join("autoresearch-results/results.tsv")
+                .to_str()
+                .unwrap(),
+            "--format",
+            "json",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"total_iterations\": 1"))
+        .stdout(predicate::str::contains("\"keeps\": 1"));
+}
+
+#[test]
+fn test_parallel_closeout_discards_when_no_worker_improves() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+    std::fs::write(dir.path().join("metric.txt"), "10\n").unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let batch_path = dir.path().join("parallel-batch.json");
+    std::fs::write(
+        &batch_path,
+        r#"[
+  {"worker_id":"a","metric":"9","guard":"pass","commit":"aaa1111","description":"smaller attempt","diff_size":5},
+  {"worker_id":"b","metric":"8","guard":"skip","commit":"bbb2222","description":"broader attempt","diff_size":2},
+  {"worker_id":"c","status":"timeout","description":"search space exploded"}
+]"#,
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "parallel",
+            "closeout",
+            "--batch-file",
+            batch_path.to_str().unwrap(),
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"selected_worker\": null"))
+        .stdout(predicate::str::contains("\"decision\": \"discard\""));
+
+    let results =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/results.tsv")).unwrap();
+    assert!(results.contains("1a\t-\t9\t-1\tpass\tdiscard\t[PARALLEL worker-a] smaller attempt"));
+    assert!(results.contains(
+        "1\t-\t9\t-1\tpass\tdiscard\t[PARALLEL batch] no worker produced a keepable improvement; best discarded worker-a: smaller attempt"
+    ));
+
+    let state =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap();
+    assert!(state.contains("\"iteration\": 1"));
+    assert!(state.contains("\"current_metric\": \"10\""));
+    assert!(state.contains("\"last_trial_metric\": \"9\""));
+}
+
 fn init_git_fixture(dir: &TempDir) {
     let path = dir.path();
     std::process::Command::new("git")

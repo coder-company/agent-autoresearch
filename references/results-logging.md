@@ -222,8 +222,8 @@ Use the `autoresearch` binary for stateful artifact updates. Do not hand-edit TS
   Appends one authoritative main iteration row and updates JSON state atomically. Multi-repo runs may add repeated `--repo-commit PATH=COMMIT` flags to update companion-repo commit provenance while the TSV `commit` column continues to track the primary repo. Repeated `--label LABEL` flags record structured keep/stop-gating labels on the attempted row and retained state.
 - `autoresearch resume ...`
   Reconstructs retained state from the TSV and decides `full_resume`, `mini_wizard`, `tsv_fallback`, or `fresh_start`.
-- `parallel batch closeout`
-  Native parallel batch selection is not implemented yet. Until it is, do not write worker rows by hand; run serial closeout through `autoresearch decide`.
+- `autoresearch parallel closeout --batch-file <workers.json> --cwd <workspace_root>`
+  Selects the best completed worker, appends worker audit rows plus one authoritative main row, and updates `state.json`/`escalation.json` once for the batch.
 - `# exec state handled internally`
   Prints the deterministic exec scratch-state path under `/tmp` and cleans it up on `--cleanup`.
 - `autoresearch status ...`

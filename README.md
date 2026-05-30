@@ -173,6 +173,7 @@ Covered in detail in the [guide](guide/):
 - **Cross-run learning** — lessons from past runs bias future hypothesis generation
 - **Session resume** — interrupted runs pick up from the last consistent state
 - **Background runtime control** — `autoresearch runtime run` preflights each Codex turn, manages `launch.json`, `runtime.json`, `runtime.log`, and relaunches until stop or needs-human; `start/status/supervise/stop` remain available for manual control
+- **Parallel batch closeout** — `autoresearch parallel closeout` compares worker results, logs `5a`/`5b` audit rows, and updates retained state once for the batch
 - **Chaining** — `debug --fix`, `probe --chain plan`, `predict --chain debug`
 - **CI/CD mode** (`exec`) — non-interactive, JSON output, for automation pipelines
 - **Dual-gate verification** — separate verify (did it improve?) and guard (did anything break?)

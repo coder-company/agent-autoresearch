@@ -176,7 +176,8 @@ commit: abc1234
 metric: 38
 guard: pass
 description: narrowed type annotations in auth module
-status: keep | discard | crash
+status: completed | crash | timeout
+diff_size: 24
 ```
 
 ### 4. Orchestrator: Select Best
@@ -218,7 +219,25 @@ iteration	commit	metric	delta	guard	status	description
 
 - Worker rows (`5a`, `5b`, `5c`) are audit detail.
 - The integer main row (`5`) is the authoritative retained-state update for the whole batch.
-- Native parallel batch closeout is not implemented yet. Until it is, do not write worker rows manually; fall back to serial `autoresearch decide` closeout so TSV/JSON state remains aligned.
+- Close out completed batches through `autoresearch parallel closeout --batch-file <workers.json> --cwd <workspace_root>`. Do not write worker/main rows by hand.
+
+The batch file is a JSON array of worker objects:
+
+```json
+[
+  {
+    "worker_id": "a",
+    "status": "completed",
+    "metric": "38",
+    "guard": "pass",
+    "commit": "abc1234",
+    "description": "narrowed auth types",
+    "diff_size": 24
+  }
+]
+```
+
+`worker_id` uses lowercase letters (`a`, `b`, `c`). Completed workers require `metric`; kept winners also require `commit`. `guard` accepts `pass`, `fail`, or `skip`. `status` defaults to `completed` when omitted.
 
 ### JSON State Update for Parallel Batches
 
@@ -254,4 +273,4 @@ When falling back:
 - **environment-awareness.md:** Resource probes inform parallelism limits; for GPU/NPU workloads they only permit parallel mode when enough free devices exist.
 - **pivot-protocol.md:** A parallel batch with zero keeps counts as one discard toward pivot thresholds.
 - **lessons-protocol.md:** Keep worker rows as audit detail and append the resulting interactive keep lesson only for the authoritative selected main row.
-- **health-check-protocol.md:** native parallel batch closeout should run the lightweight health + worktree preflight before it merges a completed batch into the authoritative TSV/JSON state.
+- **health-check-protocol.md:** native parallel batch closeout runs the lightweight health + worktree preflight before it accepts a completed batch into the authoritative TSV/JSON state.
