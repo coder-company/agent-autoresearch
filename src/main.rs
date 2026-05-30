@@ -2805,6 +2805,10 @@ fn cmd_handoff(
         .get("required_stop_labels")
         .cloned()
         .unwrap_or(serde_json::Value::Null);
+    let rollback_strategy = config_val
+        .get("rollback_strategy")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
     let hypothesis_queue = config_val
         .get("hypothesis_queue")
         .cloned()
@@ -2850,6 +2854,7 @@ fn cmd_handoff(
         "required_keep_criteria": required_keep_criteria,
         "required_keep_labels": required_keep_labels,
         "required_stop_labels": required_stop_labels,
+        "rollback_strategy": rollback_strategy,
         "hypothesis_queue": hypothesis_queue,
         "summary": summary,
         "findings": findings_val,
