@@ -6,8 +6,8 @@ During active execution, keep `runtime-hard-invariants.md` plus the selected mod
 
 ## Loop Modes
 
-- `unbounded`: default. If the user does not specify `Iterations`, keep iterating until interrupted or another terminal condition is reached (goal/stop condition satisfied, soft-blocker handoff, or hard blocker).
-- `bounded`: when the user explicitly sets `Iterations: N`.
+- `bounded`: default. If the user does not specify `Iterations`, use the selected mode's bounded default.
+- `unbounded`: when the user explicitly sets `Iterations: unlimited`, keep iterating until interrupted or another terminal condition is reached (goal/stop condition satisfied, soft-blocker handoff, or hard blocker).
 
 ## Required Inputs
 

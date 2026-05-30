@@ -93,7 +93,7 @@ Infer from user prompt + repo context. Confirm before starting:
 
 Optional:
 - `Guard` — command that must exit 0 (regression check)
-- `Iterations` — turn cap (default: unlimited)
+- `Iterations` — turn cap (default: 25 for the root loop; subcommands document their own defaults; use `unlimited` for unbounded)
 - `Run tag` — human-readable run identifier
 - `Acceptance criteria` — metric thresholds to report goal readiness
 - `Required keep criteria` — metric thresholds that must pass before a keep decision

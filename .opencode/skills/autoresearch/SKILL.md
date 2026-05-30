@@ -8,7 +8,7 @@ version: 0.1.0
 
 ## Safety Invariants (all subcommands)
 - Never push, publish, or deploy without explicit user approval.
-- Bounded by default (25 iterations). Override with `Iterations: unlimited`.
+- Bounded by default (25 iterations for the root loop; subcommands document their own defaults). Override with `Iterations: unlimited`.
 - All results logged to `autoresearch-results/` directory.
 - Chain handoff via `handoff.json`. Evals reads `results.tsv`.
 - Never stage `autoresearch-results/` or `.codex-autoresearch/` artifacts in experiment commits.

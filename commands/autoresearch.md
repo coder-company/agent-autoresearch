@@ -19,7 +19,7 @@ Extract from $ARGUMENTS:
 - `Guard:` — optional safety command (must exit 0)
 - `Acceptance criteria:` — optional metric thresholds for stopping
 - `Required keep criteria:` — optional metric thresholds that every keep must satisfy
-- `Iterations:` or `--iterations` — integer N for bounded mode (default: 500). "unlimited" for unbounded.
+- `Iterations:` or `--iterations` — integer N for bounded mode (default: 25). "unlimited" for unbounded.
 - `--evals` — enable mid-loop checkpoints
 - `--evals-interval N` — checkpoint frequency override
 - `--chain <targets>` — comma-separated downstream commands

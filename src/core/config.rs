@@ -131,14 +131,14 @@ pub enum Mode {
 impl Mode {
     pub fn default_iterations(&self) -> Option<u32> {
         match self {
-            Mode::Loop => Some(500),
-            Mode::Debug => Some(500),
-            Mode::Fix => Some(500),
-            Mode::Security => Some(500),
-            Mode::Scenario => Some(500),
-            Mode::Learn => Some(500),
-            Mode::Reason => Some(500),
-            Mode::Probe => Some(500),
+            Mode::Loop => Some(25),
+            Mode::Debug => Some(15),
+            Mode::Fix => Some(20),
+            Mode::Security => Some(15),
+            Mode::Scenario => Some(20),
+            Mode::Learn => Some(10),
+            Mode::Reason => Some(8),
+            Mode::Probe => Some(15),
             Mode::Plan | Mode::Ship | Mode::Predict | Mode::Evals | Mode::Exec => None,
         }
     }
@@ -159,5 +159,28 @@ impl Mode {
             Mode::Evals => "evals",
             Mode::Exec => "exec",
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Mode;
+
+    #[test]
+    fn mode_default_iterations_match_command_defaults() {
+        assert_eq!(Mode::Loop.default_iterations(), Some(25));
+        assert_eq!(Mode::Debug.default_iterations(), Some(15));
+        assert_eq!(Mode::Fix.default_iterations(), Some(20));
+        assert_eq!(Mode::Security.default_iterations(), Some(15));
+        assert_eq!(Mode::Scenario.default_iterations(), Some(20));
+        assert_eq!(Mode::Learn.default_iterations(), Some(10));
+        assert_eq!(Mode::Reason.default_iterations(), Some(8));
+        assert_eq!(Mode::Probe.default_iterations(), Some(15));
+
+        assert_eq!(Mode::Plan.default_iterations(), None);
+        assert_eq!(Mode::Ship.default_iterations(), None);
+        assert_eq!(Mode::Predict.default_iterations(), None);
+        assert_eq!(Mode::Evals.default_iterations(), None);
+        assert_eq!(Mode::Exec.default_iterations(), None);
     }
 }

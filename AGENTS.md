@@ -93,7 +93,7 @@ I want to get rid of all the `any` types in my TypeScript code
 | `Metric` | Yes | What number to optimize |
 | `Verify` | Yes | Command that outputs a scalar metric or final-line JSON metrics |
 | `Guard` | No | Safety command that must exit 0 |
-| `Iterations` | No | Turn cap (default: 500) |
+| `Iterations` | No | Turn cap (default: 25 for the root loop; subcommands document their own defaults) |
 | `Direction` | No | `higher` or `lower` |
 | `Acceptance criteria` | No | Metric thresholds for stopping |
 | `Required keep criteria` | No | Metric thresholds every keep must satisfy |
