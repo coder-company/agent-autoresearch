@@ -112,6 +112,9 @@ pub fn parse_results_tsv(content: &str) -> Result<Vec<ParsedRow>> {
         if !matches!(parts[4], "pass" | "fail" | "-") {
             bail!("Invalid guard value at iteration {iteration}");
         }
+        if !is_valid_status(parts[5]) {
+            bail!("Invalid status at iteration {iteration}");
+        }
         let status = parts[5].to_string();
         let description = parts[6].to_string();
 
@@ -126,6 +129,21 @@ pub fn parse_results_tsv(content: &str) -> Result<Vec<ParsedRow>> {
     }
 
     Ok(rows)
+}
+
+fn is_valid_status(value: &str) -> bool {
+    matches!(
+        value,
+        "baseline"
+            | "keep"
+            | "discard"
+            | "crash"
+            | "no-op"
+            | "blocked"
+            | "pivot"
+            | "refine"
+            | "search"
+    )
 }
 
 /// Detect the trend from parsed rows.
@@ -351,6 +369,16 @@ mod tests {
         let err = parse_results_tsv(tsv).unwrap_err().to_string();
 
         assert!(err.contains("Invalid guard value at iteration 1"));
+    }
+
+    #[test]
+    fn test_parse_results_tsv_rejects_invalid_status() {
+        let tsv = "# metric_direction: higher\niteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n\
+                   1\tabc1234\t85\t+2\tpass\tbanana\tadd tests\n";
+
+        let err = parse_results_tsv(tsv).unwrap_err().to_string();
+
+        assert!(err.contains("Invalid status at iteration 1"));
     }
 
     #[test]
