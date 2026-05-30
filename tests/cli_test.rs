@@ -1435,7 +1435,7 @@ fn test_handoff_defaults_to_repo_root_results_from_subdir() {
             "--findings",
             r#"[{"title":"fixed"}]"#,
             "--config",
-            r#"{"goal":"fix login","scope":["src/auth/**"]}"#,
+            r#"{"goal":"fix login","scope":["src/auth/**"],"hypothesis_queue":["check auth"],"summary":{"risk":"low"}}"#,
             "--cwd",
             subdir.to_str().unwrap(),
         ])
@@ -1452,6 +1452,8 @@ fn test_handoff_defaults_to_repo_root_results_from_subdir() {
     assert!(handoff.contains("\"status\": \"COMPLETE\""));
     assert!(handoff.contains("\"goal\": \"fix login\""));
     assert!(handoff.contains("\"scope\": ["));
+    assert!(handoff.contains("\"hypothesis_queue\": ["));
+    assert!(handoff.contains("\"summary\": {"));
     assert!(handoff.contains("\"results_path\":"));
     assert!(handoff.contains("autoresearch-results/results.tsv"));
     assert!(!subdir.join("autoresearch-results").exists());

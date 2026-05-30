@@ -2721,6 +2721,14 @@ fn cmd_handoff(
         .get("scope")
         .cloned()
         .unwrap_or(serde_json::Value::Null);
+    let hypothesis_queue = config_val
+        .get("hypothesis_queue")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
+    let summary = config_val
+        .get("summary")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
 
     let timestamp = chrono::Utc::now().to_rfc3339();
 
@@ -2734,6 +2742,8 @@ fn cmd_handoff(
         "results_path": results_dir.join("results.tsv").to_string_lossy().to_string(),
         "goal": goal,
         "scope": scope,
+        "hypothesis_queue": hypothesis_queue,
+        "summary": summary,
         "findings": findings_val,
         "config": config_val,
     });
