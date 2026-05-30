@@ -54,17 +54,27 @@ pub fn run_health_check(
     let mut blockers = Vec::new();
 
     let git_state = match GitRepo::open(workspace) {
-        Ok(repo) => match repo.worktree_status()? {
-            WorktreeStatus::Clean => "clean".to_string(),
-            WorktreeStatus::OnlyArtifacts => "only_artifacts".to_string(),
-            WorktreeStatus::Dirty(files) => {
-                warnings.push(HealthFinding {
-                    code: "dirty_worktree",
-                    message: format!("unexpected worktree changes: {}", files.join(", ")),
+        Ok(repo) => {
+            if repo.head_detached()? {
+                blockers.push(HealthFinding {
+                    code: "detached_head",
+                    message: "HEAD is detached; checkout a branch before launching autoresearch"
+                        .to_string(),
                 });
-                "dirty".to_string()
             }
-        },
+
+            match repo.worktree_status()? {
+                WorktreeStatus::Clean => "clean".to_string(),
+                WorktreeStatus::OnlyArtifacts => "only_artifacts".to_string(),
+                WorktreeStatus::Dirty(files) => {
+                    warnings.push(HealthFinding {
+                        code: "dirty_worktree",
+                        message: format!("unexpected worktree changes: {}", files.join(", ")),
+                    });
+                    "dirty".to_string()
+                }
+            }
+        }
         Err(err) => {
             blockers.push(HealthFinding {
                 code: "git_unavailable",

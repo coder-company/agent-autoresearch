@@ -62,6 +62,11 @@ impl GitRepo {
         Ok(head.summary().unwrap_or("").to_string())
     }
 
+    /// Return true when HEAD is detached instead of pointing at a branch.
+    pub fn head_detached(&self) -> Result<bool> {
+        self.repo.head_detached().context("Failed to inspect HEAD")
+    }
+
     /// Check the working tree status.
     pub fn worktree_status(&self) -> Result<WorktreeStatus> {
         let mut opts = StatusOptions::new();
