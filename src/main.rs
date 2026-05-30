@@ -861,6 +861,7 @@ fn cmd_log(
     if state_path.exists() {
         let content = std::fs::read_to_string(&state_path)?;
         let mut state: RunState = serde_json::from_str(&content)?;
+        let mut escalation_update = None;
 
         match status {
             IterationStatus::Keep => {
@@ -883,11 +884,26 @@ fn cmd_log(
             }
             IterationStatus::Pivot | IterationStatus::Refine | IterationStatus::Search => {
                 state.record_meta_status(status, metric);
+                if status == IterationStatus::Pivot {
+                    let esc_path = results_dir.join("escalation.json");
+                    let mut escalation: EscalationState = if esc_path.exists() {
+                        serde_json::from_str(&std::fs::read_to_string(&esc_path)?)?
+                    } else {
+                        EscalationState::default()
+                    };
+                    escalation.acknowledge_pivot();
+                    state.pivot_count = escalation.pivot_count;
+                    state.consecutive_discards = escalation.consecutive_discards;
+                    escalation_update = Some((esc_path, escalation));
+                }
             }
             _ => {}
         }
 
         std::fs::write(&state_path, serde_json::to_string_pretty(&state)?)?;
+        if let Some((esc_path, escalation)) = escalation_update {
+            std::fs::write(&esc_path, serde_json::to_string_pretty(&escalation)?)?;
+        }
     }
 
     println!(r#"{{"status":"ok","iteration":{iteration}}}"#);

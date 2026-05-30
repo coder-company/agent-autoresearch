@@ -857,6 +857,56 @@ fn test_log_meta_status_advances_state() {
 }
 
 #[test]
+fn test_log_pivot_updates_escalation_state() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "log",
+            "--iteration",
+            "1",
+            "--metric",
+            "50",
+            "--status",
+            "pivot",
+            "--description",
+            "switch strategy",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let state: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap(),
+    )
+    .unwrap();
+    let escalation: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.path().join("autoresearch-results/escalation.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(state["pivot_count"], 1);
+    assert_eq!(state["consecutive_discards"], 0);
+    assert_eq!(escalation["pivot_count"], 1);
+    assert_eq!(escalation["consecutive_discards"], 0);
+}
+
+#[test]
 fn test_log_rejects_baseline_status() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

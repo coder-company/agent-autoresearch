@@ -298,11 +298,6 @@ impl RunState {
         self.last_trial_commit = None;
         self.last_status = status;
 
-        if status == IterationStatus::Pivot {
-            self.pivot_count += 1;
-            self.consecutive_discards = 0;
-        }
-
         self.phase = RunPhase::Iterating {
             iteration: self.iteration,
             current_metric: self.current_metric,
