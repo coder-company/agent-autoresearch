@@ -31,7 +31,10 @@ update_json_version() {
     local version="$2"
 
     if [[ -f "$path" ]]; then
-        sed -i "s/\"version\": \".*\"/\"version\": \"$version\"/g" "$path"
+        local tmp
+        tmp="$(mktemp)"
+        awk -v version="$version" '{ gsub(/"version": "[^"]*"/, "\"version\": \"" version "\""); print }' "$path" > "$tmp"
+        mv "$tmp" "$path"
     fi
 }
 
@@ -39,8 +42,37 @@ update_skill_version() {
     local path="$1"
 
     if [[ -f "$path" ]]; then
-        sed -i "0,/^version: .*/s//version: $VERSION/" "$path"
+        local tmp
+        tmp="$(mktemp)"
+        awk -v version="$VERSION" '
+            BEGIN { replaced = 0 }
+            !replaced && /^version: / {
+                print "version: " version
+                replaced = 1
+                next
+            }
+            { print }
+        ' "$path" > "$tmp"
+        mv "$tmp" "$path"
     fi
+}
+
+update_cargo_version() {
+    local path="$1"
+    local version="$2"
+    local tmp
+
+    tmp="$(mktemp)"
+    awk -v version="$version" '
+        BEGIN { replaced = 0 }
+        !replaced && /^version = "/ {
+            print "version = \"" version "\""
+            replaced = 1
+            next
+        }
+        { print }
+    ' "$path" > "$tmp"
+    mv "$tmp" "$path"
 }
 
 # ── 1. Check clean worktree ─────────────────────────────────────────
@@ -51,7 +83,7 @@ fi
 
 # ── 2. Bump version in Cargo.toml ───────────────────────────────────
 echo "[1/10] Bumping Cargo.toml to $VERSION..."
-sed -i "s/^version = \".*\"/version = \"$VERSION\"/" "$ROOT/Cargo.toml"
+update_cargo_version "$ROOT/Cargo.toml" "$VERSION"
 
 # ── 3. Bump agent package manifests ─────────────────────────────────
 echo "[2/10] Bumping agent package manifests..."

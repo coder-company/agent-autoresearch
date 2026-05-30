@@ -205,6 +205,10 @@ require_grep 'cargo fmt --manifest-path "\$ROOT/Cargo.toml" -- --check' scripts/
 require_grep '"\$ROOT/scripts/validate_distribution\.sh"' scripts/release.sh
 require_grep '\[10/10\] Committing and tagging' scripts/release.sh
 require_grep 'git -C "\$ROOT" log --format=' scripts/release.sh
+require_grep 'update_cargo_version "\$ROOT/Cargo.toml" "\$VERSION"' scripts/release.sh
+if grep -q 'sed -i' "$ROOT/scripts/release.sh"; then
+    fail "release script still uses non-portable sed -i"
+fi
 require_grep 'workflow_dispatch:' .github/workflows/ci.yml
 require_grep 'timeout-minutes: 25' .github/workflows/ci.yml
 require_grep 'actions/cache@v4' .github/workflows/ci.yml

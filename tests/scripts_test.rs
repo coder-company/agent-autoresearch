@@ -153,6 +153,7 @@ fn release_script_updates_agent_package_versions() {
     let script = std::fs::read_to_string(root.join("scripts/release.sh")).unwrap();
 
     assert!(script.contains("update_json_version"));
+    assert!(script.contains("update_cargo_version"));
     assert!(script.contains(".claude-plugin/plugin.json"));
     assert!(script.contains(".claude-plugin/marketplace.json"));
     assert!(script.contains("plugins/autoresearch/.codex-plugin/plugin.json"));
@@ -161,6 +162,19 @@ fn release_script_updates_agent_package_versions() {
     assert!(script.contains(".agents/skills/autoresearch/SKILL.md"));
     assert!(script.contains("\"$ROOT/scripts/transform.sh\""));
     assert!(script.contains("plugins/autoresearch/skills/autoresearch"));
+}
+
+#[test]
+fn release_script_uses_portable_file_rewrites() {
+    let root = repo_root();
+    let script = std::fs::read_to_string(root.join("scripts/release.sh")).unwrap();
+
+    assert!(script.contains("awk -v version="));
+    assert!(script.contains("tmp=\"$(mktemp)\""));
+    assert!(script.contains("mv \"$tmp\" \"$path\""));
+    assert!(script.contains("update_cargo_version \"$ROOT/Cargo.toml\" \"$VERSION\""));
+    assert!(!script.contains("sed -i"));
+    assert!(!script.contains("0,/^version:"));
 }
 
 #[test]
