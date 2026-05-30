@@ -2222,7 +2222,7 @@ fn cmd_handoff(
     config: Option<&str>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
-    let workspace = resolve_cwd(cwd);
+    let workspace = resolve_results_workspace(cwd);
     let results_dir = workspace.join("autoresearch-results");
     std::fs::create_dir_all(&results_dir)?;
 
