@@ -1,3 +1,12 @@
+interface:
+  display_name: "Autoresearch"
+  short_description: "Autonomous improve-verify loops for Codex"
+  brand_color: "#2563EB"
+  default_prompt: "Use $autoresearch to improve a measurable goal through verified experiments."
+
+policy:
+  allow_implicit_invocation: false
+
 name: autoresearch
 description: "Autonomous goal-directed iteration for Codex CLI"
 model: codex
@@ -11,8 +20,8 @@ tools:
         properties:
           mode:
             type: string
-            enum: [loop, plan, debug, fix, security, ship, scenario, predict, learn, reason, probe, improve, evals]
-            description: "Operating mode: loop (core metric iteration), plan (goal→config), debug (bug hunting), fix (error crushing), security (STRIDE+OWASP), ship (8-phase deploy), scenario (edge cases), predict (persona debate), learn (doc generation), reason (adversarial refinement), probe (requirement interrogation), improve (ICP-driven product improvement), evals (results analysis)"
+            enum: [loop, plan, debug, fix, security, ship, scenario, predict, learn, reason, probe, improve, evals, exec]
+            description: "Operating mode: loop (core metric iteration), plan (goal to config), debug (bug hunting), fix (error crushing), security (STRIDE and OWASP), ship (8-phase deploy), scenario (edge cases), predict (persona debate), learn (doc generation), reason (adversarial refinement), probe (requirement interrogation), improve (ICP-driven product improvement), evals (results analysis), exec (non-interactive CI/CD)"
           goal:
             type: string
             description: "What to achieve or improve"
@@ -39,10 +48,13 @@ tools:
             type: string
             enum: [shallow, standard, deep]
             description: "Analysis depth (for debug, security, predict, scenario, probe, improve)"
+          chain:
+            type: string
+            description: "Comma-separated downstream command targets"
           evals:
             type: boolean
             description: "Enable mid-loop eval checkpoints"
-          chain:
-            type: string
-            description: "Comma-separated downstream commands to chain"
+          evals_interval:
+            type: integer
+            description: "Run eval checkpoints every N iterations"
         required: [mode]
