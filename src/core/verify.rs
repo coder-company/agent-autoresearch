@@ -118,6 +118,7 @@ pub fn screen_command(command: &str) -> Result<()> {
         "git push -f",
         "push --force",
         "git reset --hard",
+        "reset --hard",
         "git clean -f",
         "git clean -fd",
         "git branch -d",
@@ -263,6 +264,7 @@ mod tests {
     #[test]
     fn test_screen_command_blocks_destructive_git() {
         assert!(screen_command("git push -f origin main").is_err());
+        assert!(screen_command("reset --hard HEAD~1").is_err());
         assert!(screen_command("git clean -fd").is_err());
         assert!(screen_command("git branch -D feature").is_err());
         assert!(screen_command("git checkout .").is_err());
