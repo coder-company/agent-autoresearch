@@ -86,6 +86,13 @@ tools:
             type: string
           iterations:
             type: integer
+          chain:
+            type: string
+            description: "Comma-separated downstream command targets"
+          evals:
+            type: boolean
+          evals_interval:
+            type: integer
         required: [mode]
 "#
     }
@@ -104,6 +111,15 @@ mod tests {
             "reason", "probe", "improve", "evals", "exec",
         ] {
             assert!(yaml.contains(mode), "missing mode {mode}");
+        }
+    }
+
+    #[test]
+    fn agent_yaml_advertises_chain_and_eval_controls() {
+        let yaml = CodexAdapter::agent_yaml();
+
+        for property in ["chain:", "evals:", "evals_interval:"] {
+            assert!(yaml.contains(property), "missing property {property}");
         }
     }
 }
