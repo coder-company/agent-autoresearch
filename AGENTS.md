@@ -15,10 +15,12 @@ Autonomous goal-directed iteration. One metric, constrained scope, fast verifica
 ### Claude Code
 
 ```
-claude plugin add coder-company/agent-autoresearch
+git clone https://github.com/coder-company/agent-autoresearch.git
+cd agent-autoresearch
+./install.sh --yes --claude
 ```
 
-Restart session. Commands available as `/autoresearch` and `/autoresearch:<subcommand>`.
+Restart session. Commands available as `/autoresearch` and `/autoresearch:<subcommand>`. If the `autoresearch` binary is already on `PATH`, `claude plugin add coder-company/agent-autoresearch` is also valid.
 
 **Pro tip:** Use `/goal` for fully autonomous multi-turn execution:
 ```
@@ -128,7 +130,8 @@ agent-autoresearch/
 ├── SKILL.md                      ← Codex skill (repo root)
 ├── references/                   ← Shared protocol docs
 ├── src/                          ← Rust source
-├── bin/autoresearch              ← Built binary (gitignored)
+├── bin/autoresearch              ← Portable hook wrapper (tracked)
+├── target/release/autoresearch   ← Built binary (gitignored)
 └── install.sh                    ← Build + install
 ```
 

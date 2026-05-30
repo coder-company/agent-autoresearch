@@ -34,9 +34,13 @@ Inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch),
 
 Install:
 
+```bash
+git clone https://github.com/coder-company/agent-autoresearch.git
+cd agent-autoresearch
+./install.sh --yes --claude
 ```
-claude plugin add coder-company/agent-autoresearch
-```
+
+That builds the Rust binary, installs it on your `PATH`, and installs the Claude plugin hooks. If you already have the `autoresearch` binary installed, `claude plugin add coder-company/agent-autoresearch` also works.
 
 Open your project and go:
 

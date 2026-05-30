@@ -8,11 +8,19 @@ Five minutes from install to your first autonomous run.
 
 **Claude Code:**
 
+```bash
+git clone https://github.com/coder-company/agent-autoresearch.git
+cd agent-autoresearch
+./install.sh --yes --claude
+```
+
+This builds the Rust binary, installs it on your `PATH`, and installs the Claude plugin hooks. If the `autoresearch` binary is already on your `PATH`, you can install only the plugin:
+
 ```
 claude plugin add coder-company/agent-autoresearch
 ```
 
-Restart your session. You're done.
+Restart your session after either install path.
 
 **Codex:**
 
