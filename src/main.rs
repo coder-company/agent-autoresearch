@@ -675,6 +675,9 @@ fn cmd_init(
     let required_keep_labels = normalize_labels(required_keep_label);
     let required_stop_labels = normalize_labels(required_stop_label);
     let companion_repos = parse_companion_repo_scopes(&workspace, companion_repo_scope)?;
+    if iterations == Some(0) {
+        anyhow::bail!("init preflight blocked: --iterations must be greater than zero");
+    }
 
     // Safety screen
     verify::screen_command(verify_cmd)?;

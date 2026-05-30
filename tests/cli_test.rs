@@ -2875,6 +2875,33 @@ fn test_init_persists_runtime_config() {
 }
 
 #[test]
+fn test_init_rejects_zero_iterations() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--iterations",
+            "0",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "--iterations must be greater than zero",
+        ));
+
+    assert!(!dir.path().join("autoresearch-results/results.tsv").exists());
+}
+
+#[test]
 fn test_init_protects_artifacts_without_dirtying_gitignore() {
     let dir = TempDir::new().unwrap();
     init_git_fixture_with_gitignore(&dir, "target/\n");
