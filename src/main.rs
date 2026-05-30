@@ -1203,9 +1203,12 @@ fn cmd_decide(
 
     let (status, needs_rollback, escalation_action) = match decision {
         "keep" => {
+            let retained_commit = resolved_commit
+                .clone()
+                .context("keep decision requires a retained commit")?;
             state.record_keep_with_metrics_and_labels(
                 metric,
-                resolved_commit.clone().unwrap(),
+                retained_commit,
                 trial_metrics.clone(),
                 trial_labels.clone(),
             );
@@ -2819,19 +2822,18 @@ fn cmd_parallel_closeout(
 
     match main_status {
         IterationStatus::Keep => {
+            let retained_commit = main_commit
+                .clone()
+                .context("parallel keep decision requires a retained commit")?;
             if let Some(metrics) = main_metrics.clone() {
                 state.record_keep_with_metrics_and_labels(
                     main_metric,
-                    main_commit.clone().unwrap(),
+                    retained_commit.clone(),
                     metrics,
                     main_labels.clone(),
                 );
             } else {
-                state.record_keep_with_labels(
-                    main_metric,
-                    main_commit.clone().unwrap(),
-                    main_labels.clone(),
-                );
+                state.record_keep_with_labels(main_metric, retained_commit, main_labels.clone());
             }
             escalation.record_keep();
             let lesson = lessons::extract_keep_lesson(
