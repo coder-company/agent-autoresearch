@@ -384,9 +384,7 @@ fn is_valid_status(value: &str) -> bool {
 }
 
 pub fn worker_iteration_prefix(value: &str) -> Option<u32> {
-    let Some(suffix_start) = value.find(|ch: char| !ch.is_ascii_digit()) else {
-        return None;
-    };
+    let suffix_start = value.find(|ch: char| !ch.is_ascii_digit())?;
     let (main, suffix) = value.split_at(suffix_start);
     if main.is_empty() || suffix.is_empty() || !suffix.chars().all(|ch| ch.is_ascii_lowercase()) {
         return None;

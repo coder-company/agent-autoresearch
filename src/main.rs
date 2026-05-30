@@ -36,6 +36,7 @@ struct Cli {
 }
 
 #[derive(Subcommand)]
+#[allow(clippy::large_enum_variant)]
 enum Commands {
     /// Initialize a new run: measure baseline, create results dir, write state
     Init {
@@ -958,6 +959,7 @@ fn cmd_log(
 
 // ── Decide ────────────────────────────────────────────────────────────
 
+#[allow(clippy::too_many_arguments)]
 fn cmd_decide(
     decision: &str,
     metric_str: Option<&str>,
@@ -1047,14 +1049,15 @@ fn cmd_decide(
         Vec::new()
     };
     let required_keep_labels_satisfied = missing_required_keep_labels.is_empty();
-    let decision =
-        if decision == "keep" && (!required_keep.satisfied || !required_keep_labels_satisfied) {
-            "discard"
-        } else if guard == GuardResult::Fail && decision == "keep" {
-            "discard"
-        } else {
-            decision
-        };
+    let decision = if decision == "keep"
+        && (guard == GuardResult::Fail
+            || !required_keep.satisfied
+            || !required_keep_labels_satisfied)
+    {
+        "discard"
+    } else {
+        decision
+    };
 
     // Load escalation state
     let esc_path = results_dir.join("escalation.json");
@@ -2420,8 +2423,7 @@ fn cmd_resume(cwd: Option<PathBuf>) -> Result<()> {
             return Ok(());
         }
         println!(
-            "{}",
-            r#"{"resumable":false,"decision":"fresh_start","recommendation":"fresh_start","reason":"no_artifacts"}"#
+            r#"{{"resumable":false,"decision":"fresh_start","recommendation":"fresh_start","reason":"no_artifacts"}}"#
         );
         return Ok(());
     }
@@ -2791,6 +2793,7 @@ fn cmd_lessons(search: Option<&str>, last: Option<usize>, cwd: Option<PathBuf>) 
 
 // ── Handoff ──────────────────────────────────────────────────────────
 
+#[allow(clippy::too_many_arguments)]
 fn cmd_handoff(
     source: &str,
     status: &str,

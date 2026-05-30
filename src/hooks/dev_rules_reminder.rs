@@ -38,7 +38,7 @@ fn should_inject_now(input: &HookInput, cwd: &Path) -> bool {
         .unwrap_or(0)
         + 1;
     let _ = std::fs::write(counter_path, count.to_string());
-    count % 5 == 0
+    count.is_multiple_of(5)
 }
 
 fn session_counter_path(cwd: &Path, session_id: &str) -> PathBuf {
