@@ -66,14 +66,37 @@ fn test_scout_block_allows_read_tools() {
     let input = serde_json::json!({
         "tool_name": "Read",
         "tool_input": {
-            "path": "node_modules/express/index.js"
+            "path": "src/main.rs"
         }
     });
 
-    // Read tools should always pass through scout-block
     run_hook("scout-block", &input.to_string())
         .success()
         .stdout(predicate::str::contains("\"decision\":\"block\"").not());
+}
+
+#[test]
+fn test_scout_block_blocks_generated_vendor_and_sensitive_paths() {
+    for path in [
+        "node_modules/express/index.js",
+        ".git/config",
+        "dist/bundle.js",
+        "coverage/index.html",
+        ".venv/lib/python/site-packages/pkg.py",
+        ".ssh/id_rsa",
+        "debug.log",
+    ] {
+        let input = serde_json::json!({
+            "tool_name": "Read",
+            "tool_input": {
+                "path": path
+            }
+        });
+
+        run_hook("scout-block", &input.to_string())
+            .success()
+            .stdout(predicate::str::contains("\"decision\":\"block\""));
+    }
 }
 
 #[test]

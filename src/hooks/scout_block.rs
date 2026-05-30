@@ -2,6 +2,25 @@ use super::{HookInput, HookResponse};
 use glob::Pattern;
 use std::path::{Component, Path};
 
+const BASELINE_BLOCKED_PATTERNS: &[&str] = &[
+    "node_modules/**",
+    "__pycache__/**",
+    ".git/**",
+    "dist/**",
+    "build/**",
+    "out/**",
+    "coverage/**",
+    ".next/**",
+    ".nuxt/**",
+    "venv/**",
+    ".venv/**",
+    "env/**",
+    ".terraform/**",
+    ".aws/**",
+    ".ssh/**",
+    "*.log",
+];
+
 /// Block tool calls that attempt to read/write outside declared scope during an active run.
 pub fn run(input: Option<&HookInput>) -> HookResponse {
     let input = match input {
@@ -13,6 +32,22 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
         Ok(path) => path,
         Err(_) => return HookResponse::allow(),
     };
+
+    let tool = input.tool_name.as_deref().unwrap_or("");
+    if matches!(
+        tool,
+        "Read" | "Write" | "Edit" | "MultiEdit" | "Glob" | "Grep"
+    ) {
+        if let Some(target) = target_path(input) {
+            if let Some(relative_target) = normalize_target_path(target, &cwd) {
+                if matches_scope(&relative_target, BASELINE_BLOCKED_PATTERNS) {
+                    return HookResponse::block(format!(
+                        "Blocked {tool}: `{relative_target}` matches generated, vendor, or sensitive path pattern"
+                    ));
+                }
+            }
+        }
+    }
 
     let scope = match load_scope(&cwd) {
         Some(scope) if !scope.is_empty() => scope,
@@ -29,7 +64,6 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
     }
 
     // If tool is file-modifying, check against scope.
-    let tool = input.tool_name.as_deref().unwrap_or("");
     if !matches!(tool, "Write" | "Edit" | "MultiEdit") {
         return HookResponse::allow();
     }
@@ -136,10 +170,10 @@ fn path_to_clean_slash_string(path: &Path) -> Option<String> {
     }
 }
 
-fn matches_scope(path: &str, scope: &[String]) -> bool {
+fn matches_scope<T: AsRef<str>>(path: &str, scope: &[T]) -> bool {
     scope
         .iter()
-        .any(|pattern| pattern_matches_path(pattern, path))
+        .any(|pattern| pattern_matches_path(pattern.as_ref(), path))
 }
 
 fn pattern_matches_path(pattern: &str, path: &str) -> bool {
