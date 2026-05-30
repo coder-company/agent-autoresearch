@@ -1431,6 +1431,15 @@ fn test_watch_once_defaults_to_repo_root_results_from_subdir() {
 }
 
 #[test]
+fn test_watch_rejects_zero_poll_interval() {
+    cmd()
+        .args(["watch", "--interval-ms", "0", "--once"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("invalid value"));
+}
+
+#[test]
 fn test_lessons_defaults_to_repo_root_results_from_subdir() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
