@@ -42,3 +42,18 @@ fn codex_plugin_installer_uses_local_marketplace_package() {
         .contains("codex plugin marketplace add \"$REPO_DIR/.agents/plugins/marketplace.json\""));
     assert!(script.contains("codex plugin install autoresearch@autoresearch-local"));
 }
+
+#[test]
+fn installer_supports_local_and_global_copy_targets() {
+    let script = include_str!("../install.sh");
+
+    assert!(script.contains("-g|--global"));
+    assert!(script.contains("-l|--local"));
+    assert!(script.contains("INSTALL_SCOPE=\"global\""));
+    assert!(script.contains("Choose either --global or --local, not both."));
+    assert!(script.contains("LAUNCH_DIR=\"$(pwd)\""));
+    assert!(script.contains("target_root=\"$LAUNCH_DIR/.opencode\""));
+    assert!(script.contains("target_dir=\"$LAUNCH_DIR/.codex/skills/autoresearch\""));
+    assert!(script.contains("cargo build --manifest-path \"$REPO_DIR/Cargo.toml\" --release"));
+    assert!(!script.contains("\n    cd \"$REPO_DIR\"\n\n    cargo build --release"));
+}

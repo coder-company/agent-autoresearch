@@ -42,6 +42,14 @@ cd agent-autoresearch
 
 The installer copies `.agents/skills/autoresearch/` and validates the target path before replacing the installed skill directory.
 
+For a project-local Codex skill install, run the installer from your target project while pointing at this clone:
+
+```bash
+/path/to/agent-autoresearch/install.sh --yes --codex --local
+```
+
+That installs to `./.codex/skills/autoresearch` in the current project. Use `--global` for the default user-wide target, or `--codex-dir` for an explicit destination.
+
 To install the local Codex plugin package through the installer:
 
 ```bash
@@ -68,6 +76,14 @@ cd agent-autoresearch
 ```
 
 OpenCode commands install as `/autoresearch`, `/autoresearch_debug`, `/autoresearch_fix`, and the other underscore-mode names.
+
+For a project-local OpenCode install, run:
+
+```bash
+/path/to/agent-autoresearch/install.sh --yes --opencode --local
+```
+
+That installs to `./.opencode` in the current project. Use `--global` for the default user-wide target, or `--opencode-dir` for an explicit destination.
 
 ## From Source
 

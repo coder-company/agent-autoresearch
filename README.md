@@ -64,7 +64,7 @@ Each improvement stacks. Each failure reverts. Everything is logged.
 
 > **Codex users:** start Codex with `codex --dangerously-bypass-approvals-and-sandbox` for the smoothest runtime experience, then `$skill-installer install https://github.com/coder-company/agent-autoresearch` and invoke `$autoresearch`. Local plugin package users can also add `.agents/plugins/marketplace.json` and install `autoresearch` from that marketplace.
 >
-> **OpenCode users:** clone the repo and run `./install.sh --yes --opencode`. Commands install as `/autoresearch` and `/autoresearch_debug`, `/autoresearch_fix`, etc.
+> **OpenCode users:** clone the repo and run `./install.sh --yes --opencode`. Add `--local` when running the installer from a target project to install into `./.opencode`. Commands install as `/autoresearch` and `/autoresearch_debug`, `/autoresearch_fix`, etc.
 >
 > **From source:** `git clone` + `./install.sh --yes --all`, or run `./install.sh` for the guided installer. See [Getting Started](guide/getting-started.md).
 

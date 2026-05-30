@@ -11,11 +11,14 @@ set -euo pipefail
 # ──────────────────────────────────────────────────────────────────────
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+LAUNCH_DIR="$(pwd)"
 DEFAULT_INSTALL_DIR="$HOME/.local/bin"
 
 ASSUME_YES=0
 INSTALL_BINARY=1
 INSTALL_DIR="$DEFAULT_INSTALL_DIR"
+INSTALL_SCOPE="global"
+INSTALL_SCOPE_SET=0
 COMPONENT_FLAGS_SET=0
 INSTALL_CLAUDE=0
 INSTALL_OPENCODE=0
@@ -57,6 +60,22 @@ parse_args() {
                 ;;
             --no-binary)
                 INSTALL_BINARY=0
+                ;;
+            -g|--global)
+                if [[ "$INSTALL_SCOPE_SET" -eq 1 && "$INSTALL_SCOPE" != "global" ]]; then
+                    err "Choose either --global or --local, not both."
+                    exit 1
+                fi
+                INSTALL_SCOPE_SET=1
+                INSTALL_SCOPE="global"
+                ;;
+            -l|--local)
+                if [[ "$INSTALL_SCOPE_SET" -eq 1 && "$INSTALL_SCOPE" != "local" ]]; then
+                    err "Choose either --global or --local, not both."
+                    exit 1
+                fi
+                INSTALL_SCOPE_SET=1
+                INSTALL_SCOPE="local"
                 ;;
             --claude)
                 COMPONENT_FLAGS_SET=1
@@ -214,9 +233,8 @@ check_rust() {
 
 build_binary() {
     header "Building autoresearch (release)..."
-    cd "$REPO_DIR"
 
-    cargo build --release 2>&1
+    cargo build --manifest-path "$REPO_DIR/Cargo.toml" --release 2>&1
 
     local binary="$REPO_DIR/target/release/autoresearch"
     if [[ ! -f "$binary" ]]; then
@@ -332,6 +350,8 @@ install_opencode_assets() {
             local target_root
             if [[ -n "$OPENCODE_DIR" ]]; then
                 target_root="$OPENCODE_DIR"
+            elif [[ "$INSTALL_SCOPE" == "local" ]]; then
+                target_root="$LAUNCH_DIR/.opencode"
             elif [[ -n "${OPENCODE_CONFIG_DIR:-}" ]]; then
                 target_root="$OPENCODE_CONFIG_DIR"
             elif [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
@@ -370,6 +390,8 @@ install_codex_skill() {
             local target_dir
             if [[ -n "$CODEX_SKILL_DIR" ]]; then
                 target_dir="$CODEX_SKILL_DIR"
+            elif [[ "$INSTALL_SCOPE" == "local" ]]; then
+                target_dir="$LAUNCH_DIR/.codex/skills/autoresearch"
             elif [[ -n "${CODEX_HOME:-}" ]]; then
                 target_dir="$CODEX_HOME/skills/autoresearch"
             else
@@ -452,6 +474,8 @@ show_help() {
     echo "  -y, --yes                 Accept default prompts"
     echo "  --install-dir PATH        Binary install directory (default: ~/.local/bin)"
     echo "  --no-binary               Build but skip copying binary to PATH"
+    echo "  -g, --global              Install copy-based agent assets globally (default)"
+    echo "  -l, --local               Install OpenCode/Codex assets into the current project"
     echo "  --claude                  Install Claude Code plugin assets"
     echo "  --opencode                Install OpenCode assets"
     echo "  --codex                   Install Codex skill"
