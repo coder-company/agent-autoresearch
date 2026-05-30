@@ -850,6 +850,40 @@ fn test_hooks_config_wires_dev_rules_reminder() {
 }
 
 #[test]
+fn test_hooks_config_wires_multiedit_safety_hooks() {
+    let config: serde_json::Value =
+        serde_json::from_str(include_str!("../hooks/hooks.json")).unwrap();
+    let pre_tool_hooks = config
+        .pointer("/hooks/PreToolUse")
+        .and_then(|value| value.as_array())
+        .unwrap();
+    let edit_entry = pre_tool_hooks
+        .iter()
+        .find(|entry| {
+            entry
+                .get("matcher")
+                .and_then(|value| value.as_str())
+                .is_some_and(|matcher| matcher.split('|').any(|tool| tool == "MultiEdit"))
+        })
+        .expect("MultiEdit must be wired through PreToolUse safety hooks");
+    let commands = edit_entry
+        .get("hooks")
+        .and_then(|value| value.as_array())
+        .unwrap()
+        .iter()
+        .filter_map(|hook| hook.get("command").and_then(|value| value.as_str()))
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        commands,
+        [
+            "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook scout-block",
+            "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook privacy-block",
+        ]
+    );
+}
+
+#[test]
 fn test_hooks_config_entrypoints_exist() {
     let config: serde_json::Value =
         serde_json::from_str(include_str!("../hooks/hooks.json")).unwrap();

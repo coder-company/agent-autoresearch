@@ -29,7 +29,7 @@ impl ClaudeAdapter {
             "hooks": {
                 "PreToolUse": [
                     {
-                        "matcher": "Write|Edit",
+                        "matcher": "Write|Edit|MultiEdit",
                         "hooks": [
                             {
                                 "type": "command",
