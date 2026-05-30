@@ -130,7 +130,7 @@ agent-autoresearch/
 │       ├── codex.rs             # Codex CLI specifics
 │       └── mod.rs
 ├── .agents/                     # Maintained Codex skill + local marketplace root
-├── .opencode/                   # Generated OpenCode command/skill package
+├── .opencode/                   # OpenCode command, skill, and helper-agent package
 ├── plugins/autoresearch/        # Generated Codex plugin package
 ├── commands/                    # Slash command definitions
 │   ├── autoresearch.md          # Root command

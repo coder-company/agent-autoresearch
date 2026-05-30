@@ -140,7 +140,7 @@ agent-autoresearch/
 ├── .agents/skills/autoresearch/  ← Codex skill package
 ├── .agents/plugins/marketplace.json ← Local Codex marketplace
 ├── plugins/autoresearch/         ← Codex plugin package
-├── .opencode/                    ← OpenCode commands and skill package
+├── .opencode/                    ← OpenCode commands, skill package, and docs-manager helper agent
 ├── commands/autoresearch.md      ← Root command
 ├── commands/autoresearch/*.md    ← Subcommands
 ├── SKILL.md                      ← Generic skill entrypoint

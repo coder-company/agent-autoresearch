@@ -16,7 +16,7 @@ A single compiled Rust binary (about 3MB) that provides:
 
 - **Hook handler** — sub-5ms responses for Claude Code's plugin hook system (PreToolUse, PostToolUse, UserPromptSubmit, Stop, etc.)
 - **CLI operations** — `init`, `verify`, `guard`, `decide`, `resume`, `health`, `progress`, `watch`, `lessons`, `handoff`, `exec`, plus `runtime run/start/status/supervise/stop` and `parallel prepare/run/closeout/cleanup`
-- **Agent packages** — Claude plugin commands, Codex `.agents` skill/plugin package, OpenCode skill package, and shared markdown protocols for iteration loops, security audits, debugging, shipping, product improvement research, and more
+- **Agent packages** — Claude plugin commands, Codex `.agents` skill/plugin package, OpenCode command/skill/helper-agent package, and shared markdown protocols for iteration loops, security audits, debugging, shipping, product improvement research, and more
 
 The binary handles the mechanical infrastructure. The agent handles the intelligence. Clean separation.
 
@@ -26,7 +26,7 @@ The binary handles the mechanical infrastructure. The agent handles the intellig
 |------|-------------|
 | Claude Code users | Installer builds the binary and installs the plugin hooks |
 | Codex CLI users | `$skill-installer` skill plus local `.agents/plugins/marketplace.json` plugin package |
-| OpenCode users | Generated `.opencode/` skill and underscore command names |
+| OpenCode users | Generated `.opencode/` commands, skill, and helper agent |
 | Any LLM agent | CLI called directly, skill markdown parsed by agent |
 
 ## Architecture

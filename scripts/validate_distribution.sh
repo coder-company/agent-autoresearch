@@ -183,8 +183,9 @@ require_grep '13-command surface' COMPARISON.md
 require_grep 'Structured metrics' COMPARISON.md
 require_grep 'Claude, Codex, and OpenCode packages' COMPARISON.md
 require_grep '\.agents/skills/autoresearch/' AGENTS.md
-require_grep '\.opencode/' AGENTS.md
+require_grep 'docs-manager helper agent' AGENTS.md
 require_grep '\.agents/skills/autoresearch/' docs/changelog.md
+require_grep 'hidden `docs-manager` helper agent' docs/changelog.md
 require_grep 'MAX_RELEASE_BINARY_BYTES=\$\(\(5 \* 1024 \* 1024\)\)' scripts/run_contributor_gate.sh
 require_grep 'MAX_RELEASE_BINARY_BYTES=\$\(\(5 \* 1024 \* 1024\)\)' scripts/release.sh
 require_grep 'git -C "\$ROOT" log --format=' scripts/release.sh

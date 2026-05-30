@@ -26,7 +26,7 @@ Initial release.
 - **11 hook handlers**: session_init, session_end, iteration_context, stop_check, scout_block, dangerous_cmd, simplify_gate, compaction_reanchor, privacy_block, dev_rules_reminder, subagent_context
 - **Claude Code plugin**: `.claude-plugin/plugin.json` manifest with hook definitions
 - **Codex skill**: `.agents/skills/autoresearch/` for direct Codex installs, plus `plugins/autoresearch/` for the local Codex plugin marketplace
-- **OpenCode package**: `.opencode/` commands and skill package with underscore command names
+- **OpenCode package**: `.opencode/` commands, skill package, and hidden `docs-manager` helper agent
 - **Agent commands**: `commands/autoresearch.md` root + 12 subcommand files
 - **Reference docs**: 27 protocol and workflow reference documents
 - **Release profile**: `opt-level = "z"`, LTO, strip, `panic = "abort"` — about 3MB binary with a 5MB contributor-gate ceiling
