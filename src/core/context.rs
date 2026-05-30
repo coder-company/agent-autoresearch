@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -79,7 +80,23 @@ pub fn write_context(workspace: &Path, config: Option<&RunConfig>) -> Result<Pat
     let path = results.join("context.json");
     fs::write(&path, serde_json::to_string_pretty(&context)?)
         .with_context(|| format!("failed to write {}", path.display()))?;
+    write_pointer(&context.primary_repo, &context.workspace_root, &path)?;
     Ok(path)
+}
+
+fn write_pointer(primary_repo: &str, workspace_root: &str, context_path: &Path) -> Result<()> {
+    let pointer_dir = Path::new(primary_repo).join(".codex-autoresearch");
+    fs::create_dir_all(&pointer_dir)
+        .with_context(|| format!("failed to create {}", pointer_dir.display()))?;
+    let pointer_path = pointer_dir.join("pointer.json");
+    let payload = json!({
+        "version": 1,
+        "workspace_root": workspace_root,
+        "context_path": absolute_display(context_path),
+        "updated_at": Utc::now().to_rfc3339(),
+    });
+    fs::write(&pointer_path, serde_json::to_string_pretty(&payload)?)
+        .with_context(|| format!("failed to write {}", pointer_path.display()))
 }
 
 fn absolute_display(path: &Path) -> String {

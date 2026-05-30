@@ -342,6 +342,13 @@ fn test_init_persists_runtime_config() {
     assert!(context.contains("\"version\": 2"));
     assert!(context.contains("\"session_mode\": \"foreground\""));
     assert!(context.contains("\"verify_cwd\": \"workspace_root\""));
+    let pointer =
+        std::fs::read_to_string(dir.path().join(".codex-autoresearch/pointer.json")).unwrap();
+    assert!(pointer.contains("\"version\": 1"));
+    assert!(pointer.contains("\"context_path\""));
+    let gitignore = std::fs::read_to_string(dir.path().join(".gitignore")).unwrap();
+    assert!(gitignore.contains("autoresearch-results/"));
+    assert!(gitignore.contains(".codex-autoresearch/"));
 
     cmd()
         .args(["status", "--cwd", root])

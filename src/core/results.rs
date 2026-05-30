@@ -196,11 +196,16 @@ pub fn ensure_results_dir_protected(workspace: &Path) -> Result<PathBuf> {
 
     // Protect from workspace-level git staging
     let ws_gitignore = workspace.join(".gitignore");
-    let entry = "autoresearch-results/";
+    let entries = ["autoresearch-results/", ".codex-autoresearch/"];
     if ws_gitignore.exists() {
         let content =
             fs::read_to_string(&ws_gitignore).context("Failed to read workspace .gitignore")?;
-        if !content.lines().any(|l| l.trim() == entry) {
+        let missing: Vec<&str> = entries
+            .iter()
+            .copied()
+            .filter(|entry| !content.lines().any(|l| l.trim() == *entry))
+            .collect();
+        if !missing.is_empty() {
             use std::io::Write;
             let mut file = OpenOptions::new()
                 .append(true)
@@ -210,10 +215,12 @@ pub fn ensure_results_dir_protected(workspace: &Path) -> Result<PathBuf> {
             if !content.ends_with('\n') && !content.is_empty() {
                 writeln!(file)?;
             }
-            writeln!(file, "{entry}")?;
+            for entry in missing {
+                writeln!(file, "{entry}")?;
+            }
         }
     } else {
-        fs::write(&ws_gitignore, format!("{entry}\n"))
+        fs::write(&ws_gitignore, entries.join("\n") + "\n")
             .context("Failed to create workspace .gitignore")?;
     }
 
