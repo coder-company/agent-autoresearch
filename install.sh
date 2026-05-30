@@ -13,6 +13,16 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 DEFAULT_INSTALL_DIR="$HOME/.local/bin"
 
+ASSUME_YES=0
+INSTALL_BINARY=1
+INSTALL_DIR="$DEFAULT_INSTALL_DIR"
+COMPONENT_FLAGS_SET=0
+INSTALL_CLAUDE=0
+INSTALL_OPENCODE=0
+INSTALL_CODEX=0
+OPENCODE_DIR=""
+CODEX_SKILL_DIR=""
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
@@ -25,6 +35,95 @@ warn()    { echo -e "${YELLOW}▸${NC} $1"; }
 err()     { echo -e "${RED}✗${NC} $1" >&2; }
 header()  { echo -e "\n${BOLD}${CYAN}$1${NC}"; }
 success() { echo -e "${GREEN}✓${NC} $1"; }
+
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                show_help
+                ;;
+            -y|--yes)
+                ASSUME_YES=1
+                ;;
+            --install-dir)
+                shift
+                [[ $# -gt 0 ]] || { err "--install-dir requires a path"; exit 1; }
+                INSTALL_DIR="${1/#\~/$HOME}"
+                ;;
+            --install-dir=*)
+                INSTALL_DIR="${1#*=}"
+                INSTALL_DIR="${INSTALL_DIR/#\~/$HOME}"
+                ;;
+            --no-binary)
+                INSTALL_BINARY=0
+                ;;
+            --claude)
+                COMPONENT_FLAGS_SET=1
+                INSTALL_CLAUDE=1
+                ;;
+            --opencode)
+                COMPONENT_FLAGS_SET=1
+                INSTALL_OPENCODE=1
+                ;;
+            --codex)
+                COMPONENT_FLAGS_SET=1
+                INSTALL_CODEX=1
+                ;;
+            --all)
+                COMPONENT_FLAGS_SET=1
+                INSTALL_CLAUDE=1
+                INSTALL_OPENCODE=1
+                INSTALL_CODEX=1
+                ;;
+            --opencode-dir)
+                shift
+                [[ $# -gt 0 ]] || { err "--opencode-dir requires a path"; exit 1; }
+                OPENCODE_DIR="${1/#\~/$HOME}"
+                ;;
+            --opencode-dir=*)
+                OPENCODE_DIR="${1#*=}"
+                OPENCODE_DIR="${OPENCODE_DIR/#\~/$HOME}"
+                ;;
+            --codex-dir)
+                shift
+                [[ $# -gt 0 ]] || { err "--codex-dir requires a path"; exit 1; }
+                CODEX_SKILL_DIR="${1/#\~/$HOME}"
+                ;;
+            --codex-dir=*)
+                CODEX_SKILL_DIR="${1#*=}"
+                CODEX_SKILL_DIR="${CODEX_SKILL_DIR/#\~/$HOME}"
+                ;;
+            *)
+                err "Unknown argument: $1"
+                echo "Run ./install.sh --help for usage."
+                exit 1
+                ;;
+        esac
+        shift
+    done
+}
+
+component_enabled() {
+    local component="$1"
+    local prompt="$2"
+    local flag_var="INSTALL_${component}"
+
+    if [[ "$COMPONENT_FLAGS_SET" -eq 1 ]]; then
+        [[ "${!flag_var}" -eq 1 ]]
+        return
+    fi
+
+    if [[ "$ASSUME_YES" -eq 1 ]]; then
+        return 0
+    fi
+
+    local answer
+    read -rp "$prompt" answer
+    case "${answer:-Y}" in
+        [Yy]*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
 
 # ── OS Detection ──────────────────────────────────────────────────────
 
@@ -114,11 +213,19 @@ build_binary() {
 # ── Install Binary ────────────────────────────────────────────────────
 
 install_binary() {
+    if [[ "$INSTALL_BINARY" -eq 0 ]]; then
+        info "Skipping binary install."
+        return 0
+    fi
+
     header "Install binary to PATH"
 
-    echo "  Default location: $DEFAULT_INSTALL_DIR"
-    read -rp "  Install path [$DEFAULT_INSTALL_DIR]: " install_dir
-    install_dir="${install_dir:-$DEFAULT_INSTALL_DIR}"
+    local install_dir="$INSTALL_DIR"
+    if [[ "$ASSUME_YES" -eq 0 ]]; then
+        echo "  Default location: $INSTALL_DIR"
+        read -rp "  Install path [$INSTALL_DIR]: " install_dir
+        install_dir="${install_dir:-$INSTALL_DIR}"
+    fi
 
     mkdir -p "$install_dir"
     cp "$REPO_DIR/target/release/autoresearch" "$install_dir/autoresearch"
@@ -152,9 +259,7 @@ install_claude_plugin() {
         return 1
     fi
 
-    read -rp "  Install Claude Code plugin? [Y/n] " answer
-    case "${answer:-Y}" in
-        [Yy]*)
+    if component_enabled "CLAUDE" "  Install Claude Code plugin? [Y/n] "; then
             if command -v claude &>/dev/null; then
                 info "Installing via claude CLI..."
                 claude plugin add coder-company/agent-autoresearch || {
@@ -173,11 +278,9 @@ install_claude_plugin() {
             echo ""
             echo "  Restart your Claude Code session after installing."
             echo "  Commands available as /autoresearch and /autoresearch:<mode>"
-            ;;
-        *)
-            info "Skipping Claude Code plugin install."
-            ;;
-    esac
+    else
+        info "Skipping Claude Code plugin install."
+    fi
 }
 
 # ── OpenCode Assets ───────────────────────────────────────────────────
@@ -190,11 +293,11 @@ install_opencode_assets() {
         return 1
     fi
 
-    read -rp "  Install OpenCode assets? [Y/n] " answer
-    case "${answer:-Y}" in
-        [Yy]*)
+    if component_enabled "OPENCODE" "  Install OpenCode assets? [Y/n] "; then
             local target_root
-            if [[ -n "${OPENCODE_CONFIG_DIR:-}" ]]; then
+            if [[ -n "$OPENCODE_DIR" ]]; then
+                target_root="$OPENCODE_DIR"
+            elif [[ -n "${OPENCODE_CONFIG_DIR:-}" ]]; then
                 target_root="$OPENCODE_CONFIG_DIR"
             elif [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
                 target_root="$XDG_CONFIG_HOME/opencode"
@@ -202,8 +305,11 @@ install_opencode_assets() {
                 target_root="$HOME/.config/opencode"
             fi
 
-            read -rp "  OpenCode config path [$target_root]: " opencode_dir
-            opencode_dir="${opencode_dir:-$target_root}"
+            local opencode_dir="$target_root"
+            if [[ "$ASSUME_YES" -eq 0 ]]; then
+                read -rp "  OpenCode config path [$target_root]: " opencode_dir
+                opencode_dir="${opencode_dir:-$target_root}"
+            fi
 
             mkdir -p "$opencode_dir/skills" "$opencode_dir/commands" "$opencode_dir/agents"
             rm -rf "$opencode_dir/skills/autoresearch"
@@ -215,11 +321,9 @@ install_opencode_assets() {
 
             success "OpenCode assets installed to $opencode_dir"
             echo "  Use: /autoresearch or /autoresearch_debug"
-            ;;
-        *)
-            info "Skipping OpenCode assets install."
-            ;;
-    esac
+    else
+        info "Skipping OpenCode assets install."
+    fi
 }
 
 # ── Codex Skill ───────────────────────────────────────────────────────
@@ -227,18 +331,21 @@ install_opencode_assets() {
 install_codex_skill() {
     header "Codex Skill"
 
-    read -rp "  Install Codex skill? [Y/n] " answer
-    case "${answer:-Y}" in
-        [Yy]*)
+    if component_enabled "CODEX" "  Install Codex skill? [Y/n] "; then
             local target_dir
-            if [[ -n "${CODEX_HOME:-}" ]]; then
+            if [[ -n "$CODEX_SKILL_DIR" ]]; then
+                target_dir="$CODEX_SKILL_DIR"
+            elif [[ -n "${CODEX_HOME:-}" ]]; then
                 target_dir="$CODEX_HOME/skills/autoresearch"
             else
                 target_dir="$HOME/.codex/skills/autoresearch"
             fi
 
-            read -rp "  Skill install path [$target_dir]: " skill_dir
-            skill_dir="${skill_dir:-$target_dir}"
+            local skill_dir="$target_dir"
+            if [[ "$ASSUME_YES" -eq 0 ]]; then
+                read -rp "  Skill install path [$target_dir]: " skill_dir
+                skill_dir="${skill_dir:-$target_dir}"
+            fi
 
             mkdir -p "$skill_dir"
 
@@ -254,11 +361,9 @@ install_codex_skill() {
 
             success "Codex skill installed to $skill_dir"
             echo '  Use: $autoresearch'
-            ;;
-        *)
-            info "Skipping Codex skill install."
-            ;;
-    esac
+    else
+        info "Skipping Codex skill install."
+    fi
 }
 
 # ── Help ──────────────────────────────────────────────────────────────
@@ -266,9 +371,21 @@ install_codex_skill() {
 show_help() {
     echo "autoresearch installer"
     echo ""
-    echo "Usage: ./install.sh [--help]"
+    echo "Usage: ./install.sh [options]"
     echo ""
-    echo "Interactive guided installer that:"
+    echo "Options:"
+    echo "  -y, --yes                 Accept default prompts"
+    echo "  --install-dir PATH        Binary install directory (default: ~/.local/bin)"
+    echo "  --no-binary               Build but skip copying binary to PATH"
+    echo "  --claude                  Install Claude Code plugin assets"
+    echo "  --opencode                Install OpenCode assets"
+    echo "  --codex                   Install Codex skill"
+    echo "  --all                     Install all optional agent assets"
+    echo "  --opencode-dir PATH       Override OpenCode config directory"
+    echo "  --codex-dir PATH          Override Codex skill target directory"
+    echo "  -h, --help                Show this help"
+    echo ""
+    echo "Without component flags, the installer runs as an interactive guided installer that:"
     echo "  1. Detects your OS (Linux, macOS)"
     echo "  2. Checks for Rust toolchain (offers to install via rustup)"
     echo "  3. Builds the release binary"
@@ -284,9 +401,7 @@ show_help() {
 # ── Main ──────────────────────────────────────────────────────────────
 
 main() {
-    if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]]; then
-        show_help
-    fi
+    parse_args "$@"
 
     echo -e "${BOLD}╭─────────────────────────────────────╮${NC}"
     echo -e "${BOLD}│   autoresearch installer v0.1.0     │${NC}"
