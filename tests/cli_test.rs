@@ -1777,6 +1777,63 @@ fn test_runtime_supervise_stops_on_acceptance_criteria() {
 }
 
 #[test]
+fn test_runtime_supervise_requires_acceptance_and_stop_condition() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "lower",
+            "--acceptance-criteria",
+            r#"[{"metric_key":"metric","operator":"<=","target":"5"}]"#,
+            "--stop-condition",
+            "stop when metric <= 0",
+            "--run-mode",
+            "background",
+            "--workspace-root",
+            root,
+            "--primary-repo",
+            root,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "decide",
+            "--decision",
+            "keep",
+            "--metric",
+            "4",
+            "--description",
+            "accepted but not stopped",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["runtime", "start", "--dry-run", "--cwd", root])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["runtime", "supervise", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"relaunch\""))
+        .stdout(predicate::str::contains("\"reason\": \"non_terminal\""));
+}
+
+#[test]
 fn test_runtime_supervise_uses_structured_acceptance_metrics() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

@@ -658,20 +658,34 @@ fn supervisor_decision(
         );
     }
 
-    if acceptance_satisfied(state) {
-        return (
-            "stop".to_string(),
-            "acceptance_criteria".to_string(),
-            "goal_reached".to_string(),
-        );
-    }
+    let has_acceptance = has_acceptance_criteria(state);
+    let has_stop_condition = has_stop_condition(state);
+    let acceptance_met = acceptance_satisfied(state);
+    let stop_condition_met = simple_stop_condition_satisfied(state);
+    if has_acceptance && has_stop_condition {
+        if acceptance_met && stop_condition_met {
+            return (
+                "stop".to_string(),
+                "acceptance_criteria".to_string(),
+                "goal_reached".to_string(),
+            );
+        }
+    } else {
+        if acceptance_met {
+            return (
+                "stop".to_string(),
+                "acceptance_criteria".to_string(),
+                "goal_reached".to_string(),
+            );
+        }
 
-    if simple_stop_condition_satisfied(state) {
-        return (
-            "stop".to_string(),
-            "stop_condition".to_string(),
-            "goal_reached".to_string(),
-        );
+        if stop_condition_met {
+            return (
+                "stop".to_string(),
+                "stop_condition".to_string(),
+                "goal_reached".to_string(),
+            );
+        }
     }
 
     (
@@ -679,6 +693,21 @@ fn supervisor_decision(
         "non_terminal".to_string(),
         "none".to_string(),
     )
+}
+
+fn has_acceptance_criteria(state: &RunState) -> bool {
+    state
+        .config
+        .as_ref()
+        .is_some_and(|config| !config.acceptance_criteria.is_empty())
+}
+
+fn has_stop_condition(state: &RunState) -> bool {
+    state
+        .config
+        .as_ref()
+        .and_then(|config| config.stop_condition.as_ref())
+        .is_some_and(|condition| !condition.trim().is_empty())
 }
 
 fn acceptance_satisfied(state: &RunState) -> bool {
