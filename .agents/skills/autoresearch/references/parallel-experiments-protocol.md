@@ -209,12 +209,19 @@ Selection rules:
 
 ### 5. Merge Best Result
 
-1. Cherry-pick the winning commit from the worker's worktree branch.
-2. Verify the cherry-pick applies cleanly.
-3. If cherry-pick conflicts: attempt three-way merge with the base commit. If three-way merge also fails, discard the result and log as `merge-conflict`. Do not manually apply patches -- maintaining atomic commits is required.
-4. Run verify + guard on the merged result to confirm.
-5. If post-merge verification fails, discard and log as `merge-verify-fail`.
-6. If the best result cannot be merged, try the second-best result. If no result can be merged, count the entire batch as a single discard for pivot tracking.
+`autoresearch parallel closeout --batch-file autoresearch-results/parallel-workers.json`
+performs the merge and verification step:
+
+1. Rank keepable workers by metric, guard, diff size, and worker ID.
+2. Cherry-pick the best worker commit into the main worktree.
+3. Run the configured verify command in the merged main worktree.
+4. Run the configured guard command when present.
+5. If cherry-pick, verify, guard, required keep criteria, or required labels fail, reset back to the pre-merge HEAD, mark that worker row as `discard` with `[MERGE failed] ...`, and try the next-best worker.
+6. If a worker verifies successfully after merge, record the authoritative main row with the retained main-worktree commit, not the source worker commit.
+7. If no worker can be merged and verified, count the whole batch as one discard for pivot tracking.
+
+Do not manually apply patches during closeout. Maintaining atomic commits and a
+single retained main-worktree commit is required.
 
 ### 6. Cleanup
 
@@ -235,7 +242,7 @@ iteration	commit	metric	delta	guard	status	description
 ```
 
 - Worker rows (`5a`, `5b`, `5c`) are audit detail.
-- The integer main row (`5`) is the authoritative retained-state update for the whole batch.
+- The integer main row (`5`) is the authoritative retained-state update for the whole batch and uses the post-cherry-pick main worktree commit.
 - Prepare isolated worker worktrees with `autoresearch parallel prepare --workers 3 --cwd <workspace_root>`.
 - Launch prepared workers with `autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json --cwd <workspace_root>`.
 - Generate the editable worker JSON schema with `autoresearch parallel template --workers 3 --output autoresearch-results/parallel-workers.json --cwd <workspace_root>`.

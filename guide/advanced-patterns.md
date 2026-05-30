@@ -45,8 +45,10 @@ autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.
 ```
 
 Prepare creates branch-backed worker worktrees and prompt files. Run launches the
-prepared prompts with `codex exec`. Closeout records worker audit rows such as
-`5a`, `5b`, `5c`, then appends one authoritative main row for iteration `5`.
+prepared prompts with `codex exec`. Closeout cherry-picks the best worker,
+re-runs verify and guard in the main worktree, falls back on merge or verification
+failure, records worker audit rows such as `5a`, `5b`, `5c`, then appends one
+authoritative main row for iteration `5`.
 
 ### Limitations
 

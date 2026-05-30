@@ -51,8 +51,10 @@ autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.
 
 Prepare creates branch-backed worker worktrees, prompt files, a manifest, and the
 editable batch file. Run executes the prepared worker prompts in those worktrees.
-Closeout writes worker audit rows and one authoritative batch row so retained
-state advances once. Cleanup removes worker worktrees and branches.
+Closeout cherry-picks the best worker, re-runs verify and guard in the main
+worktree, falls back to the next worker on merge or verification failure, then
+writes worker audit rows and one authoritative retained batch row. Cleanup
+removes worker worktrees and branches.
 
 ## Background Runtime
 
