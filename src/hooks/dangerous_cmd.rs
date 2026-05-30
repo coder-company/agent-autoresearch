@@ -65,6 +65,15 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
 
     let lower = command.to_lowercase();
 
+    if lower.contains('|') {
+        let after_pipe = lower.split('|').next_back().unwrap_or("").trim();
+        if let Some(shell) = piped_shell_interpreter(after_pipe) {
+            return HookResponse::block(format!(
+                "Blocked dangerous command during autoresearch: pipes to shell interpreter '{shell}'"
+            ));
+        }
+    }
+
     // Check absolute blockers
     for pattern in DANGEROUS {
         if lower.contains(&pattern.to_lowercase()) {
@@ -96,6 +105,12 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
     }
 
     HookResponse::allow()
+}
+
+fn piped_shell_interpreter(after_pipe: &str) -> Option<&str> {
+    let first_token = after_pipe.split_whitespace().next()?;
+    let executable = first_token.rsplit('/').next().unwrap_or(first_token);
+    matches!(executable, "sh" | "bash" | "zsh" | "eval").then_some(first_token)
 }
 
 fn git_output(cwd: &std::path::Path, args: &[&str]) -> Option<PathBuf> {
