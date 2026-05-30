@@ -2757,6 +2757,10 @@ fn cmd_handoff(
         .get("scope")
         .cloned()
         .unwrap_or(serde_json::Value::Null);
+    let metric = config_val
+        .get("metric")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
     let hypothesis_queue = config_val
         .get("hypothesis_queue")
         .cloned()
@@ -2790,6 +2794,7 @@ fn cmd_handoff(
         "handoff_path": handoff_path.to_string_lossy().to_string(),
         "goal": goal,
         "scope": scope,
+        "metric": metric,
         "hypothesis_queue": hypothesis_queue,
         "summary": summary,
         "findings": findings_val,
