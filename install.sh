@@ -171,6 +171,22 @@ ensure_safe_codex_skill_dir() {
     fi
 }
 
+ensure_safe_opencode_dir() {
+    local dir="${1%/}"
+
+    if [[ -z "$dir" ]]; then
+        err "Refusing empty OpenCode config path."
+        return 1
+    fi
+
+    case "$dir" in
+        "/"|"$HOME"|"$HOME/.config"|"$HOME/.opencode/skills"|"$HOME/.config/opencode/skills")
+            err "Refusing unsafe OpenCode config path: $dir"
+            return 1
+            ;;
+    esac
+}
+
 # ── OS Detection ──────────────────────────────────────────────────────
 
 detect_os() {
@@ -366,6 +382,7 @@ install_opencode_assets() {
                 opencode_dir="${opencode_dir:-$target_root}"
             fi
 
+            ensure_safe_opencode_dir "$opencode_dir"
             mkdir -p "$opencode_dir/skills" "$opencode_dir/commands" "$opencode_dir/agents"
             rm -rf "$opencode_dir/skills/autoresearch"
             cp -R "$REPO_DIR/.opencode/skills/autoresearch" "$opencode_dir/skills/autoresearch"

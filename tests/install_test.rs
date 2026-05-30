@@ -57,3 +57,20 @@ fn installer_supports_local_and_global_copy_targets() {
     assert!(script.contains("cargo build --manifest-path \"$REPO_DIR/Cargo.toml\" --release"));
     assert!(!script.contains("\n    cd \"$REPO_DIR\"\n\n    cargo build --release"));
 }
+
+#[test]
+fn opencode_installer_rejects_unsafe_config_roots() {
+    let script = include_str!("../install.sh");
+
+    assert!(script.contains("ensure_safe_opencode_dir()"));
+    assert!(script.contains("Refusing empty OpenCode config path."));
+    assert!(script.contains("\"/\"|\"$HOME\"|\"$HOME/.config\""));
+    assert!(script.contains("ensure_safe_opencode_dir \"$opencode_dir\""));
+    let guard = script
+        .find("ensure_safe_opencode_dir \"$opencode_dir\"")
+        .unwrap();
+    let remove = script
+        .find("rm -rf \"$opencode_dir/skills/autoresearch\"")
+        .unwrap();
+    assert!(guard < remove);
+}

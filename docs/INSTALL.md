@@ -83,7 +83,7 @@ For a project-local OpenCode install, run:
 /path/to/agent-autoresearch/install.sh --yes --opencode --local
 ```
 
-That installs to `./.opencode` in the current project. Use `--global` for the default user-wide target, or `--opencode-dir` for an explicit destination.
+That installs to `./.opencode` in the current project. Use `--global` for the default user-wide target, or `--opencode-dir` for an explicit OpenCode config root. The installer refuses empty, home, and parent config paths before replacing `skills/autoresearch`.
 
 ## From Source
 

@@ -141,6 +141,7 @@ require_grep '\-\-codex-plugin' docs/INSTALL.md
 require_grep '\-\-codex-plugin' install.sh
 require_grep '\-\-local' docs/INSTALL.md
 require_grep '\-\-local' install.sh
+require_grep 'ensure_safe_opencode_dir' install.sh
 require_grep 'dangerously-bypass-approvals-and-sandbox' guide/autoresearch-codex.md
 require_grep 'danger_full_access' guide/autoresearch-codex.md
 require_grep 'plugins/autoresearch' docs/codebase-summary.md
