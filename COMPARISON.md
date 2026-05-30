@@ -27,7 +27,7 @@ The idea was simple enough that several people generalized it:
 | When it gets stuck | You restart | Refine → Pivot → Stop | You restart | **Refine → Pivot → Web Search → Stop** |
 | Remembers across runs | No | Yes (lessons.md) | Yes (cross-run learning) | **Yes (lessons.md)** |
 | Background runs | No | No | Yes (daemon) | **Yes (`runtime start/status/stop`)** |
-| Parallel experiments | No | No | Yes | Planned (v0.2) |
+| Parallel experiments | No | No | Yes | Template + closeout; runtime pending |
 
 ---
 
