@@ -192,7 +192,7 @@ require_grep 'timeout-minutes: 25' .github/workflows/ci.yml
 require_grep 'actions/cache@v4' .github/workflows/ci.yml
 require_grep 'tests/\*\.sh' .github/workflows/ci.yml
 require_grep 'bash -n "\$script"' .github/workflows/ci.yml
-require_grep 'bash -n tests/test-hooks\.sh' scripts/run_contributor_gate.sh
+require_grep 'for script in install\.sh scripts/\*\.sh tests/\*\.sh' scripts/run_contributor_gate.sh
 if grep -R -E '2[,.]5 ?M(B|o|Б)' "$ROOT/AGENTS.md" "$ROOT/CONTRIBUTING.md" "$ROOT/docs" "$ROOT/scripts/release.md" >/dev/null; then
     fail "docs still advertise the old 2.5MB binary size"
 fi

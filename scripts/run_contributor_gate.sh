@@ -28,11 +28,10 @@ if [[ "$RELEASE_BINARY_BYTES" -gt "$MAX_RELEASE_BINARY_BYTES" ]]; then
 fi
 echo "Release binary size: ${RELEASE_BINARY_BYTES} bytes"
 
-echo "==> bash -n install.sh"
-bash -n install.sh
-
-echo "==> bash -n tests/test-hooks.sh"
-bash -n tests/test-hooks.sh
+echo "==> shell syntax"
+for script in install.sh scripts/*.sh tests/*.sh; do
+    bash -n "$script"
+done
 
 echo "==> scripts/transform.sh"
 ./scripts/transform.sh

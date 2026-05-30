@@ -142,6 +142,8 @@ fn contributor_gate_enforces_release_binary_size() {
     assert!(script.contains("MAX_RELEASE_BINARY_BYTES=$((5 * 1024 * 1024))"));
     assert!(script.contains("wc -c < \"$RELEASE_BINARY\""));
     assert!(script.contains("Release binary is too large"));
+    assert!(script.contains("for script in install.sh scripts/*.sh tests/*.sh"));
+    assert!(script.contains("bash -n \"$script\""));
 }
 
 #[test]
