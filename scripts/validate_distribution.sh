@@ -130,6 +130,8 @@ require_grep 'Claude Code, Codex, and OpenCode' README.md
 for i18n_readme in "$ROOT"/docs/i18n/README_*.md; do
     grep -q '/autoresearch:improve' "$i18n_readme" \
         || fail "${i18n_readme#"$ROOT"/} is missing /autoresearch:improve"
+    grep -q -- '--opencode' "$i18n_readme" \
+        || fail "${i18n_readme#"$ROOT"/} is missing OpenCode install instructions"
     ! grep -Eq '12 (comandos|команд|Befehle|commandes)|12個すべてのコマンド|12개 명령어|12 个命令|12 .*command' "$i18n_readme" \
         || fail "${i18n_readme#"$ROOT"/} still advertises 12 commands"
 done

@@ -77,6 +77,16 @@ $skill-installer install https://github.com/coder-company/agent-autoresearch
 
 Depois: `$autoresearch`
 
+### OpenCode
+
+```
+git clone https://github.com/coder-company/agent-autoresearch.git
+cd agent-autoresearch
+./install.sh --yes --opencode
+```
+
+Use: `/autoresearch` ou `/autoresearch_debug`.
+
 ### A partir do código-fonte
 
 ```bash

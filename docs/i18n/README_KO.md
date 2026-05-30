@@ -77,6 +77,16 @@ $skill-installer install https://github.com/coder-company/agent-autoresearch
 
 사용법: `$autoresearch`
 
+### OpenCode
+
+```
+git clone https://github.com/coder-company/agent-autoresearch.git
+cd agent-autoresearch
+./install.sh --yes --opencode
+```
+
+사용법: `/autoresearch` 또는 `/autoresearch_debug`
+
 ### 소스에서 빌드
 
 ```bash
