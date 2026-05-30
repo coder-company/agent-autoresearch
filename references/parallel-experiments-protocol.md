@@ -230,6 +230,7 @@ The batch file is a JSON array of worker objects:
     "worker_id": "a",
     "status": "completed",
     "metric": "38",
+    "metrics": {"coverage": "91", "failures": "0"},
     "guard": "pass",
     "commit": "abc1234",
     "description": "narrowed auth types",
@@ -239,6 +240,7 @@ The batch file is a JSON array of worker objects:
 ```
 
 `worker_id` uses lowercase letters (`a`, `b`, `c`). Completed workers require `metric`; kept winners also require `commit`. `guard` accepts `pass`, `fail`, or `skip`. `status` defaults to `completed` when omitted.
+When the run uses `metrics_json` or required keep criteria, workers should include `metrics` as the full JSON metric map. Parallel closeout applies the same required keep criteria as serial `autoresearch decide`; a worker that improves the primary metric but fails those criteria is logged as `discard`.
 
 ### JSON State Update for Parallel Batches
 

@@ -1347,6 +1347,8 @@ struct ParallelWorkerInput {
     #[serde(default)]
     metric: Option<serde_json::Value>,
     #[serde(default)]
+    metrics: Option<serde_json::Value>,
+    #[serde(default)]
     diff_size: Option<u64>,
 }
 
@@ -1417,6 +1419,24 @@ fn cmd_parallel_closeout(
 
     let next_iteration = state.iteration + 1;
     let current_metric = state.current_metric;
+    let (primary_metric_key, verify_format, required_keep_criteria) = match state.config.as_ref() {
+        Some(config) => (
+            config
+                .primary_metric_key
+                .clone()
+                .or_else(|| {
+                    if config.metric.trim().is_empty() {
+                        None
+                    } else {
+                        Some(config.metric.clone())
+                    }
+                })
+                .unwrap_or_else(|| "metric".to_string()),
+            config.verify_format,
+            config.required_keep_criteria.clone(),
+        ),
+        None => ("metric".to_string(), VerifyFormat::Scalar, Vec::new()),
+    };
     let mut records = Vec::with_capacity(batch.len());
     let mut candidates = Vec::new();
 
@@ -1433,16 +1453,34 @@ fn cmd_parallel_closeout(
                 let metric = parse_decimal_json(metric_value)
                     .with_context(|| format!("invalid metric for worker {}", item.worker_id))?;
                 let delta = metric - current_metric;
+                let trial_metrics = build_parallel_trial_metrics(
+                    metric,
+                    item.metrics.as_ref(),
+                    &primary_metric_key,
+                    verify_format,
+                )
+                .with_context(|| format!("invalid metrics for worker {}", item.worker_id))?;
+                let required_keep =
+                    criteria::evaluate_criteria(&required_keep_criteria, &trial_metrics);
+                let mut description = item.description;
                 let status = if guard == GuardResult::Fail {
                     IterationStatus::Discard
                 } else if state.direction.is_improvement(delta) {
-                    IterationStatus::Keep
+                    if required_keep.satisfied {
+                        IterationStatus::Keep
+                    } else {
+                        description = format!(
+                            "{description} [KEEP-CRITERIA miss] {}",
+                            required_keep.failures.join("; ")
+                        );
+                        IterationStatus::Discard
+                    }
                 } else {
                     IterationStatus::Discard
                 };
                 let record = ParallelWorkerRecord {
                     worker_id: item.worker_id,
-                    description: item.description,
+                    description,
                     commit: normalize_optional_commit(item.commit),
                     metric,
                     guard,
@@ -1661,6 +1699,30 @@ fn parse_decimal_json(value: &serde_json::Value) -> Result<Decimal> {
         _ => anyhow::bail!("metric must be a JSON string or number"),
     }
     .context("invalid decimal")
+}
+
+fn build_parallel_trial_metrics(
+    primary_metric: Decimal,
+    metrics: Option<&serde_json::Value>,
+    primary_metric_key: &str,
+    verify_format: VerifyFormat,
+) -> Result<BTreeMap<String, Decimal>> {
+    match metrics {
+        Some(value) => parse_parallel_metrics_object(value),
+        None => build_trial_metrics(primary_metric, None, primary_metric_key, verify_format),
+    }
+}
+
+fn parse_parallel_metrics_object(value: &serde_json::Value) -> Result<BTreeMap<String, Decimal>> {
+    let Some(object) = value.as_object() else {
+        anyhow::bail!("metrics must be a JSON object");
+    };
+    let mut metrics = BTreeMap::new();
+    for (key, value) in object {
+        let metric = parse_decimal_json(value).with_context(|| format!("invalid {key} metric"))?;
+        metrics.insert(key.clone(), metric);
+    }
+    Ok(metrics)
 }
 
 fn select_parallel_winner(

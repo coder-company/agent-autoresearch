@@ -1094,6 +1094,69 @@ fn test_parallel_closeout_discards_when_no_worker_improves() {
 }
 
 #[test]
+fn test_parallel_closeout_applies_required_keep_criteria() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "echo '{\"coverage\":10,\"errors\":0}'",
+            "--format",
+            "metrics_json",
+            "--key",
+            "coverage",
+            "--direction",
+            "higher",
+            "--required-keep-criteria",
+            r#"[{"metric_key":"errors","operator":"==","target":"0"}]"#,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let batch_path = dir.path().join("autoresearch-results/parallel-batch.json");
+    std::fs::write(
+        &batch_path,
+        r#"[
+  {"worker_id":"a","metric":"20","metrics":{"coverage":20,"errors":1},"guard":"pass","commit":"aaa1111","description":"raises coverage with error regression","diff_size":3},
+  {"worker_id":"b","metric":"15","metrics":{"coverage":15,"errors":0},"guard":"pass","commit":"bbb2222","description":"safe coverage gain","diff_size":8}
+]"#,
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "parallel",
+            "closeout",
+            "--batch-file",
+            batch_path.to_str().unwrap(),
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"selected_worker\": \"b\""))
+        .stdout(predicate::str::contains("\"decision\": \"keep\""));
+
+    let results =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/results.tsv")).unwrap();
+    assert!(results.contains(
+        "1a\t-\t20\t+10\tpass\tdiscard\t[PARALLEL worker-a] raises coverage with error regression [KEEP-CRITERIA miss] errors == 0 (actual 1)"
+    ));
+    assert!(results.contains(
+        "1\tbbb2222\t15\t+5\tpass\tkeep\t[PARALLEL batch] selected worker-b: safe coverage gain"
+    ));
+
+    let state =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap();
+    assert!(state.contains("\"current_metric\": \"15\""));
+}
+
+#[test]
 fn test_parallel_closeout_blocks_unexpected_dirty_worktree() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
