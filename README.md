@@ -161,11 +161,11 @@ Just type the command. It asks for what it needs.
 Every iteration is recorded in `autoresearch-results/results.tsv`:
 
 ```
-iteration  commit   metric  delta   status    description
-0          a1b2c3d  47      0       baseline  initial any count
-1          b2c3d4e  41      -6      keep      replace any in auth module
-2          -        49      +8      discard   generic wrapper introduced new anys
-3          d4e5f6g  38      -3      keep      type-narrow API response handlers
+iteration  commit   metric  delta   guard  status    description
+0          a1b2c3d  47      0       -      baseline  initial any count
+1          b2c3d4e  41      -6      pass   keep      replace any in auth module
+2          -        49      +8      -      discard   generic wrapper introduced new anys
+3          d4e5f6g  38      -3      pass   keep      type-narrow API response handlers
 ```
 
 Failed experiments revert from git but stay in the log. The log is the real audit trail.

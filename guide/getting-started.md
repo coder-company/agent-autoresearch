@@ -102,11 +102,11 @@ Look at `autoresearch-results/` in your project:
 **results.tsv** — every experiment, what changed, whether it helped:
 
 ```
-iteration  commit   metric  delta  status   description
-0          a1b2c3d  47      0      baseline initial state
-1          b2c3d4e  41      -6     keep     narrow auth types
-2          -        43      +2     discard  generic wrapper attempt
-3          c3d4e5f  38      -3     keep     type-narrow error handlers
+iteration  commit   metric  delta  guard  status   description
+0          a1b2c3d  47      0      -      baseline initial state
+1          b2c3d4e  41      -6     pass   keep     narrow auth types
+2          -        43      +2     -      discard  generic wrapper attempt
+3          c3d4e5f  38      -3     pass   keep     type-narrow error handlers
 ```
 
 **state.json** — where things stand right now (resumable if interrupted).
