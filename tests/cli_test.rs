@@ -695,6 +695,28 @@ fn test_health_blocks_missing_verify_command() {
 }
 
 #[test]
+fn test_health_blocks_unsafe_verify_command() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+
+    cmd()
+        .args([
+            "health",
+            "--verify",
+            "echo 'DROP TABLE users'",
+            "--min-free-mb",
+            "1",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .code(2)
+        .stdout(predicate::str::contains("\"decision\": \"block\""))
+        .stdout(predicate::str::contains("verify_command_unsafe"))
+        .stdout(predicate::str::contains("dangerous pattern"));
+}
+
+#[test]
 fn test_health_blocks_detached_head() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

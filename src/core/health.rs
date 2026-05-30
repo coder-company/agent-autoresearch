@@ -202,11 +202,19 @@ pub fn run_health_check(
         .filter(|command| !command.trim().is_empty());
 
     match effective_verify.as_deref() {
-        Some(command) if !verify::command_exists(command) => blockers.push(HealthFinding {
-            code: "verify_command_missing",
-            message: format!("verify command binary not found for: {command}"),
-        }),
-        Some(_) => {}
+        Some(command) => {
+            if let Err(err) = verify::screen_command(command) {
+                blockers.push(HealthFinding {
+                    code: "verify_command_unsafe",
+                    message: err.to_string(),
+                });
+            } else if !verify::command_exists(command) {
+                blockers.push(HealthFinding {
+                    code: "verify_command_missing",
+                    message: format!("verify command binary not found for: {command}"),
+                });
+            }
+        }
         None => warnings.push(HealthFinding {
             code: "verify_command_unknown",
             message: "no verify command supplied and none found in state.json".to_string(),
