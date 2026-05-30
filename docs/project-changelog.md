@@ -11,8 +11,8 @@ to the stronger autoresearch implementations:
 - Background runtime control through `autoresearch runtime run` and
   `runtime start/status/supervise/stop`
 - Live log monitoring through `autoresearch watch`
-- Parallel batch support through `autoresearch parallel template` and
-  `autoresearch parallel closeout`
+- Native parallel worker support through `autoresearch parallel prepare`, `run`,
+  `closeout`, and `cleanup`
 - Codex, Claude Code, and OpenCode installation paths
 - Distribution validation for generated command and skill packages
 - Binary smoke tests for installed skill instructions
