@@ -173,6 +173,13 @@ impl ResultsLog {
                 );
             }
             let main_iteration = columns[0].parse::<u32>().ok();
+            if main_iteration.is_none() && !is_valid_worker_iteration_label(columns[0]) {
+                anyhow::bail!(
+                    "results.tsv line {} has invalid iteration label {:?}",
+                    index + 1,
+                    columns[0]
+                );
+            }
             if let Some(iteration) = main_iteration {
                 if iteration != expected_main_iteration {
                     anyhow::bail!(
@@ -250,6 +257,17 @@ fn is_valid_status(value: &str) -> bool {
             | "refine"
             | "search"
     )
+}
+
+fn is_valid_worker_iteration_label(value: &str) -> bool {
+    let Some(suffix_start) = value.find(|ch: char| !ch.is_ascii_digit()) else {
+        return false;
+    };
+    let (main, suffix) = value.split_at(suffix_start);
+    !main.is_empty()
+        && main.parse::<u32>().is_ok()
+        && !suffix.is_empty()
+        && suffix.chars().all(|ch| ch.is_ascii_lowercase())
 }
 
 /// Generate a completion summary.
@@ -515,5 +533,23 @@ mod tests {
         let err = log.validate().unwrap_err().to_string();
 
         assert!(err.contains("baseline status after iteration 0"));
+    }
+
+    #[test]
+    fn test_validate_rejects_invalid_worker_iteration_label() {
+        let dir = tempfile::tempdir().unwrap();
+        let log = ResultsLog::create(dir.path(), Direction::Higher).unwrap();
+        fs::write(
+            log.path(),
+            format!(
+                "{}\n0\tbase\t10\t0\t-\tbaseline\tbaseline\nworker\tabc1234\t11\t+1\tpass\tkeep\tbad label\n",
+                tsv_header(Direction::Higher)
+            ),
+        )
+        .unwrap();
+
+        let err = log.validate().unwrap_err().to_string();
+
+        assert!(err.contains("invalid iteration label"));
     }
 }
