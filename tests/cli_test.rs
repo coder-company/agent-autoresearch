@@ -1847,6 +1847,38 @@ fn test_resume_blocks_corrupt_results_with_valid_state() {
 }
 
 #[test]
+fn test_resume_blocks_missing_results_with_valid_state() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    std::fs::remove_file(dir.path().join("autoresearch-results/results.tsv")).unwrap();
+
+    cmd()
+        .args(["resume", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"resumable\": false"))
+        .stdout(predicate::str::contains("\"reason\": \"missing_results\""))
+        .stdout(predicate::str::contains(
+            "\"recommendation\": \"fresh_start\"",
+        ));
+}
+
+#[test]
 fn test_runtime_start_status_stop_dry_run() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

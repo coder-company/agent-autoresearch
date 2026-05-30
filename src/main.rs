@@ -2079,18 +2079,25 @@ fn cmd_resume(cwd: Option<PathBuf>) -> Result<()> {
         }
     };
     let tsv_path = results_dir.join("results.tsv");
-    if tsv_path.exists() {
-        let log = ResultsLog::open(tsv_path)?;
-        if let Err(err) = log.validate() {
-            let out = serde_json::json!({
-                "resumable": false,
-                "recommendation": "fresh_start",
-                "reason": "results_corrupt",
-                "error": err.to_string(),
-            });
-            println!("{}", serde_json::to_string_pretty(&out)?);
-            return Ok(());
-        }
+    if !tsv_path.exists() {
+        let out = serde_json::json!({
+            "resumable": false,
+            "recommendation": "fresh_start",
+            "reason": "missing_results",
+        });
+        println!("{}", serde_json::to_string_pretty(&out)?);
+        return Ok(());
+    }
+    let log = ResultsLog::open(tsv_path)?;
+    if let Err(err) = log.validate() {
+        let out = serde_json::json!({
+            "resumable": false,
+            "recommendation": "fresh_start",
+            "reason": "results_corrupt",
+            "error": err.to_string(),
+        });
+        println!("{}", serde_json::to_string_pretty(&out)?);
+        return Ok(());
     }
 
     let is_resumable = matches!(
