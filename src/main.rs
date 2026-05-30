@@ -1228,6 +1228,10 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
         .iter()
         .filter(|row| is_keep_status(&row.status))
         .count();
+    let reworked_keeps = metrics
+        .iter()
+        .filter(|row| row.status == "keep (reworked)")
+        .count();
     let discards = metrics.iter().filter(|row| row.status == "discard").count();
     let crashes = metrics
         .iter()
@@ -1366,6 +1370,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 "direction": direction,
                 "total_iterations": total_iterations,
                 "keeps": keeps,
+                "reworked_keeps": reworked_keeps,
                 "discards": discards,
                 "crashes": crashes,
                 "guard_failures": guard_failures,
@@ -1398,6 +1403,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 direction,
                 total_iterations,
                 keeps,
+                reworked_keeps,
                 discards,
                 crashes,
                 guard_failures,
@@ -1424,6 +1430,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 direction,
                 total_iterations,
                 keeps,
+                reworked_keeps,
                 discards,
                 crashes,
                 guard_failures,
@@ -1531,6 +1538,7 @@ struct EvalsReport<'a> {
     direction: &'a str,
     total_iterations: usize,
     keeps: usize,
+    reworked_keeps: usize,
     discards: usize,
     crashes: usize,
     guard_failures: usize,
@@ -1559,6 +1567,7 @@ fn render_evals_markdown(report: EvalsReport<'_>) -> String {
     writeln!(out, "| Direction | {} |", report.direction).unwrap();
     writeln!(out, "| Iterations | {} |", report.total_iterations).unwrap();
     writeln!(out, "| Kept | {} |", report.keeps).unwrap();
+    writeln!(out, "| Reworked keeps | {} |", report.reworked_keeps).unwrap();
     writeln!(out, "| Discarded | {} |", report.discards).unwrap();
     writeln!(out, "| Crashes | {} |", report.crashes).unwrap();
     writeln!(out, "| Guard failures | {} |", report.guard_failures).unwrap();
