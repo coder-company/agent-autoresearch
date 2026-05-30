@@ -386,6 +386,18 @@ enum RuntimeCommands {
 
 #[derive(Subcommand)]
 enum ParallelCommands {
+    /// Generate an editable worker batch JSON template for parallel closeout
+    Template {
+        /// Number of workers to include in the template
+        #[arg(long, default_value_t = 3, value_parser = clap::value_parser!(u8).range(1..=3))]
+        workers: u8,
+        /// Optional output file. Relative paths resolve from the run workspace.
+        #[arg(long)]
+        output: Option<PathBuf>,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
     /// Select the best worker result and record the batch as one authoritative iteration
     Closeout {
         /// JSON array of worker results
@@ -1947,6 +1959,34 @@ fn default_completed_status() -> String {
 
 fn cmd_parallel(command: ParallelCommands) -> Result<()> {
     match command {
+        ParallelCommands::Template {
+            workers,
+            output,
+            cwd,
+        } => {
+            let workspace = resolve_results_workspace(cwd);
+            let template = parallel_batch_template(workers);
+            let content = serde_json::to_string_pretty(&template)?;
+            if let Some(output) = output {
+                let output_path = if output.is_absolute() {
+                    output
+                } else {
+                    workspace.join(output)
+                };
+                if let Some(parent) = output_path.parent() {
+                    std::fs::create_dir_all(parent)?;
+                }
+                std::fs::write(&output_path, format!("{content}\n"))?;
+                let out = serde_json::json!({
+                    "status": "ok",
+                    "workers": workers,
+                    "path": output_path.display().to_string(),
+                });
+                println!("{}", serde_json::to_string_pretty(&out)?);
+            } else {
+                println!("{content}");
+            }
+        }
         ParallelCommands::Closeout { batch_file, cwd } => {
             let workspace = resolve_results_workspace(cwd);
             let out = cmd_parallel_closeout(&workspace, &batch_file)?;
@@ -1954,6 +1994,26 @@ fn cmd_parallel(command: ParallelCommands) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn parallel_batch_template(workers: u8) -> serde_json::Value {
+    let rows = (0..workers)
+        .map(|index| {
+            let worker_id = ((b'a' + index) as char).to_string();
+            serde_json::json!({
+                "worker_id": worker_id,
+                "status": "completed",
+                "metric": "<required>",
+                "metrics": {},
+                "guard": "skip",
+                "commit": "<required-if-keepable>",
+                "description": format!("worker-{worker_id} result summary"),
+                "diff_size": 0,
+                "labels": [],
+            })
+        })
+        .collect::<Vec<_>>();
+    serde_json::Value::Array(rows)
 }
 
 fn cmd_parallel_closeout(

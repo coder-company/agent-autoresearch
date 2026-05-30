@@ -4533,6 +4533,77 @@ fn test_runtime_supervise_requires_stop_label_for_stop_condition() {
 // ── Parallel Command ─────────────────────────────────────────────────
 
 #[test]
+fn test_parallel_template_prints_worker_schema() {
+    cmd()
+        .args(["parallel", "template", "--workers", "2"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"worker_id\": \"a\""))
+        .stdout(predicate::str::contains("\"worker_id\": \"b\""))
+        .stdout(predicate::str::contains("\"metric\": \"<required>\""))
+        .stdout(predicate::str::contains("\"worker_id\": \"c\"").not());
+}
+
+#[test]
+fn test_parallel_template_writes_relative_to_workspace() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "lower",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "parallel",
+            "template",
+            "--workers",
+            "2",
+            "--output",
+            "autoresearch-results/parallel-template.json",
+            "--cwd",
+            subdir.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"workers\": 2"))
+        .stdout(predicate::str::contains("parallel-template.json"));
+
+    let template_path = dir
+        .path()
+        .join("autoresearch-results/parallel-template.json");
+    let template: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(template_path).unwrap()).unwrap();
+    assert_eq!(template.as_array().unwrap().len(), 2);
+    assert_eq!(template[0]["worker_id"], "a");
+    assert_eq!(template[1]["description"], "worker-b result summary");
+    assert!(!subdir
+        .join("autoresearch-results/parallel-template.json")
+        .exists());
+}
+
+#[test]
+fn test_parallel_template_rejects_too_many_workers() {
+    cmd()
+        .args(["parallel", "template", "--workers", "4"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("invalid value"));
+}
+
+#[test]
 fn test_parallel_closeout_selects_best_worker() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
