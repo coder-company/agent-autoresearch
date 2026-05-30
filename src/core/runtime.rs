@@ -292,8 +292,23 @@ pub fn supervise_runtime(
         }
     }
 
-    let (decision, reason, terminal_reason) =
-        supervisor_decision(&state, stagnation_count, max_stagnation);
+    let (decision, reason, terminal_reason) = if snapshot.status == "needs_human" {
+        (
+            "needs_human".to_string(),
+            snapshot
+                .supervisor
+                .as_ref()
+                .map(|status| status.reason.clone())
+                .unwrap_or_else(|| "runtime_needs_human".to_string()),
+            snapshot
+                .supervisor
+                .as_ref()
+                .map(|status| status.terminal_reason.clone())
+                .unwrap_or_else(|| "runtime_needs_human".to_string()),
+        )
+    } else {
+        supervisor_decision(&state, stagnation_count, max_stagnation)
+    };
     if after_run && decision == "relaunch" {
         restart_count += 1;
     }

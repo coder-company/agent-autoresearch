@@ -569,6 +569,13 @@ fn test_runtime_start_records_spawn_failure() {
     assert!(runtime.contains("\"status\": \"needs_human\""));
     assert!(runtime.contains("\"reason\": \"spawn_failed\""));
     assert!(runtime.contains("definitely-missing-codex-for-autoresearch-test"));
+
+    cmd()
+        .args(["runtime", "supervise", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"needs_human\""))
+        .stdout(predicate::str::contains("\"reason\": \"spawn_failed\""));
 }
 
 #[test]
