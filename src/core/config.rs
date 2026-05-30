@@ -128,6 +128,7 @@ pub enum Mode {
     Learn,
     Reason,
     Probe,
+    Improve,
     Evals,
     Exec,
 }
@@ -143,7 +144,9 @@ impl Mode {
             Mode::Learn => Some(10),
             Mode::Reason => Some(8),
             Mode::Probe => Some(15),
-            Mode::Plan | Mode::Ship | Mode::Predict | Mode::Evals | Mode::Exec => None,
+            Mode::Plan | Mode::Ship | Mode::Predict | Mode::Improve | Mode::Evals | Mode::Exec => {
+                None
+            }
         }
     }
 
@@ -160,6 +163,7 @@ impl Mode {
             Mode::Learn => "learn",
             Mode::Reason => "reason",
             Mode::Probe => "probe",
+            Mode::Improve => "improve",
             Mode::Evals => "evals",
             Mode::Exec => "exec",
         }
@@ -184,7 +188,13 @@ mod tests {
         assert_eq!(Mode::Plan.default_iterations(), None);
         assert_eq!(Mode::Ship.default_iterations(), None);
         assert_eq!(Mode::Predict.default_iterations(), None);
+        assert_eq!(Mode::Improve.default_iterations(), None);
         assert_eq!(Mode::Evals.default_iterations(), None);
         assert_eq!(Mode::Exec.default_iterations(), None);
+    }
+
+    #[test]
+    fn mode_catalog_includes_improve() {
+        assert_eq!(Mode::Improve.as_str(), "improve");
     }
 }
