@@ -300,6 +300,33 @@ fn test_init_persists_runtime_config() {
     assert!(state.contains("\"rollback_strategy\": \"hard_reset\""));
 }
 
+#[test]
+fn test_resume_reports_baseline_as_resumable() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["resume", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"resumable\": true"))
+        .stdout(predicate::str::contains("\"recommendation\": \"resume\""));
+}
+
 fn init_git_fixture(dir: &TempDir) {
     let path = dir.path();
     std::process::Command::new("git")

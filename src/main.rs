@@ -1107,7 +1107,10 @@ fn cmd_resume(cwd: Option<PathBuf>) -> Result<()> {
 
     let state: RunState = serde_json::from_str(&std::fs::read_to_string(&state_path)?)?;
 
-    let is_iterating = matches!(state.phase, RunPhase::Iterating { .. });
+    let is_resumable = matches!(
+        state.phase,
+        RunPhase::Baseline { .. } | RunPhase::Iterating { .. }
+    );
 
     // Read last 5 rows from results.tsv
     let tsv_path = results_dir.join("results.tsv");
@@ -1138,14 +1141,14 @@ fn cmd_resume(cwd: Option<PathBuf>) -> Result<()> {
         vec![]
     };
 
-    let recommendation = if is_iterating && state.consecutive_discards < 10 {
+    let recommendation = if is_resumable && state.consecutive_discards < 10 {
         "resume"
     } else {
         "fresh_start"
     };
 
     let out = serde_json::json!({
-        "resumable": is_iterating,
+        "resumable": is_resumable,
         "iteration": state.iteration,
         "current_metric": state.current_metric.to_string(),
         "best_metric": state.best_metric.to_string(),
