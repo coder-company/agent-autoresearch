@@ -58,6 +58,7 @@ required_paths=(
     hooks/hooks.json
     install.sh
     scripts/run_contributor_gate.sh
+    scripts/run_skill_e2e.sh
     scripts/transform.sh
     guide/README.md
     guide/autoresearch-codex.md
