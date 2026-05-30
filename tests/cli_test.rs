@@ -538,6 +538,7 @@ fn test_runtime_supervise_stops_at_iteration_cap() {
         .assert()
         .success()
         .stdout(predicate::str::contains("\"decision\": \"stop\""))
+        .stdout(predicate::str::contains("\"status\": \"stopped\""))
         .stdout(predicate::str::contains(
             "\"terminal_reason\": \"iteration_cap\"",
         ))

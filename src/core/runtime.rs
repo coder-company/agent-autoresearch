@@ -264,6 +264,17 @@ pub fn supervise_runtime(
         checked_at: Utc::now().to_rfc3339(),
     };
 
+    match status.decision.as_str() {
+        "stop" => {
+            snapshot.status = "stopped".to_string();
+            snapshot.stopped_at.get_or_insert_with(|| Utc::now().to_rfc3339());
+        }
+        "needs_human" => {
+            snapshot.status = "needs_human".to_string();
+            snapshot.last_error = Some(status.reason.clone());
+        }
+        _ => {}
+    }
     snapshot.supervisor = Some(status.clone());
     write_runtime_snapshot(&paths.runtime_path, &snapshot)?;
     Ok((snapshot, status))
