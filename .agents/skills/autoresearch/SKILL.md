@@ -95,6 +95,7 @@ Use the binary decision/log command to append `autoresearch-results/results.tsv`
 ## References
 
 Load only what the current mode requires:
+- `references/core-principles.md` — 8 foundational rules
 - `references/security-checklist.md` — STRIDE + OWASP tables
 - `references/predict-personas.md` — Expert persona definitions
 - `references/reason-judge-protocol.md` — Adversarial debate judge protocol
