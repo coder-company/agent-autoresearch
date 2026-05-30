@@ -5,6 +5,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as FmtWrite;
 use std::path::Path;
 use std::path::PathBuf;
+use std::process::Command;
 use std::str::FromStr;
 
 use autoresearch::core::config::{Direction, RollbackStrategy, RunConfig, RunMode, VerifyFormat};
@@ -386,6 +387,27 @@ enum RuntimeCommands {
 
 #[derive(Subcommand)]
 enum ParallelCommands {
+    /// Create isolated git worktrees and worker result files for a parallel batch
+    Prepare {
+        /// Number of workers to prepare
+        #[arg(long, default_value_t = 3, value_parser = clap::value_parser!(u8).range(1..=3))]
+        workers: u8,
+        /// Directory for worker worktrees. Relative paths resolve from the run workspace.
+        #[arg(long)]
+        worktree_root: Option<PathBuf>,
+        /// Output manifest path. Relative paths resolve from the run workspace.
+        #[arg(long)]
+        manifest: Option<PathBuf>,
+        /// Output worker batch JSON path. Relative paths resolve from the run workspace.
+        #[arg(long)]
+        batch_file: Option<PathBuf>,
+        /// Branch name prefix for worker branches
+        #[arg(long, default_value = "autoresearch/parallel")]
+        branch_prefix: String,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
     /// Generate an editable worker batch JSON template for parallel closeout
     Template {
         /// Number of workers to include in the template
@@ -1959,6 +1981,25 @@ fn default_completed_status() -> String {
 
 fn cmd_parallel(command: ParallelCommands) -> Result<()> {
     match command {
+        ParallelCommands::Prepare {
+            workers,
+            worktree_root,
+            manifest,
+            batch_file,
+            branch_prefix,
+            cwd,
+        } => {
+            let workspace = resolve_results_workspace(cwd);
+            let out = cmd_parallel_prepare(
+                &workspace,
+                workers,
+                worktree_root,
+                manifest,
+                batch_file,
+                &branch_prefix,
+            )?;
+            println!("{}", serde_json::to_string_pretty(&out)?);
+        }
         ParallelCommands::Template {
             workers,
             output,
@@ -1994,6 +2035,124 @@ fn cmd_parallel(command: ParallelCommands) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn cmd_parallel_prepare(
+    workspace: &Path,
+    workers: u8,
+    worktree_root: Option<PathBuf>,
+    manifest: Option<PathBuf>,
+    batch_file: Option<PathBuf>,
+    branch_prefix: &str,
+) -> Result<serde_json::Value> {
+    let health = health::run_health_check(workspace, None, 500)?;
+    if health.has_blockers() {
+        let codes = health
+            .blockers
+            .iter()
+            .map(|finding| finding.code)
+            .collect::<Vec<_>>()
+            .join(", ");
+        anyhow::bail!("parallel prepare preflight blocked: {codes}");
+    }
+    let git = GitRepo::open(workspace)?;
+    if let WorktreeStatus::Dirty(files) = git.worktree_status()? {
+        anyhow::bail!(
+            "parallel prepare preflight blocked: unexpected worktree changes before parallel prepare: {}",
+            files.join(", ")
+        );
+    }
+
+    let results_dir = workspace.join("autoresearch-results");
+    let state_path = results_dir.join("state.json");
+    let state: RunState = serde_json::from_str(
+        &std::fs::read_to_string(&state_path)
+            .with_context(|| format!("failed to read {}", state_path.display()))?,
+    )?;
+    let next_iteration = state.iteration + 1;
+    let base_commit = git.head_full()?;
+    let worktree_root = resolve_workspace_path(
+        workspace,
+        worktree_root.unwrap_or_else(|| {
+            PathBuf::from(format!(
+                "autoresearch-results/parallel-worktrees/iteration-{next_iteration}"
+            ))
+        }),
+    );
+    let manifest_path = resolve_workspace_path(
+        workspace,
+        manifest.unwrap_or_else(|| PathBuf::from("autoresearch-results/parallel-manifest.json")),
+    );
+    let batch_path = resolve_workspace_path(
+        workspace,
+        batch_file.unwrap_or_else(|| PathBuf::from("autoresearch-results/parallel-workers.json")),
+    );
+
+    std::fs::create_dir_all(&worktree_root)
+        .with_context(|| format!("failed to create {}", worktree_root.display()))?;
+
+    for index in 0..workers {
+        let worker_id = ((b'a' + index) as char).to_string();
+        let branch = format!("{branch_prefix}-{next_iteration}-{worker_id}");
+        let worktree = worktree_root.join(format!("worker-{worker_id}"));
+        if worktree.exists() {
+            anyhow::bail!(
+                "parallel worker worktree already exists: {}",
+                worktree.display()
+            );
+        }
+        if git_branch_exists(workspace, &branch)? {
+            anyhow::bail!("parallel worker branch already exists: {branch}");
+        }
+    }
+
+    let mut worker_entries = Vec::new();
+    for index in 0..workers {
+        let worker_id = ((b'a' + index) as char).to_string();
+        let branch = format!("{branch_prefix}-{next_iteration}-{worker_id}");
+        let worktree = worktree_root.join(format!("worker-{worker_id}"));
+        run_git_command(
+            workspace,
+            &[
+                "worktree".to_string(),
+                "add".to_string(),
+                "-b".to_string(),
+                branch.clone(),
+                worktree.display().to_string(),
+                base_commit.clone(),
+            ],
+        )
+        .with_context(|| format!("failed to create worker-{worker_id} worktree"))?;
+        copy_pointer_to_worker(workspace, &worktree)?;
+        worker_entries.push(serde_json::json!({
+            "worker_id": worker_id,
+            "branch": branch,
+            "worktree": worktree.display().to_string(),
+            "status": "prepared",
+        }));
+    }
+
+    let manifest_json = serde_json::json!({
+        "version": 1,
+        "status": "prepared",
+        "iteration": next_iteration,
+        "base_commit": base_commit,
+        "workspace": workspace.display().to_string(),
+        "worktree_root": worktree_root.display().to_string(),
+        "batch_file": batch_path.display().to_string(),
+        "workers": worker_entries,
+    });
+    write_json_file(&manifest_path, &manifest_json)?;
+    write_json_file(&batch_path, &parallel_batch_template(workers))?;
+
+    Ok(serde_json::json!({
+        "status": "ok",
+        "iteration": next_iteration,
+        "base_commit": manifest_json["base_commit"],
+        "manifest": manifest_path.display().to_string(),
+        "batch_file": batch_path.display().to_string(),
+        "workers": manifest_json["workers"],
+    }))
 }
 
 fn parallel_batch_template(workers: u8) -> serde_json::Value {
@@ -3167,6 +3326,73 @@ fn pointer_results_workspace(repo: &Path) -> Option<PathBuf> {
         return Some(workspace);
     }
     None
+}
+
+fn resolve_workspace_path(workspace: &Path, path: PathBuf) -> PathBuf {
+    if path.is_absolute() {
+        path
+    } else {
+        workspace.join(path)
+    }
+}
+
+fn write_json_file(path: &Path, value: &serde_json::Value) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create {}", parent.display()))?;
+    }
+    std::fs::write(path, format!("{}\n", serde_json::to_string_pretty(value)?))
+        .with_context(|| format!("failed to write {}", path.display()))
+}
+
+fn run_git_command(workspace: &Path, args: &[String]) -> Result<()> {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(workspace)
+        .args(args)
+        .output()
+        .context("failed to run git")?;
+    if !output.status.success() {
+        anyhow::bail!(
+            "git {} failed: {}{}",
+            args.join(" "),
+            String::from_utf8_lossy(&output.stderr),
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+    Ok(())
+}
+
+fn git_branch_exists(workspace: &Path, branch: &str) -> Result<bool> {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(workspace)
+        .args(["show-ref", "--verify", "--quiet"])
+        .arg(format!("refs/heads/{branch}"))
+        .output()
+        .context("failed to inspect git branch")?;
+    match output.status.code() {
+        Some(0) => Ok(true),
+        Some(1) => Ok(false),
+        _ => anyhow::bail!(
+            "git show-ref failed: {}{}",
+            String::from_utf8_lossy(&output.stderr),
+            String::from_utf8_lossy(&output.stdout)
+        ),
+    }
+}
+
+fn copy_pointer_to_worker(workspace: &Path, worktree: &Path) -> Result<()> {
+    let pointer = workspace.join(".codex-autoresearch/pointer.json");
+    if !pointer.exists() {
+        return Ok(());
+    }
+    let worker_pointer_dir = worktree.join(".codex-autoresearch");
+    std::fs::create_dir_all(&worker_pointer_dir)
+        .with_context(|| format!("failed to create {}", worker_pointer_dir.display()))?;
+    std::fs::copy(&pointer, worker_pointer_dir.join("pointer.json"))
+        .with_context(|| format!("failed to copy {}", pointer.display()))?;
+    Ok(())
 }
 
 fn default_results_tsv(cwd: &Path) -> Option<PathBuf> {

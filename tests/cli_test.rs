@@ -4604,6 +4604,95 @@ fn test_parallel_template_rejects_too_many_workers() {
 }
 
 #[test]
+fn test_parallel_prepare_creates_worker_worktrees_and_files() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+    write_metric_and_commit(&dir, "41\n");
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "lower",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "parallel",
+            "prepare",
+            "--workers",
+            "2",
+            "--branch-prefix",
+            "ar/test",
+            "--manifest",
+            "autoresearch-results/custom-manifest.json",
+            "--batch-file",
+            "autoresearch-results/custom-workers.json",
+            "--cwd",
+            subdir.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\": \"ok\""))
+        .stdout(predicate::str::contains("\"iteration\": 1"))
+        .stdout(predicate::str::contains("\"worker_id\": \"a\""))
+        .stdout(predicate::str::contains("\"worker_id\": \"b\""));
+
+    let manifest_path = dir.path().join("autoresearch-results/custom-manifest.json");
+    let manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(manifest_path).unwrap()).unwrap();
+    assert_eq!(manifest["status"], "prepared");
+    assert_eq!(manifest["workers"].as_array().unwrap().len(), 2);
+    assert_eq!(manifest["workers"][0]["branch"], "ar/test-1-a");
+    assert_eq!(manifest["workers"][1]["branch"], "ar/test-1-b");
+
+    let batch_path = dir.path().join("autoresearch-results/custom-workers.json");
+    let batch: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(batch_path).unwrap()).unwrap();
+    assert_eq!(batch.as_array().unwrap().len(), 2);
+    assert_eq!(batch[0]["metric"], "<required>");
+
+    for worker in ["a", "b"] {
+        let worktree = dir.path().join(format!(
+            "autoresearch-results/parallel-worktrees/iteration-1/worker-{worker}"
+        ));
+        assert!(worktree.join(".git").exists());
+        assert!(worktree.join(".codex-autoresearch/pointer.json").exists());
+        let branch = std::process::Command::new("git")
+            .args([
+                "-C",
+                worktree.to_str().unwrap(),
+                "rev-parse",
+                "--abbrev-ref",
+                "HEAD",
+            ])
+            .output()
+            .unwrap();
+        assert!(branch.status.success());
+        assert_eq!(
+            String::from_utf8_lossy(&branch.stdout).trim(),
+            format!("ar/test-1-{worker}")
+        );
+    }
+
+    let status = std::process::Command::new("git")
+        .args(["-C", root, "status", "--short"])
+        .output()
+        .unwrap();
+    assert!(status.status.success());
+    assert_eq!(String::from_utf8_lossy(&status.stdout), "");
+}
+
+#[test]
 fn test_parallel_closeout_selects_best_worker() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
