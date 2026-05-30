@@ -29,3 +29,16 @@ fn codex_installer_uses_maintained_agents_package() {
     assert!(script.contains("$REPO_DIR/.agents/skills/autoresearch"));
     assert!(script.contains("cp -R \"$REPO_DIR/.agents/skills/autoresearch/.\" \"$skill_dir/\""));
 }
+
+#[test]
+fn codex_plugin_installer_uses_local_marketplace_package() {
+    let script = include_str!("../install.sh");
+
+    assert!(script.contains("--codex-plugin"));
+    assert!(script.contains("INSTALL_CODEX_PLUGIN=1"));
+    assert!(script.contains("$REPO_DIR/.agents/plugins/marketplace.json"));
+    assert!(script.contains("$REPO_DIR/plugins/autoresearch/.codex-plugin/plugin.json"));
+    assert!(script
+        .contains("codex plugin marketplace add \"$REPO_DIR/.agents/plugins/marketplace.json\""));
+    assert!(script.contains("codex plugin install autoresearch@autoresearch-local"));
+}

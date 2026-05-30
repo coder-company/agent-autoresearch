@@ -133,6 +133,8 @@ require_grep 'environment-summary' references/environment-awareness.md
 require_grep 'environment-summary' commands/autoresearch.md
 require_grep 'codex plugin marketplace add \.agents/plugins/marketplace\.json' docs/INSTALL.md
 require_grep 'codex plugin marketplace add \.agents/plugins/marketplace\.json' guide/autoresearch-codex.md
+require_grep '\-\-codex-plugin' docs/INSTALL.md
+require_grep '\-\-codex-plugin' install.sh
 require_grep 'plugins/autoresearch' docs/codebase-summary.md
 
 check_synced_reference_package "$ROOT/.agents/skills/autoresearch"

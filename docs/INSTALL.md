@@ -42,6 +42,12 @@ cd agent-autoresearch
 
 The installer copies `.agents/skills/autoresearch/` and validates the target path before replacing the installed skill directory.
 
+To install the local Codex plugin package through the installer:
+
+```bash
+./install.sh --yes --codex-plugin
+```
+
 Local plugin package:
 
 ```bash

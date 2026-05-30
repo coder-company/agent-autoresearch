@@ -20,6 +20,7 @@ COMPONENT_FLAGS_SET=0
 INSTALL_CLAUDE=0
 INSTALL_OPENCODE=0
 INSTALL_CODEX=0
+INSTALL_CODEX_PLUGIN=0
 OPENCODE_DIR=""
 CODEX_SKILL_DIR=""
 
@@ -69,11 +70,16 @@ parse_args() {
                 COMPONENT_FLAGS_SET=1
                 INSTALL_CODEX=1
                 ;;
+            --codex-plugin)
+                COMPONENT_FLAGS_SET=1
+                INSTALL_CODEX_PLUGIN=1
+                ;;
             --all)
                 COMPONENT_FLAGS_SET=1
                 INSTALL_CLAUDE=1
                 INSTALL_OPENCODE=1
                 INSTALL_CODEX=1
+                INSTALL_CODEX_PLUGIN=1
                 ;;
             --opencode-dir)
                 shift
@@ -398,6 +404,43 @@ install_codex_skill() {
     fi
 }
 
+install_codex_plugin_package() {
+    header "Codex Plugin Package"
+
+    if [[ ! -f "$REPO_DIR/.agents/plugins/marketplace.json" ]]; then
+        err "Missing .agents/plugins/marketplace.json — cannot install Codex plugin package."
+        return 1
+    fi
+    if [[ ! -f "$REPO_DIR/plugins/autoresearch/.codex-plugin/plugin.json" ]]; then
+        err "Missing plugins/autoresearch/.codex-plugin/plugin.json — cannot install Codex plugin package."
+        return 1
+    fi
+
+    if component_enabled "CODEX_PLUGIN" "  Install Codex plugin package? [Y/n] "; then
+            if command -v codex &>/dev/null; then
+                info "Registering local Codex marketplace..."
+                codex plugin marketplace add "$REPO_DIR/.agents/plugins/marketplace.json" || {
+                    warn "Marketplace add failed. You can run it manually:"
+                    echo "    codex plugin marketplace add $REPO_DIR/.agents/plugins/marketplace.json"
+                }
+                info "Installing autoresearch plugin..."
+                codex plugin install autoresearch@autoresearch-local || {
+                    warn "Plugin install failed. You can run it manually after adding the marketplace:"
+                    echo "    codex plugin install autoresearch@autoresearch-local"
+                }
+            else
+                info "Codex CLI not found. Install the plugin manually:"
+                echo ""
+                echo "    codex plugin marketplace add $REPO_DIR/.agents/plugins/marketplace.json"
+                echo "    codex plugin install autoresearch@autoresearch-local"
+            fi
+            echo ""
+            echo '  Use: $autoresearch'
+    else
+        info "Skipping Codex plugin package install."
+    fi
+}
+
 # ── Help ──────────────────────────────────────────────────────────────
 
 show_help() {
@@ -412,6 +455,7 @@ show_help() {
     echo "  --claude                  Install Claude Code plugin assets"
     echo "  --opencode                Install OpenCode assets"
     echo "  --codex                   Install Codex skill"
+    echo "  --codex-plugin            Install local Codex plugin package"
     echo "  --all                     Install all optional agent assets"
     echo "  --opencode-dir PATH       Override OpenCode config directory"
     echo "  --codex-dir PATH          Override Codex skill target directory"
@@ -425,6 +469,7 @@ show_help() {
     echo "  5. Optionally installs Claude Code plugin"
     echo "  6. Optionally installs OpenCode assets"
     echo "  7. Optionally installs Codex skill"
+    echo "  8. Optionally installs Codex plugin package"
     echo ""
     echo "Requirements: bash, git, curl (for rustup install)"
     exit 0
@@ -447,6 +492,7 @@ main() {
     install_claude_plugin
     install_opencode_assets
     install_codex_skill
+    install_codex_plugin_package
 
     echo ""
     header "Done!"

@@ -51,7 +51,7 @@ cd agent-autoresearch
 ```
 
 The installer copies the maintained Codex skill package from `.agents/skills/autoresearch/` and refuses unsafe install targets before replacing the skill directory.
-The plugin marketplace path installs `plugins/autoresearch/`, which is generated from the same `.agents` skill package and includes Codex plugin metadata.
+Use `./install.sh --yes --codex-plugin` instead when you want the local plugin marketplace flow. The plugin marketplace path installs `plugins/autoresearch/`, which is generated from the same `.agents` skill package and includes Codex plugin metadata.
 
 ## First Run
 
