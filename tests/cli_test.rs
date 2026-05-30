@@ -450,6 +450,47 @@ fn test_runtime_start_status_stop_dry_run() {
 }
 
 #[test]
+fn test_runtime_start_blocks_on_health_preflight() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--run-mode",
+            "background",
+            "--workspace-root",
+            root,
+            "--primary-repo",
+            root,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    std::fs::remove_file(dir.path().join("autoresearch-results/results.tsv")).unwrap();
+
+    cmd()
+        .args(["runtime", "start", "--dry-run", "--cwd", root])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("runtime preflight blocked"))
+        .stderr(predicate::str::contains("missing_results"));
+
+    assert!(!dir.path().join("autoresearch-results/launch.json").exists());
+    assert!(!dir
+        .path()
+        .join("autoresearch-results/runtime.json")
+        .exists());
+}
+
+#[test]
 fn test_runtime_supervise_relaunches_after_non_terminal_run() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

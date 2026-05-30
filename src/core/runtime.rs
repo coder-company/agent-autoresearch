@@ -12,6 +12,7 @@ use std::str::FromStr;
 
 use super::config::RunConfig;
 use super::criteria::evaluate_criteria;
+use super::health;
 use super::results::{ensure_results_dir_protected, results_dir};
 use super::state::{RunPhase, RunState, StopReason};
 
@@ -134,6 +135,17 @@ pub fn start_runtime(
     codex_bin: &str,
     dry_run: bool,
 ) -> Result<(LaunchManifest, RuntimeSnapshot)> {
+    let health = health::run_health_check(workspace, None, 500)?;
+    if health.has_blockers() {
+        let codes = health
+            .blockers
+            .iter()
+            .map(|finding| finding.code)
+            .collect::<Vec<_>>()
+            .join(", ");
+        anyhow::bail!("runtime preflight blocked: {codes}");
+    }
+
     let manifest = create_launch_manifest(workspace, execution_policy, codex_bin)?;
     let paths = write_launch_manifest(workspace, &manifest)?;
 
