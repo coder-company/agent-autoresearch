@@ -474,6 +474,39 @@ fn test_handoff_defaults_to_repo_root_results_from_subdir() {
 }
 
 #[test]
+fn test_exec_defaults_to_repo_root_from_subdir() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+    let config = serde_json::json!({
+        "goal": "measure root metric",
+        "scope": ["metric.txt"],
+        "metric": "score",
+        "direction": "higher",
+        "verify": "cat metric.txt"
+    });
+
+    cmd()
+        .args([
+            "exec",
+            "--iterations",
+            "1",
+            "--cwd",
+            subdir.to_str().unwrap(),
+        ])
+        .write_stdin(config.to_string())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"type\":\"started\""))
+        .stdout(predicate::str::contains("\"baseline\":\"50\""));
+
+    assert!(dir.path().join("autoresearch-results/state.json").exists());
+    assert!(dir.path().join(".codex-autoresearch/pointer.json").exists());
+    assert!(!subdir.join("autoresearch-results").exists());
+}
+
+#[test]
 fn test_decide_accepts_negative_metric_value() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

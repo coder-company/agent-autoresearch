@@ -2253,7 +2253,7 @@ fn cmd_handoff(
 // ── Exec ─────────────────────────────────────────────────────────────
 
 fn cmd_exec(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
-    let workspace = resolve_cwd(cwd);
+    let workspace = resolve_workspace_root(cwd);
 
     // Read config from stdin
     let config: RunConfig = serde_json::from_reader(std::io::stdin().lock())
