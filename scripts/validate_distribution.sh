@@ -54,6 +54,7 @@ required_paths=(
     CONTRIBUTING.md
     SKILL.md
     agents/openai.yaml
+    .agents/skills/autoresearch/agents/openai.yaml
     commands/autoresearch.md
     hooks/hooks.json
     install.sh
@@ -84,6 +85,8 @@ require_grep '^\s*display_name: "Autoresearch"' agents/openai.yaml
 require_grep '^\s*allow_implicit_invocation:\s*false\s*$' agents/openai.yaml
 require_grep '\$autoresearch' agents/openai.yaml
 require_grep 'exec' agents/openai.yaml
+cmp -s "$ROOT/agents/openai.yaml" "$ROOT/.agents/skills/autoresearch/agents/openai.yaml" \
+    || fail ".agents/skills/autoresearch/agents/openai.yaml drifted from agents/openai.yaml"
 
 require_grep '\$autoresearch' .agents/skills/autoresearch/SKILL.md
 require_grep 'autoresearch runtime run' .agents/skills/autoresearch/SKILL.md
