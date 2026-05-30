@@ -840,6 +840,9 @@ fn cmd_decide(
     if escalation_action == Some(EscalationAction::Pivot) {
         let lesson = lessons::extract_pivot_lesson(description, EscalationAction::Pivot.guidance());
         let _ = lessons_log.append(&lesson);
+        escalation.acknowledge_pivot();
+        state.pivot_count = escalation.pivot_count;
+        state.consecutive_discards = escalation.consecutive_discards;
     }
 
     // Apply rollback if needed

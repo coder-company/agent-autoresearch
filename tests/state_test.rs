@@ -417,7 +417,8 @@ fn test_escalation_thresholds_via_consecutive_discards() {
 
     let state_content =
         std::fs::read_to_string(dir_path.join("autoresearch-results/state.json")).unwrap();
-    assert!(state_content.contains("\"consecutive_discards\": 5"));
+    assert!(state_content.contains("\"consecutive_discards\": 0"));
+    assert!(state_content.contains("\"pivot_count\": 1"));
 
     let lessons =
         std::fs::read_to_string(dir_path.join("autoresearch-results/lessons.md")).unwrap();

@@ -47,19 +47,25 @@ impl EscalationState {
     /// Record a discard and return the required escalation action.
     pub fn record_discard(&mut self) -> EscalationAction {
         self.consecutive_discards += 1;
-        self.evaluate()
+        let action = self.evaluate();
+        self.last_action = action;
+        action
     }
 
     /// Record a crash (counts toward escalation the same as discard).
     pub fn record_crash(&mut self) -> EscalationAction {
         self.consecutive_discards += 1;
-        self.evaluate()
+        let action = self.evaluate();
+        self.last_action = action;
+        action
     }
 
     /// Record a no-op (counts toward escalation).
     pub fn record_no_op(&mut self) -> EscalationAction {
         self.consecutive_discards += 1;
-        self.evaluate()
+        let action = self.evaluate();
+        self.last_action = action;
+        action
     }
 
     /// Acknowledge that a PIVOT was executed.
@@ -67,6 +73,7 @@ impl EscalationState {
         self.pivot_count += 1;
         self.pivots_since_last_keep += 1;
         self.consecutive_discards = 0; // Reset after pivot attempt
+        self.last_action = EscalationAction::Pivot;
     }
 
     fn evaluate(&self) -> EscalationAction {
@@ -160,5 +167,26 @@ mod tests {
 
         // Any discard after 3 pivots without keep → soft blocker
         assert_eq!(state.record_discard(), EscalationAction::SoftBlocker);
+    }
+
+    #[test]
+    fn test_repeated_pivots_escalate_to_web_search() {
+        let mut state = EscalationState::default();
+
+        for _ in 0..5 {
+            state.record_discard();
+        }
+        assert_eq!(state.last_action, EscalationAction::Pivot);
+        state.acknowledge_pivot();
+
+        for _ in 0..5 {
+            state.record_discard();
+        }
+        assert_eq!(state.last_action, EscalationAction::Pivot);
+        state.acknowledge_pivot();
+
+        assert_eq!(state.record_discard(), EscalationAction::None);
+        assert_eq!(state.record_discard(), EscalationAction::None);
+        assert_eq!(state.record_discard(), EscalationAction::WebSearch);
     }
 }
