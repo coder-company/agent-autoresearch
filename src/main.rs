@@ -1206,6 +1206,8 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
         let iter: u32 = cols[0].parse().unwrap_or(0);
         let metric = Decimal::from_str(cols[2])
             .with_context(|| format!("Invalid metric value at iteration {}", cols[0]))?;
+        Decimal::from_str(cols[3].trim_start_matches('+'))
+            .with_context(|| format!("Invalid delta value at iteration {}", cols[0]))?;
         let status = cols[5];
         let desc = cols[6];
         metrics.push((iter, status, metric, desc));
