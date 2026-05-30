@@ -1524,6 +1524,28 @@ fn test_handoff_rejects_invalid_status() {
 }
 
 #[test]
+fn test_handoff_rejects_invalid_source() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+
+    cmd()
+        .args([
+            "handoff",
+            "--source",
+            "mystery",
+            "--status",
+            "COMPLETE",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "invalid handoff source \"mystery\"",
+        ));
+}
+
+#[test]
 fn test_exec_defaults_to_repo_root_from_subdir() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

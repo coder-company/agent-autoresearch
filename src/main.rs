@@ -2719,6 +2719,9 @@ fn cmd_handoff(
     if !config_val.is_object() {
         anyhow::bail!("handoff config must be a JSON object");
     }
+    if !is_valid_handoff_source(source) {
+        anyhow::bail!("invalid handoff source {source:?}");
+    }
     if !is_valid_handoff_status(status) {
         anyhow::bail!("invalid handoff status {status:?}");
     }
@@ -2955,6 +2958,27 @@ fn is_valid_handoff_status(value: &str) -> bool {
             | "SATURATED"
             | "DRY_RUN"
             | "ROLLBACK"
+    )
+}
+
+fn is_valid_handoff_source(value: &str) -> bool {
+    matches!(
+        value,
+        "loop"
+            | "autoresearch"
+            | "plan"
+            | "debug"
+            | "fix"
+            | "security"
+            | "scenario"
+            | "predict"
+            | "learn"
+            | "reason"
+            | "probe"
+            | "improve"
+            | "ship"
+            | "evals"
+            | "exec"
     )
 }
 
