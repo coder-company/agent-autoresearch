@@ -4,7 +4,7 @@ use rust_decimal::Decimal;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use autoresearch::core::config::{Direction, RollbackStrategy, RunConfig, VerifyFormat};
+use autoresearch::core::config::{Direction, RollbackStrategy, RunConfig, RunMode, VerifyFormat};
 use autoresearch::core::git::{GitRepo, WorktreeStatus};
 use autoresearch::core::health;
 use autoresearch::core::results::{
@@ -56,6 +56,27 @@ enum Commands {
         /// Guard command
         #[arg(long)]
         guard: Option<String>,
+        /// Iteration cap
+        #[arg(long)]
+        iterations: Option<u32>,
+        /// Run tag for grouping artifacts/lessons
+        #[arg(long)]
+        run_tag: Option<String>,
+        /// Stop condition description
+        #[arg(long)]
+        stop_condition: Option<String>,
+        /// Run mode: foreground or background
+        #[arg(long)]
+        run_mode: Option<String>,
+        /// Workspace root for run artifacts
+        #[arg(long)]
+        workspace_root: Option<PathBuf>,
+        /// Primary repository for scoped runs
+        #[arg(long)]
+        primary_repo: Option<PathBuf>,
+        /// Rollback strategy: revert or hard-reset
+        #[arg(long, default_value = "revert")]
+        rollback: String,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -252,6 +273,13 @@ fn main() -> Result<()> {
             scope,
             metric,
             guard,
+            iterations,
+            run_tag,
+            stop_condition,
+            run_mode,
+            workspace_root,
+            primary_repo,
+            rollback,
             cwd,
         } => cmd_init(
             &verify_cmd,
@@ -262,6 +290,13 @@ fn main() -> Result<()> {
             scope,
             metric.as_deref(),
             guard.as_deref(),
+            iterations,
+            run_tag,
+            stop_condition,
+            run_mode,
+            workspace_root,
+            primary_repo,
+            &rollback,
             cwd,
         ),
 
@@ -362,11 +397,24 @@ fn cmd_init(
     scope: Option<Vec<String>>,
     metric_desc: Option<&str>,
     guard: Option<&str>,
+    iterations: Option<u32>,
+    run_tag: Option<String>,
+    stop_condition: Option<String>,
+    run_mode: Option<String>,
+    workspace_root: Option<PathBuf>,
+    primary_repo: Option<PathBuf>,
+    rollback: &str,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let workspace = resolve_cwd(cwd);
     let direction = parse_direction(direction_str)?;
     let fmt = parse_format(format_str);
+    let run_mode = run_mode
+        .as_deref()
+        .map(parse_run_mode)
+        .transpose()
+        .context("Invalid run mode")?;
+    let rollback_strategy = parse_rollback_strategy(rollback)?;
 
     // Safety screen
     verify::screen_command(verify_cmd)?;
@@ -403,15 +451,15 @@ fn cmd_init(
         direction,
         verify: verify_cmd.to_string(),
         guard: guard.map(|g| g.to_string()),
-        iterations: None,
-        run_tag: None,
-        stop_condition: None,
+        iterations,
+        run_tag,
+        stop_condition,
         verify_format: fmt,
         primary_metric_key: key.map(|k| k.to_string()),
-        rollback_strategy: RollbackStrategy::default(),
-        run_mode: None,
-        workspace_root: None,
-        primary_repo: None,
+        rollback_strategy,
+        run_mode,
+        workspace_root,
+        primary_repo,
     };
 
     // Write state.json
@@ -428,6 +476,11 @@ fn cmd_init(
         "baseline_metric": result.metric.to_string(),
         "baseline_commit": head,
         "direction": direction_str,
+        "iterations": iterations,
+        "run_mode": run_mode.map(|mode| match mode {
+            RunMode::Foreground => "foreground",
+            RunMode::Background => "background",
+        }),
         "results_dir": results_dir.display().to_string(),
         "verify_duration_ms": result.duration.as_millis(),
     });
@@ -1334,6 +1387,22 @@ fn parse_format(s: &str) -> VerifyFormat {
     match s {
         "metrics_json" => VerifyFormat::MetricsJson,
         _ => VerifyFormat::Scalar,
+    }
+}
+
+fn parse_run_mode(s: &str) -> Result<RunMode> {
+    match s {
+        "foreground" => Ok(RunMode::Foreground),
+        "background" => Ok(RunMode::Background),
+        _ => anyhow::bail!("Unknown run mode: {s}. Use 'foreground' or 'background'."),
+    }
+}
+
+fn parse_rollback_strategy(s: &str) -> Result<RollbackStrategy> {
+    match s {
+        "revert" => Ok(RollbackStrategy::Revert),
+        "hard-reset" | "hard_reset" => Ok(RollbackStrategy::HardReset),
+        _ => anyhow::bail!("Unknown rollback strategy: {s}. Use 'revert' or 'hard-reset'."),
     }
 }
 

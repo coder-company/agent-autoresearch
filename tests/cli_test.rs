@@ -256,6 +256,50 @@ fn test_health_blocks_missing_verify_command() {
         .stdout(predicate::str::contains("verify_command_missing"));
 }
 
+#[test]
+fn test_init_persists_runtime_config() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--iterations",
+            "7",
+            "--run-tag",
+            "nightly",
+            "--stop-condition",
+            "coverage >= 90",
+            "--run-mode",
+            "foreground",
+            "--workspace-root",
+            root,
+            "--primary-repo",
+            root,
+            "--rollback",
+            "hard-reset",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"iterations\": 7"))
+        .stdout(predicate::str::contains("\"run_mode\": \"foreground\""));
+
+    let state =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap();
+    assert!(state.contains("\"iterations\": 7"));
+    assert!(state.contains("\"run_tag\": \"nightly\""));
+    assert!(state.contains("\"stop_condition\": \"coverage >= 90\""));
+    assert!(state.contains("\"run_mode\": \"foreground\""));
+    assert!(state.contains("\"rollback_strategy\": \"hard_reset\""));
+}
+
 fn init_git_fixture(dir: &TempDir) {
     let path = dir.path();
     std::process::Command::new("git")
