@@ -833,11 +833,7 @@ fn cmd_log(
         Some(commit.to_string())
     };
 
-    let guard = match guard_str {
-        "pass" => GuardResult::Pass,
-        "fail" => GuardResult::Fail,
-        _ => GuardResult::Skip,
-    };
+    let guard = parse_guard_result(Some(guard_str))?;
 
     let status = parse_status(status_str)?;
 
@@ -907,11 +903,7 @@ fn cmd_decide(
     let state_path = results_dir.join("state.json");
 
     // Parse guard result
-    let guard = match guard_str {
-        "pass" => GuardResult::Pass,
-        "fail" => GuardResult::Fail,
-        _ => GuardResult::Skip,
-    };
+    let guard = parse_guard_result(Some(guard_str))?;
 
     // Load state
     let content = std::fs::read_to_string(&state_path)

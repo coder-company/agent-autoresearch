@@ -714,6 +714,82 @@ fn test_log_drift_recalibrates_state() {
 }
 
 #[test]
+fn test_log_rejects_invalid_guard_value() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "log",
+            "--iteration",
+            "1",
+            "--metric",
+            "50",
+            "--guard",
+            "maybe",
+            "--status",
+            "no-op",
+            "--description",
+            "bad guard",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("unknown guard result"));
+}
+
+#[test]
+fn test_decide_rejects_invalid_guard_value() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "decide",
+            "--decision",
+            "no-op",
+            "--guard",
+            "maybe",
+            "--description",
+            "bad guard",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("unknown guard result"));
+}
+
+#[test]
 fn test_progress_defaults_to_repo_root_results_from_subdir() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
