@@ -673,6 +673,34 @@ fn test_iteration_context_throttles_by_session_id() {
         .stdout(predicate::str::contains("Active iteration state"));
 }
 
+// ── Compaction Reanchor ──────────────────────────────────────────────
+
+#[test]
+fn test_compaction_reanchor_uses_repo_root_state_from_subdir() {
+    let dir = tempfile::tempdir().unwrap();
+    init_git_repo(dir.path());
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+    let results = dir.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    let state = serde_json::json!({
+        "iteration": 4,
+        "current_metric": "17",
+        "best_metric": "15",
+        "phase": {
+            "phase": "iterating"
+        }
+    });
+    std::fs::write(results.join("state.json"), state.to_string()).unwrap();
+
+    run_hook_in(&subdir, "compaction-reanchor", "{}")
+        .success()
+        .stdout(predicate::str::contains("\"additionalContext\""))
+        .stdout(predicate::str::contains("iteration 4"))
+        .stdout(predicate::str::contains("metric: 17"))
+        .stdout(predicate::str::contains("best: 15"));
+}
+
 // ── Dev Rules Reminder ───────────────────────────────────────────────
 
 #[test]
