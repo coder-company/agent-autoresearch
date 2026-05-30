@@ -127,6 +127,7 @@ All under `autoresearch-results/` (never committed):
 | `runtime.log` | Background runtime log |
 
 Additionally `.codex-autoresearch/pointer.json` points tools to the canonical context artifact and must stay uncommitted.
+For multi-repo runs, pass `--companion-repo-scope PATH=SCOPE` during `autoresearch init` so each clean companion repo is recorded in context and gets its own pointer.
 
 ## TSV Format
 

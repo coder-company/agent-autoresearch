@@ -119,7 +119,7 @@ iteration	commit	metric	delta	guard	status	description
 | `status` | See Status Values below |
 | `description` | One-sentence explanation of the iteration. Structured keep/stop-gating labels may prefix the sentence as `[labels: foo, bar] ...` |
 
-For multi-repo runs, the TSV `commit` column still records the **primary repo** closeout commit. Per-repo commit provenance for companion repos lives in `state.json` (`state.last_repo_commits` and `state.last_trial_repo_commits`) so the primary audit trail stays compact while the JSON snapshot preserves cross-repo detail.
+For multi-repo runs, the TSV `commit` column still records the **primary repo** closeout commit. Declared companion repositories live in `state.json` under `config.companion_repos` and in `context.json` under `repo_targets`, so control-plane hooks and resume paths can locate every managed repo without widening scope silently.
 
 ## Metrics And Acceptance Contract
 
@@ -215,11 +215,11 @@ Only integer rows (`0`, `1`, `2`, `5`) define the retained state. Worker rows ar
 Use the `autoresearch` binary for stateful artifact updates. Do not hand-edit TSV/JSON artifacts during normal loop execution.
 
 - `autoresearch init ...`
-  Initializes `autoresearch-results/results.tsv` and `autoresearch-results/state.json` together from the baseline measurement, writes canonical `context.json`, and writes repo-local pointers for every managed repo. Interactive runs record `config.session_mode` explicitly; foreground is the default, while background initialization should pass `--session-mode background`. `execution_policy` is only persisted for paths that actually spawn nested Codex sessions: background managed runs and exec. Multi-repo runs may add repeated `--repo-commit PATH=COMMIT` flags to persist companion-repo baseline provenance in JSON state. Runs with structural success criteria may add repeated `--required-keep-label LABEL` flags to protect retained state and repeated `--required-stop-label LABEL` flags so the supervisor only stops when the retained keep also carries those labels.
+  Initializes `autoresearch-results/results.tsv` and `autoresearch-results/state.json` together from the baseline measurement, writes canonical `context.json`, and writes repo-local pointers for every managed repo. Interactive runs record `config.session_mode` explicitly; foreground is the default, while background initialization should pass `--session-mode background`. `execution_policy` is only persisted for paths that actually spawn nested Codex sessions: background managed runs and exec. Multi-repo runs may add repeated `--companion-repo-scope PATH=SCOPE` flags; init validates each companion repo is a clean git repo, persists it in state/context, and writes its `.codex-autoresearch/pointer.json`. Runs with structural success criteria may add repeated `--required-keep-label LABEL` flags to protect retained state and repeated `--required-stop-label LABEL` flags so the supervisor only stops when the retained keep also carries those labels.
 - `autoresearch resume ... (session mode is handled during resume)`
   Internal maintenance path that synchronizes an existing interactive run's shared JSON state to `foreground` or `background` before the next iteration. Use it only for scripted recovery flows; the skill flow and background `start` already perform the same sync when they resume existing results/state.
 - `autoresearch decide ...`
-  Appends one authoritative main iteration row and updates JSON state atomically. Multi-repo runs may add repeated `--repo-commit PATH=COMMIT` flags to update companion-repo commit provenance while the TSV `commit` column continues to track the primary repo. Repeated `--label LABEL` flags record structured keep/stop-gating labels on the attempted row and retained state.
+  Appends one authoritative main iteration row and updates JSON state atomically. The TSV `commit` column tracks the primary repo closeout commit. Repeated `--label LABEL` flags record structured keep/stop-gating labels on the attempted row and retained state.
 - `autoresearch resume ...`
   Reconstructs retained state from the TSV and decides `full_resume`, `mini_wizard`, `tsv_fallback`, or `fresh_start`.
 - `autoresearch parallel closeout --batch-file <workers.json> --cwd <workspace_root>`

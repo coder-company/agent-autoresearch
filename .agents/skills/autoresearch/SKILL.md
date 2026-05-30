@@ -31,6 +31,7 @@ Invoke via `$autoresearch` mention syntax. Modes are passed as keywords:
 
 The `autoresearch` binary handles mechanical operations:
 - `autoresearch init` — initialize results directory, baseline, config, and canonical context
+- `autoresearch init --companion-repo-scope PATH=SCOPE` — register clean companion repos in state/context and write repo-local pointers
 - `autoresearch health` — preflight git/artifact/disk/verify/context state
 - `autoresearch verify` — run verify command, parse metric or metrics JSON
 - `autoresearch decide` — evaluate keep/discard logic, criteria gates, rollback, and escalation

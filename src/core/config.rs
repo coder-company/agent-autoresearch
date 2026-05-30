@@ -63,6 +63,14 @@ pub struct MetricCriterion {
     pub target: rust_decimal::Decimal,
 }
 
+/// A repository managed by a run, including its editable scope and role.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RepoTargetConfig {
+    pub path: PathBuf,
+    pub scope: String,
+    pub role: String,
+}
+
 /// Complete run configuration for the autoresearch loop.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunConfig {
@@ -99,6 +107,8 @@ pub struct RunConfig {
     pub workspace_root: Option<PathBuf>,
     #[serde(default)]
     pub primary_repo: Option<PathBuf>,
+    #[serde(default)]
+    pub companion_repos: Vec<RepoTargetConfig>,
 }
 
 impl RunConfig {

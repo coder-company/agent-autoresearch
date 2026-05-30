@@ -11,7 +11,9 @@ use std::process::{Child, Command, Stdio};
 use std::str::FromStr;
 use std::time::{Duration, Instant};
 
-use autoresearch::core::config::{Direction, RollbackStrategy, RunConfig, RunMode, VerifyFormat};
+use autoresearch::core::config::{
+    Direction, RepoTargetConfig, RollbackStrategy, RunConfig, RunMode, VerifyFormat,
+};
 use autoresearch::core::context;
 use autoresearch::core::criteria;
 use autoresearch::core::git::{GitRepo, WorktreeStatus};
@@ -98,6 +100,9 @@ enum Commands {
         /// Primary repository for scoped runs
         #[arg(long)]
         primary_repo: Option<PathBuf>,
+        /// Companion repository and editable scope, as PATH=SCOPE (repeatable)
+        #[arg(long)]
+        companion_repo_scope: Vec<String>,
         /// Rollback strategy: revert or hard-reset
         #[arg(long, default_value = "revert")]
         rollback: String,
@@ -487,6 +492,7 @@ fn main() -> Result<()> {
             run_mode,
             workspace_root,
             primary_repo,
+            companion_repo_scope,
             rollback,
             cwd,
         } => cmd_init(
@@ -508,6 +514,7 @@ fn main() -> Result<()> {
             run_mode,
             workspace_root,
             primary_repo,
+            companion_repo_scope,
             &rollback,
             cwd,
         ),
@@ -640,6 +647,7 @@ fn cmd_init(
     run_mode: Option<String>,
     workspace_root: Option<PathBuf>,
     primary_repo: Option<PathBuf>,
+    companion_repo_scope: Vec<String>,
     rollback: &str,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
@@ -660,6 +668,7 @@ fn cmd_init(
     )?;
     let required_keep_labels = normalize_labels(required_keep_label);
     let required_stop_labels = normalize_labels(required_stop_label);
+    let companion_repos = parse_companion_repo_scopes(&workspace, companion_repo_scope)?;
 
     // Safety screen
     verify::screen_command(verify_cmd)?;
@@ -769,6 +778,7 @@ fn cmd_init(
         run_mode,
         workspace_root,
         primary_repo,
+        companion_repos,
     };
     let acceptance_criteria_count = run_config.acceptance_criteria.len();
     let required_keep_criteria_count = run_config.required_keep_criteria.len();
@@ -3651,6 +3661,73 @@ fn resolve_workspace_path(workspace: &Path, path: PathBuf) -> PathBuf {
     } else {
         workspace.join(path)
     }
+}
+
+fn parse_companion_repo_scopes(
+    workspace: &Path,
+    entries: Vec<String>,
+) -> Result<Vec<RepoTargetConfig>> {
+    let mut targets = Vec::new();
+    for raw in entries {
+        let (path_raw, scope_raw) = raw
+            .split_once('=')
+            .with_context(|| format!("Invalid companion repo scope {raw:?}; use PATH=SCOPE"))?;
+        let path_raw = path_raw.trim();
+        let scope = scope_raw.trim();
+        if path_raw.is_empty() {
+            anyhow::bail!("Invalid companion repo scope {raw:?}; PATH is required");
+        }
+        if scope.is_empty() {
+            anyhow::bail!("Invalid companion repo scope {raw:?}; SCOPE is required");
+        }
+
+        let candidate = resolve_workspace_path(workspace, PathBuf::from(path_raw));
+        let repo = GitRepo::open(&candidate)
+            .with_context(|| format!("companion repo {path_raw:?} is not a git repository"))?;
+        validate_companion_repo_clean(&repo, path_raw)?;
+        let workdir = repo
+            .workdir()
+            .unwrap_or(candidate)
+            .canonicalize()
+            .with_context(|| format!("failed to canonicalize companion repo {path_raw:?}"))?;
+        targets.push(RepoTargetConfig {
+            path: workdir,
+            scope: scope.to_string(),
+            role: "companion".to_string(),
+        });
+    }
+    Ok(targets)
+}
+
+fn validate_companion_repo_clean(repo: &GitRepo, label: &str) -> Result<()> {
+    let lock_files = repo.lock_files();
+    if !lock_files.is_empty() {
+        anyhow::bail!(
+            "init preflight blocked: companion repo {label} has stale git lock files: {}",
+            lock_files
+                .iter()
+                .map(|path| path.display().to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+    }
+    if repo.head_detached()? {
+        anyhow::bail!("init preflight blocked: companion repo {label} is detached_head");
+    }
+    let staged_artifacts = repo.staged_owned_artifacts()?;
+    if !staged_artifacts.is_empty() {
+        anyhow::bail!(
+            "init preflight blocked: companion repo {label} has autoresearch-owned artifacts staged: {}",
+            staged_artifacts.join(", ")
+        );
+    }
+    if let WorktreeStatus::Dirty(files) = repo.worktree_status()? {
+        anyhow::bail!(
+            "init preflight blocked: companion repo {label} has unexpected worktree changes: {}",
+            files.join(", ")
+        );
+    }
+    Ok(())
 }
 
 fn write_json_file(path: &Path, value: &serde_json::Value) -> Result<()> {

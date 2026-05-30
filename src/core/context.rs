@@ -56,6 +56,19 @@ pub fn write_context(workspace: &Path, config: Option<&RunConfig>) -> Result<Pat
         })
     });
 
+    let mut repo_targets = vec![RepoTarget {
+        path: primary_repo.clone(),
+        scope,
+        role: "primary".to_string(),
+    }];
+    if let Some(config) = config {
+        repo_targets.extend(config.companion_repos.iter().map(|target| RepoTarget {
+            path: absolute_display(&target.path),
+            scope: target.scope.clone(),
+            role: target.role.clone(),
+        }));
+    }
+
     let context = RunContext {
         version: 2,
         active: true,
@@ -63,11 +76,7 @@ pub fn write_context(workspace: &Path, config: Option<&RunConfig>) -> Result<Pat
         workspace_root,
         artifact_root: absolute_display(&results),
         primary_repo: primary_repo.clone(),
-        repo_targets: vec![RepoTarget {
-            path: primary_repo,
-            scope,
-            role: "primary".to_string(),
-        }],
+        repo_targets,
         verify_cwd: "workspace_root".to_string(),
         results_path: absolute_display(&results.join("results.tsv")),
         state_path: absolute_display(&results.join("state.json")),
@@ -80,7 +89,9 @@ pub fn write_context(workspace: &Path, config: Option<&RunConfig>) -> Result<Pat
     let path = results.join("context.json");
     fs::write(&path, serde_json::to_string_pretty(&context)?)
         .with_context(|| format!("failed to write {}", path.display()))?;
-    write_pointer(&context.primary_repo, &context.workspace_root, &path)?;
+    for target in &context.repo_targets {
+        write_pointer(&target.path, &context.workspace_root, &path)?;
+    }
     Ok(path)
 }
 

@@ -219,6 +219,7 @@ mod tests {
             run_mode: None,
             workspace_root: None,
             primary_repo: None,
+            companion_repos: Vec::new(),
         }
     }
 

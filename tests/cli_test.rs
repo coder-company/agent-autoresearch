@@ -2414,6 +2414,87 @@ fn test_init_protects_pointer_in_separate_primary_repo() {
 }
 
 #[test]
+fn test_init_records_companion_repo_targets_and_pointers() {
+    let workspace = TempDir::new().unwrap();
+    init_git_fixture(&workspace);
+    let workspace_root = workspace.path().to_str().unwrap();
+
+    let companion = TempDir::new().unwrap();
+    init_git_fixture(&companion);
+    commit_file(
+        &companion,
+        "pkg/helper.rs",
+        "pub fn helper() {}\n",
+        "add helper",
+    );
+    let companion_root = companion.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--workspace-root",
+            workspace_root,
+            "--primary-repo",
+            workspace_root,
+            "--companion-repo-scope",
+            &format!("{companion_root}=pkg/**/*.rs"),
+            "--cwd",
+            workspace_root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"context_path\""));
+
+    let context: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(workspace.path().join("autoresearch-results/context.json"))
+            .unwrap(),
+    )
+    .unwrap();
+    let targets = context["repo_targets"].as_array().unwrap();
+    assert_eq!(targets.len(), 2);
+    assert_eq!(targets[0]["role"], "primary");
+    assert_eq!(targets[1]["role"], "companion");
+    assert_eq!(targets[1]["scope"], "pkg/**/*.rs");
+    assert_eq!(
+        targets[1]["path"],
+        companion
+            .path()
+            .canonicalize()
+            .unwrap()
+            .display()
+            .to_string()
+    );
+
+    let state: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(workspace.path().join("autoresearch-results/state.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        state["config"]["companion_repos"][0]["scope"],
+        "pkg/**/*.rs"
+    );
+    assert_eq!(state["config"]["companion_repos"][0]["role"], "companion");
+
+    assert!(companion
+        .path()
+        .join(".codex-autoresearch/pointer.json")
+        .exists());
+    let exclude = std::fs::read_to_string(companion.path().join(".git/info/exclude")).unwrap();
+    assert!(exclude.contains(".codex-autoresearch/"));
+
+    let status = std::process::Command::new("git")
+        .args(["-C", companion_root, "status", "--short"])
+        .output()
+        .unwrap();
+    assert!(status.status.success());
+    assert_eq!(String::from_utf8_lossy(&status.stdout), "");
+}
+
+#[test]
 fn test_init_screens_guard_command() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

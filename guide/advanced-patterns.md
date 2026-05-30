@@ -74,6 +74,16 @@ Direction: lower
 
 The primary repo is where autoresearch-results/ lives. Companion repos must be accessible via relative paths.
 
+Initialize explicit companion repo scopes with the binary so every repo gets a pointer back to the canonical context:
+
+```bash
+autoresearch init \
+  --verify "npm test -- --json | jq '.failing'" \
+  --direction lower \
+  --scope "api-service/src/**/*.ts" \
+  --companion-repo-scope "../frontend=src/**/*.ts"
+```
+
 ### Rules for Multi-Repo
 
 1. Declare all repos in scope explicitly
