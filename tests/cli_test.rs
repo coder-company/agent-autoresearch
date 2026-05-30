@@ -1001,6 +1001,29 @@ fn test_init_persists_runtime_config() {
 }
 
 #[test]
+fn test_init_screens_guard_command() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--guard",
+            "echo 'DROP TABLE users'",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("dangerous pattern"));
+}
+
+#[test]
 fn test_init_defaults_to_repo_root_from_subdir() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

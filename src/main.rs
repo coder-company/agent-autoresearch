@@ -556,6 +556,9 @@ fn cmd_init(
 
     // Safety screen
     verify::screen_command(verify_cmd)?;
+    if let Some(guard_cmd) = guard {
+        verify::screen_command(guard_cmd)?;
+    }
 
     // Verify git repo
     let git = GitRepo::open(&workspace).context("autoresearch requires a git repository")?;
