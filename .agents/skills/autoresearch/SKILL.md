@@ -34,6 +34,7 @@ The `autoresearch` binary handles mechanical operations:
 - `autoresearch health` — preflight git/artifact/disk/verify/context state
 - `autoresearch verify` — run verify command, parse metric or metrics JSON
 - `autoresearch decide` — evaluate keep/discard logic, criteria gates, rollback, and escalation
+- `autoresearch parallel template` — generate editable worker batch JSON for parallel closeout
 - `autoresearch parallel closeout` — select a parallel worker winner, log audit rows, and update retained state once
 - `autoresearch runtime run` — execute the supervised background loop; `start/status/supervise/stop` remain available for manual control
 - `autoresearch status|resume|progress|watch|lessons|evals` — inspect/resume/monitor/analyze runs
@@ -67,7 +68,7 @@ Run only after metric improvement. Must exit 0.
 
 ### Phase 7: Decide
 - Prefer `autoresearch decide --decision auto --metric <value> --metrics-json '<json>' --commit <sha>`.
-- For parallel worker batches, use `autoresearch parallel closeout --batch-file <workers.json>` instead of hand-editing worker rows.
+- For parallel worker batches, use `autoresearch parallel template` to generate the worker JSON schema, then `autoresearch parallel closeout --batch-file <workers.json>` instead of hand-editing worker rows.
 - **keep** — improved + guard passed + required keep criteria passed → commit stays
 - **discard** — flat/regressed OR guard/criteria failed → binary reverts the experiment commit
 - **crash** — command errored → binary reverts the experiment commit

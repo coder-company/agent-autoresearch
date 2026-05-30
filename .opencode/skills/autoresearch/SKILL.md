@@ -78,7 +78,7 @@ If fails → revert regardless of improvement.
 
 ### Phase 7: Decide
 - Prefer `autoresearch decide --decision auto --metric <value> --metrics-json '<json>' --commit <sha>`.
-- For parallel worker batches, use `autoresearch parallel closeout --batch-file <workers.json>` instead of hand-editing worker rows.
+- For parallel worker batches, use `autoresearch parallel template` to generate the worker JSON schema, then `autoresearch parallel closeout --batch-file <workers.json>` instead of hand-editing worker rows.
 - **keep** — improved + guard passed + required keep criteria passed → commit stays
 - **discard** — flat/regressed OR guard/criteria failed → binary reverts the experiment commit
 - **crash** — command errored → binary reverts the experiment commit
