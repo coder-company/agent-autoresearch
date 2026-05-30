@@ -53,6 +53,8 @@ fn installer_supports_local_and_global_copy_targets() {
     assert!(script.contains("Choose either --global or --local, not both."));
     assert!(script.contains("LAUNCH_DIR=\"$(pwd)\""));
     assert!(script.contains("target_root=\"$LAUNCH_DIR/.opencode\""));
+    assert!(script.contains("mkdir -p \"$opencode_dir/skills\" \"$opencode_dir/commands\" \"$opencode_dir/agents\""));
+    assert!(script.contains("cp \"$REPO_DIR\"/.opencode/agents/*.md \"$opencode_dir/agents/\""));
     assert!(script.contains("target_dir=\"$LAUNCH_DIR/.codex/skills/autoresearch\""));
     assert!(script.contains("cargo build --manifest-path \"$REPO_DIR/Cargo.toml\" --release"));
     assert!(!script.contains("\n    cd \"$REPO_DIR\"\n\n    cargo build --release"));

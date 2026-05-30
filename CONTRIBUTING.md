@@ -55,8 +55,9 @@ The contributor gate also checks formatting, installer shell syntax, generated d
 
 ## Regenerating Agent Distribution Assets
 
-OpenCode command files are generated from the canonical `commands/` tree, and
-Codex reference/plugin packages are generated from the maintained `.agents`
+OpenCode command files are generated from the canonical `commands/` tree, the
+OpenCode `docs-manager` helper agent is maintained directly in `.opencode/agents/`,
+and Codex reference/plugin packages are generated from the maintained `.agents`
 skill package plus canonical `references/`:
 
 ```bash
@@ -64,10 +65,11 @@ skill package plus canonical `references/`:
 ```
 
 The script rewrites `.opencode/commands/` with underscore command names,
-refreshes `.opencode/skills/autoresearch/`, syncs `.agents/skills/autoresearch/references/`
-and skill-local agent metadata, and rebuilds `plugins/autoresearch/skills/autoresearch/`
-from `.agents/skills/autoresearch/`. Edit `.agents/skills/autoresearch/SKILL.md`
-directly when changing the Codex entrypoint; edit `references/` for shared protocol docs.
+refreshes `.opencode/skills/autoresearch/`, preserves `.opencode/agents/`, syncs
+`.agents/skills/autoresearch/references/` and skill-local agent metadata, and rebuilds
+`plugins/autoresearch/skills/autoresearch/` from `.agents/skills/autoresearch/`.
+Edit `.agents/skills/autoresearch/SKILL.md` directly when changing the Codex
+entrypoint; edit `references/` for shared protocol docs.
 
 Validate the generated and maintained distributions without rewriting files:
 

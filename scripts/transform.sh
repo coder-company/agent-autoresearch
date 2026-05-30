@@ -2,8 +2,9 @@
 # transform.sh — Generate OpenCode distribution assets from canonical sources.
 #
 # Copies commands/ and skills/ into the OpenCode naming conventions. The
-# .agents Codex skill entrypoint is maintained directly because it uses a
-# different invocation model, but its reference package is synced from the
+# .opencode/agents package is maintained directly for OpenCode subagents.
+# The .agents Codex skill entrypoint is maintained directly because it uses
+# a different invocation model, but its reference package is synced from the
 # same canonical references/ directory as OpenCode.
 #
 # Usage: ./scripts/transform.sh
@@ -141,5 +142,6 @@ echo ""
 echo "Distributions:"
 echo "  .opencode/commands/    — OpenCode command surface"
 echo "  .opencode/skills/      — OpenCode skill definitions"
+echo "  .opencode/agents/      — OpenCode helper subagents"
 echo "  .agents/skills/        — Generic agent skills (maintained directly)"
 echo "  plugins/autoresearch/  — Codex plugin package"

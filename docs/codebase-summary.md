@@ -13,7 +13,7 @@
 | `.agents/skills/autoresearch/` | Maintained Codex skill package used by direct Codex installs |
 | `plugins/autoresearch/` | Codex plugin package generated from the `.agents` skill package |
 | `.agents/plugins/marketplace.json` | Local Codex marketplace entry pointing at `plugins/autoresearch/` |
-| `.opencode/` | Generated OpenCode commands and skill package |
+| `.opencode/` | Generated OpenCode commands and skill package, plus the maintained `docs-manager` helper agent |
 | `commands/autoresearch.md` | Root command protocol (core iteration loop) |
 | `commands/autoresearch/*.md` | Subcommand protocols (debug, fix, security, scenario, etc.) |
 

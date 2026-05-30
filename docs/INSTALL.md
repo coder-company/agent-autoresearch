@@ -76,6 +76,7 @@ cd agent-autoresearch
 ```
 
 OpenCode commands install as `/autoresearch`, `/autoresearch_debug`, `/autoresearch_fix`, and the other underscore-mode names.
+The package also installs the hidden `docs-manager` helper agent for focused documentation updates.
 
 For a project-local OpenCode install, run:
 

@@ -60,6 +60,7 @@ required_paths=(
     .claude-plugin/plugin.json
     .agents/plugins/marketplace.json
     .agents/skills/autoresearch/agents/openai.yaml
+    .opencode/agents/docs-manager.md
     commands/autoresearch.md
     hooks/hooks.json
     install.sh
@@ -133,6 +134,7 @@ require_grep 'Claude Code, Codex, and OpenCode' README.md
 require_grep 'Companion Repo' CONTEXT.md
 require_grep 'Structured Metrics' CONTEXT.md
 require_grep 'Runtime Snapshot' CONTEXT.md
+require_grep '^name: docs-manager$' .opencode/agents/docs-manager.md
 for i18n_readme in "$ROOT"/docs/i18n/README_*.md; do
     grep -q '/autoresearch:improve' "$i18n_readme" \
         || fail "${i18n_readme#"$ROOT"/} is missing /autoresearch:improve"
@@ -157,9 +159,11 @@ require_grep '\-\-codex-plugin' install.sh
 require_grep '\-\-local' docs/INSTALL.md
 require_grep '\-\-local' install.sh
 require_grep 'ensure_safe_opencode_dir' install.sh
+require_grep '\.opencode/agents/' scripts/transform.sh
 require_grep 'dangerously-bypass-approvals-and-sandbox' guide/autoresearch-codex.md
 require_grep 'danger_full_access' guide/autoresearch-codex.md
 require_grep 'plugins/autoresearch' docs/codebase-summary.md
+require_grep 'docs-manager' docs/codebase-summary.md
 require_grep 'runtime, parallel, screen, and hooks' docs/codebase-summary.md
 require_grep 'dev_rules_reminder\.rs' docs/codebase-summary.md
 require_grep 'out-of-scope writes' docs/architecture.md
