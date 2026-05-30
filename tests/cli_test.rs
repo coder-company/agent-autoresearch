@@ -192,6 +192,37 @@ fn test_evals_with_sample_tsv() {
 }
 
 #[test]
+fn test_evals_defaults_to_repo_root_results_from_subdir() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+    let results = dir.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    let tsv_path = results.join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: higher").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t50\t0\t-\tbaseline\tinitial state").unwrap();
+    writeln!(file, "1\tbcd2345\t55\t+5\tpass\tkeep\timprovement").unwrap();
+
+    cmd()
+        .current_dir(&subdir)
+        .args(["evals", "--format", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"keeps\": 1"));
+
+    let summary = std::fs::read_to_string(results.join("evals-summary.json")).unwrap();
+    assert!(summary.contains("\"keeps\": 1"));
+}
+
+#[test]
 fn test_evals_text_format() {
     let dir = TempDir::new().unwrap();
     let tsv_path = dir.path().join("results.tsv");

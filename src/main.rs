@@ -1107,12 +1107,8 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
         Some(p) => p,
         None => {
             let cwd = std::env::current_dir()?;
-            let default = cwd.join("autoresearch-results/results.tsv");
-            if default.exists() {
-                default
-            } else {
-                anyhow::bail!("No results.tsv found. Provide a path or run from project root.");
-            }
+            default_results_tsv(&cwd)
+                .context("No results.tsv found. Provide a path or run inside a git repo.")?
         }
     };
 
@@ -2337,6 +2333,18 @@ fn cmd_exec(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
 
 fn resolve_cwd(cwd: Option<PathBuf>) -> PathBuf {
     cwd.unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+}
+
+fn default_results_tsv(cwd: &Path) -> Option<PathBuf> {
+    let cwd_default = cwd.join("autoresearch-results/results.tsv");
+    if cwd_default.exists() {
+        return Some(cwd_default);
+    }
+    GitRepo::open(cwd)
+        .ok()
+        .and_then(|repo| repo.workdir())
+        .map(|root| root.join("autoresearch-results/results.tsv"))
+        .filter(|path| path.exists())
 }
 
 fn parse_decide_metric(

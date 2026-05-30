@@ -37,6 +37,11 @@ impl GitRepo {
         Ok(Self { repo })
     }
 
+    /// Get the repository working directory, when this is not a bare repo.
+    pub fn workdir(&self) -> Option<PathBuf> {
+        self.repo.workdir().map(Path::to_path_buf)
+    }
+
     /// Get the current HEAD commit hash (short).
     pub fn head_short(&self) -> Result<String> {
         let head = self.repo.head().context("No HEAD")?;
