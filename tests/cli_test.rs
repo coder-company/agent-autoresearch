@@ -474,6 +474,7 @@ fn test_evals_accepts_legacy_result_statuses() {
         .success()
         .stdout(predicate::str::contains("\"total_iterations\": 3"))
         .stdout(predicate::str::contains("\"keeps\": 1"))
+        .stdout(predicate::str::contains("\"crashes\": 2"))
         .stdout(predicate::str::contains("\"efficiency_pct\": 33"));
 }
 
@@ -874,6 +875,52 @@ fn test_log_keep_reworked_updates_retained_state() {
     assert_eq!(state["current_metric"], "55");
     assert_eq!(state["last_commit"], "abc1234");
     assert_eq!(state["last_status"], "keep (reworked)");
+}
+
+#[test]
+fn test_log_metric_error_updates_failure_state() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "log",
+            "--iteration",
+            "1",
+            "--metric",
+            "50",
+            "--status",
+            "metric-error",
+            "--description",
+            "verify output was not numeric",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let state: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(state["crashes"], 1);
+    assert_eq!(state["consecutive_discards"], 1);
+    assert_eq!(state["last_trial_metric"], "50");
+    assert_eq!(state["last_status"], "metric-error");
 }
 
 #[test]
@@ -2791,6 +2838,44 @@ fn test_resume_tsv_fallback_retains_keep_reworked_status() {
         .stdout(predicate::str::contains("\"keeps\": 1"))
         .stdout(predicate::str::contains(
             "\"last_status\": \"keep (reworked)\"",
+        ));
+}
+
+#[test]
+fn test_resume_tsv_fallback_counts_legacy_failure_statuses() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    std::fs::write(
+        dir.path().join("autoresearch-results/results.tsv"),
+        "# metric_direction: higher\niteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n0\tabc1234\t50\t0\t-\tbaseline\tinitial\n1\t-\t50\t0\t-\thook-blocked\tcommit hook blocked\n2\t-\t50\t0\t-\tmetric-error\tbad metric output\n",
+    )
+    .unwrap();
+    std::fs::remove_file(dir.path().join("autoresearch-results/state.json")).unwrap();
+
+    cmd()
+        .args(["resume", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"tsv_fallback\""))
+        .stdout(predicate::str::contains("\"current_metric\": \"50\""))
+        .stdout(predicate::str::contains("\"crashes\": 2"))
+        .stdout(predicate::str::contains(
+            "\"last_status\": \"metric-error\"",
         ));
 }
 

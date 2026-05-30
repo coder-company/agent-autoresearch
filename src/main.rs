@@ -875,8 +875,12 @@ fn cmd_log(
             IterationStatus::Discard => {
                 state.record_discard(metric, commit_val);
             }
-            IterationStatus::Crash => {
+            IterationStatus::Crash
+            | IterationStatus::HookBlocked
+            | IterationStatus::MetricError => {
                 state.record_crash();
+                state.last_trial_metric = Some(metric);
+                state.last_status = status;
             }
             IterationStatus::NoOp => {
                 state.record_no_op();
@@ -1263,7 +1267,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
     let total_iterations = total.saturating_sub(usize::from(has_baseline));
     let keeps = metrics.iter().filter(|m| is_keep_status(m.1)).count();
     let discards = metrics.iter().filter(|m| m.1 == "discard").count();
-    let crashes = metrics.iter().filter(|m| m.1 == "crash").count();
+    let crashes = metrics.iter().filter(|m| is_failure_status(m.1)).count();
     let baseline = metrics.first().map(|m| m.2).unwrap_or_default();
     let final_metric = metrics.last().map(|m| m.2).unwrap_or_default();
     let best = if direction == "higher" {
@@ -2334,7 +2338,7 @@ fn tsv_fallback_resume(
                 }
             }
             "discard" => discards += 1,
-            "crash" => crashes += 1,
+            "crash" | "hook-blocked" | "metric-error" => crashes += 1,
             "no-op" => no_ops += 1,
             "blocked" => blocked += 1,
             "drift" => current_metric = row.metric,
@@ -2373,6 +2377,10 @@ fn results_tsv_direction(content: &str) -> Direction {
 
 fn is_keep_status(value: &str) -> bool {
     matches!(value, "keep" | "keep (reworked)")
+}
+
+fn is_failure_status(value: &str) -> bool {
+    matches!(value, "crash" | "hook-blocked" | "metric-error")
 }
 
 fn metric_is_better(candidate: Decimal, current_best: Decimal, direction: Direction) -> bool {
