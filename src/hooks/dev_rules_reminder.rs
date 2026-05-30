@@ -2,6 +2,7 @@ use super::{HookInput, HookResponse};
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::{Duration, SystemTime};
 
 /// Periodically remind the agent of core autoresearch rules during long runs.
 pub fn run(input: Option<&HookInput>) -> HookResponse {
@@ -10,6 +11,9 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
     };
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     let project_root = git_output(&cwd, &["rev-parse", "--show-toplevel"]).unwrap_or(cwd);
+    if context_injected_recently(input, &project_root) {
+        return HookResponse::allow();
+    }
     if !should_inject_now(input, &project_root) {
         return HookResponse::allow();
     }
@@ -43,6 +47,31 @@ fn session_counter_path(cwd: &Path, session_id: &str) -> PathBuf {
     session_id.hash(&mut hasher);
     std::env::temp_dir().join(format!(
         "autoresearch-dev-rules-reminder-{}.count",
+        hasher.finish()
+    ))
+}
+
+fn context_injected_recently(input: &HookInput, cwd: &Path) -> bool {
+    let Some(session_id) = input.session_id.as_deref() else {
+        return false;
+    };
+    let Ok(metadata) = std::fs::metadata(context_injection_path(cwd, session_id)) else {
+        return false;
+    };
+    let Ok(modified) = metadata.modified() else {
+        return false;
+    };
+    SystemTime::now()
+        .duration_since(modified)
+        .is_ok_and(|age| age < Duration::from_secs(2))
+}
+
+fn context_injection_path(cwd: &Path, session_id: &str) -> PathBuf {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    cwd.hash(&mut hasher);
+    session_id.hash(&mut hasher);
+    std::env::temp_dir().join(format!(
+        "autoresearch-context-injected-{}.stamp",
         hasher.finish()
     ))
 }

@@ -68,6 +68,7 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
         total
     ));
 
+    mark_context_injected(_input, &project_root);
     HookResponse::inject(text)
 }
 
@@ -91,6 +92,23 @@ fn session_counter_path(cwd: &Path, session_id: &str) -> PathBuf {
     session_id.hash(&mut hasher);
     std::env::temp_dir().join(format!(
         "autoresearch-iteration-context-{}.count",
+        hasher.finish()
+    ))
+}
+
+fn mark_context_injected(input: &HookInput, cwd: &Path) {
+    let Some(session_id) = input.session_id.as_deref() else {
+        return;
+    };
+    let _ = fs::write(context_injection_path(cwd, session_id), "1");
+}
+
+fn context_injection_path(cwd: &Path, session_id: &str) -> PathBuf {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    cwd.hash(&mut hasher);
+    session_id.hash(&mut hasher);
+    std::env::temp_dir().join(format!(
+        "autoresearch-context-injected-{}.stamp",
         hasher.finish()
     ))
 }

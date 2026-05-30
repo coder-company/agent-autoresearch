@@ -791,6 +791,44 @@ fn test_dev_rules_reminder_throttles_by_session_id() {
         .stdout(predicate::str::contains("docs/code-standards.md"));
 }
 
+#[test]
+fn test_dev_rules_reminder_skips_after_iteration_context_injects() {
+    let dir = tempfile::tempdir().unwrap();
+    init_git_repo(dir.path());
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+    std::fs::create_dir_all(dir.path().join("plans")).unwrap();
+    std::fs::create_dir_all(dir.path().join("docs")).unwrap();
+    let results = dir.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    std::fs::write(
+        results.join("results.tsv"),
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n0\tabc\t10\t0\t-\tbaseline\tinitial\n1\tdef\t11\t+1\tpass\tkeep\timproved\n",
+    )
+    .unwrap();
+    let input = serde_json::json!({
+        "session_id": "shared-hook-turn",
+        "prompt": "autoresearch status"
+    });
+
+    for _ in 0..4 {
+        run_hook_in(&subdir, "iteration-context", &input.to_string())
+            .success()
+            .stdout(predicate::str::contains("\"additionalContext\"").not());
+        run_hook_in(&subdir, "dev-rules-reminder", &input.to_string())
+            .success()
+            .stdout(predicate::str::contains("\"additionalContext\"").not());
+    }
+
+    run_hook_in(&subdir, "iteration-context", &input.to_string())
+        .success()
+        .stdout(predicate::str::contains("\"additionalContext\""))
+        .stdout(predicate::str::contains("Active iteration state"));
+    run_hook_in(&subdir, "dev-rules-reminder", &input.to_string())
+        .success()
+        .stdout(predicate::str::contains("\"additionalContext\"").not());
+}
+
 // ── Subagent Context ─────────────────────────────────────────────────
 
 #[test]
