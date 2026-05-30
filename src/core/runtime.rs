@@ -3,7 +3,6 @@ use chrono::Utc;
 use regex::Regex;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -653,9 +652,13 @@ fn acceptance_satisfied(state: &RunState) -> bool {
         return false;
     }
     let primary_key = config.primary_metric_key.as_deref().unwrap_or("metric");
-    let mut metrics = BTreeMap::new();
-    metrics.insert(primary_key.to_string(), state.current_metric);
-    metrics.insert("metric".to_string(), state.current_metric);
+    let mut metrics = state.current_metrics.clone();
+    metrics
+        .entry(primary_key.to_string())
+        .or_insert(state.current_metric);
+    metrics
+        .entry("metric".to_string())
+        .or_insert(state.current_metric);
     evaluate_criteria(&config.acceptance_criteria, &metrics).satisfied
 }
 

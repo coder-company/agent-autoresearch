@@ -1656,6 +1656,83 @@ fn test_runtime_supervise_stops_on_acceptance_criteria() {
 }
 
 #[test]
+fn test_runtime_supervise_uses_structured_acceptance_metrics() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    std::fs::write(
+        dir.path().join("metrics.json"),
+        r#"{"score":50,"accuracy":0.8}"#,
+    )
+    .unwrap();
+    std::process::Command::new("git")
+        .args(["add", "metrics.json"])
+        .current_dir(dir.path())
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["commit", "-m", "add metrics"])
+        .current_dir(dir.path())
+        .output()
+        .unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metrics.json",
+            "--format",
+            "metrics_json",
+            "--key",
+            "score",
+            "--direction",
+            "higher",
+            "--acceptance-criteria",
+            r#"[{"metric_key":"accuracy","operator":">=","target":"0.9"}]"#,
+            "--run-mode",
+            "background",
+            "--workspace-root",
+            root,
+            "--primary-repo",
+            root,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "decide",
+            "--metric",
+            "60",
+            "--metrics-json",
+            r#"{"score":60,"accuracy":0.95}"#,
+            "--description",
+            "improved score and accuracy",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["runtime", "start", "--dry-run", "--cwd", root])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["runtime", "supervise", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"stop\""))
+        .stdout(predicate::str::contains(
+            "\"reason\": \"acceptance_criteria\"",
+        ));
+}
+
+#[test]
 fn test_runtime_supervise_detects_stagnation() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
