@@ -643,6 +643,7 @@ fn test_dangerous_cmd_blocks_destructive_git_cleanup() {
     for command in [
         "git push -f origin main",
         "push --force origin",
+        "reset --hard HEAD~1",
         "git clean -f",
         "git clean -fd",
         "git branch -D feature",

@@ -16,6 +16,7 @@ const DANGEROUS: &[&str] = &[
     "git push -f",
     "push --force",
     "git reset --hard", // Only allowed via approved rollback strategy
+    "reset --hard",
     "git clean -f",
     "git clean -fd",
     "git branch -d",
