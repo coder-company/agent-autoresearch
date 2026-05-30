@@ -588,6 +588,65 @@ fn test_dev_rules_reminder_throttles_by_session_id() {
         .stdout(predicate::str::contains("docs/code-standards.md"));
 }
 
+// ── Subagent Context ─────────────────────────────────────────────────
+
+#[test]
+fn test_subagent_context_injects_project_and_tsv_summary() {
+    let dir = tempfile::tempdir().unwrap();
+    init_git_repo(dir.path());
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+    let results = dir.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    std::fs::write(
+        results.join("state.json"),
+        serde_json::json!({
+            "iteration": 2,
+            "current_metric": "12",
+            "last_status": "keep"
+        })
+        .to_string(),
+    )
+    .unwrap();
+    std::fs::write(
+        results.join("results.tsv"),
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n0\tabc\t10\t0\t-\tbaseline\tinitial\n2\tdef\t12\t+2\tpass\tkeep\timproved\n",
+    )
+    .unwrap();
+
+    run_hook_in(&subdir, "subagent-context", "{}")
+        .success()
+        .stdout(predicate::str::contains(
+            "Autoresearch context (for subagent)",
+        ))
+        .stdout(predicate::str::contains(
+            "Active TSV: autoresearch-results/results.tsv",
+        ))
+        .stdout(predicate::str::contains("Iteration: 2"))
+        .stdout(predicate::str::contains("Latest: iteration=2"))
+        .stdout(predicate::str::contains("Metric: 12"));
+}
+
+#[test]
+fn test_subagent_context_uses_tsv_without_state() {
+    let dir = tempfile::tempdir().unwrap();
+    let results = dir.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    std::fs::write(
+        results.join("results.tsv"),
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n1\tabc\t7\t+1\tpass\tkeep\timproved\n",
+    )
+    .unwrap();
+
+    run_hook_in(dir.path(), "subagent-context", "{}")
+        .success()
+        .stdout(predicate::str::contains(
+            "Autoresearch context (for subagent)",
+        ))
+        .stdout(predicate::str::contains("Latest: iteration=1"))
+        .stdout(predicate::str::contains("Metric: ?"));
+}
+
 // ── Session Init ─────────────────────────────────────────────────────
 
 #[test]
