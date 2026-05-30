@@ -1236,6 +1236,16 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
         .iter()
         .filter(|row| row.guard.as_deref() == Some("fail"))
         .count();
+    let guard_failed_improvements = metrics
+        .iter()
+        .filter(|row| {
+            row.guard.as_deref() == Some("fail")
+                && match direction {
+                    "lower" => row.delta < Decimal::ZERO,
+                    _ => row.delta > Decimal::ZERO,
+                }
+        })
+        .count();
     let baseline = metrics.first().map(|row| row.metric).unwrap_or_default();
     let final_metric = metrics.last().map(|row| row.metric).unwrap_or_default();
     let improvement = if direction == "higher" {
@@ -1318,6 +1328,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 "discards": discards,
                 "crashes": crashes,
                 "guard_failures": guard_failures,
+                "guard_failed_improvements": guard_failed_improvements,
                 "baseline": baseline.to_string(),
                 "final": final_metric.to_string(),
                 "best": best.to_string(),
@@ -1342,6 +1353,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 discards,
                 crashes,
                 guard_failures,
+                guard_failed_improvements,
                 efficiency,
                 baseline,
                 final_metric,
@@ -1363,6 +1375,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 discards,
                 crashes,
                 guard_failures,
+                guard_failed_improvements,
                 efficiency,
                 baseline,
                 final_metric,
@@ -1424,6 +1437,7 @@ struct EvalsReport<'a> {
     discards: usize,
     crashes: usize,
     guard_failures: usize,
+    guard_failed_improvements: usize,
     efficiency: u32,
     baseline: Decimal,
     final_metric: Decimal,
@@ -1447,6 +1461,12 @@ fn render_evals_markdown(report: EvalsReport<'_>) -> String {
     writeln!(out, "| Discarded | {} |", report.discards).unwrap();
     writeln!(out, "| Crashes | {} |", report.crashes).unwrap();
     writeln!(out, "| Guard failures | {} |", report.guard_failures).unwrap();
+    writeln!(
+        out,
+        "| Improved but guard failed | {} |",
+        report.guard_failed_improvements
+    )
+    .unwrap();
     writeln!(out, "| Efficiency | {}% |", report.efficiency).unwrap();
     writeln!(out, "| Baseline | {} |", report.baseline).unwrap();
     writeln!(out, "| Final | {} |", report.final_metric).unwrap();

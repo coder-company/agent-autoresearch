@@ -457,7 +457,8 @@ fn test_evals_reports_guard_failures() {
         .args(["evals", tsv_path.to_str().unwrap(), "--format", "json"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"guard_failures\": 1"));
+        .stdout(predicate::str::contains("\"guard_failures\": 1"))
+        .stdout(predicate::str::contains("\"guard_failed_improvements\": 1"));
 }
 
 #[test]
