@@ -165,6 +165,7 @@ require_grep '\.agents/skills/autoresearch/' AGENTS.md
 require_grep '\.opencode/' AGENTS.md
 require_grep '\.agents/skills/autoresearch/' docs/changelog.md
 require_grep 'MAX_RELEASE_BINARY_BYTES=\$\(\(5 \* 1024 \* 1024\)\)' scripts/run_contributor_gate.sh
+require_grep 'MAX_RELEASE_BINARY_BYTES=\$\(\(5 \* 1024 \* 1024\)\)' scripts/release.sh
 if grep -R -E '2[,.]5 ?M(B|o|Б)' "$ROOT/AGENTS.md" "$ROOT/CONTRIBUTING.md" "$ROOT/docs" "$ROOT/scripts/release.md" >/dev/null; then
     fail "docs still advertise the old 2.5MB binary size"
 fi

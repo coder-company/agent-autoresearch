@@ -77,6 +77,14 @@ cargo clippy --manifest-path "$ROOT/Cargo.toml" -- -D warnings
 echo "[6/8] Building release binary..."
 cargo build --manifest-path "$ROOT/Cargo.toml" --release
 
+MAX_RELEASE_BINARY_BYTES=$((5 * 1024 * 1024))
+RELEASE_BINARY="$ROOT/target/release/autoresearch"
+RELEASE_BINARY_BYTES=$(wc -c < "$RELEASE_BINARY" | tr -d '[:space:]')
+if [[ "$RELEASE_BINARY_BYTES" -gt "$MAX_RELEASE_BINARY_BYTES" ]]; then
+    echo "Error: release binary is too large: ${RELEASE_BINARY_BYTES} bytes (limit: ${MAX_RELEASE_BINARY_BYTES})"
+    exit 1
+fi
+
 BINARY_SIZE=$(du -h "$ROOT/target/release/autoresearch" | cut -f1)
 echo "  Binary size: $BINARY_SIZE"
 
