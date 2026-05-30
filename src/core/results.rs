@@ -155,6 +155,7 @@ impl ResultsLog {
         let mut saw_direction = false;
         let mut saw_header = false;
         let mut expected_main_iteration = 0u32;
+        let mut pending_worker_iteration = None;
 
         for (index, line) in content.lines().enumerate() {
             if line.is_empty() {
@@ -218,7 +219,9 @@ impl ResultsLog {
             let main_iteration = columns[0].parse::<u32>().ok();
             if main_iteration.is_none() {
                 match worker_iteration_prefix(columns[0]) {
-                    Some(worker_iteration) if worker_iteration == expected_main_iteration => {}
+                    Some(worker_iteration) if worker_iteration == expected_main_iteration => {
+                        pending_worker_iteration = Some(worker_iteration);
+                    }
                     Some(worker_iteration) => anyhow::bail!(
                         "results.tsv line {} has worker iteration {}; expected pending main iteration {}",
                         index + 1,
@@ -240,6 +243,9 @@ impl ResultsLog {
                         iteration,
                         expected_main_iteration
                     );
+                }
+                if pending_worker_iteration == Some(iteration) {
+                    pending_worker_iteration = None;
                 }
                 expected_main_iteration += 1;
             }
@@ -295,6 +301,11 @@ impl ResultsLog {
         }
         if expected_main_iteration == 0 {
             anyhow::bail!("results.tsv is missing the baseline row");
+        }
+        if let Some(iteration) = pending_worker_iteration {
+            anyhow::bail!(
+                "results.tsv has worker rows for iteration {iteration} without an authoritative main row"
+            );
         }
         Ok(())
     }
@@ -731,6 +742,24 @@ mod tests {
         let err = log.validate().unwrap_err().to_string();
 
         assert!(err.contains("worker iteration 2; expected pending main iteration 1"));
+    }
+
+    #[test]
+    fn test_validate_rejects_worker_rows_without_main_row() {
+        let dir = tempfile::tempdir().unwrap();
+        let log = ResultsLog::create(dir.path(), Direction::Higher).unwrap();
+        fs::write(
+            log.path(),
+            format!(
+                "{}\n0\tbase\t10\t0\t-\tbaseline\tbaseline\n1a\tabc1234\t11\t+1\tpass\tkeep\tworker only\n",
+                tsv_header(Direction::Higher)
+            ),
+        )
+        .unwrap();
+
+        let err = log.validate().unwrap_err().to_string();
+
+        assert!(err.contains("worker rows for iteration 1 without an authoritative main row"));
     }
 
     #[test]
