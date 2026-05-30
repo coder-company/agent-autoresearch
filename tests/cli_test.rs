@@ -599,16 +599,16 @@ fn test_runtime_supervise_stops_at_iteration_cap() {
         .assert()
         .success();
 
+    cmd()
+        .args(["runtime", "start", "--dry-run", "--cwd", root])
+        .assert()
+        .success();
+
     let state_path = dir.path().join("autoresearch-results/state.json");
     let mut state: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(&state_path).unwrap()).unwrap();
     state["iteration"] = serde_json::json!(1);
     std::fs::write(&state_path, serde_json::to_string_pretty(&state).unwrap()).unwrap();
-
-    cmd()
-        .args(["runtime", "start", "--dry-run", "--cwd", root])
-        .assert()
-        .success();
 
     cmd()
         .args(["runtime", "supervise", "--cwd", root])
