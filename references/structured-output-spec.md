@@ -82,7 +82,7 @@ Artifact:
 
 - `autoresearch-results/results.tsv`
 - `autoresearch-results/lessons.md` (if lessons were extracted)
-- `autoresearch-results/state.json` (session state snapshot, not committed to git; see `references/session-resume-protocol.md`)
+- `autoresearch-results/state.json` (session state snapshot, not committed to git; see `references/session-resume.md`)
 - `autoresearch-results/context.json` (canonical workspace-owned run context for resume, status, and control-plane helpers)
 
 ### plan

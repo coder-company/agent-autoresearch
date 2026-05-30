@@ -41,7 +41,7 @@ Fail fast if the loop would be unsafe. Clarify first if the intent is unclear.
 
 ### Session Resume Check
 
-Before anything else, check for a prior interrupted run per `references/session-resume-protocol.md`:
+Before anything else, check for a prior interrupted run per `references/session-resume.md`:
 
 Use the launch gate first:
 
@@ -50,7 +50,7 @@ autoresearch resume ...
 ```
 
 1. Resolve the current run through the repo-local pointer and `autoresearch-results/context.json`, then check `autoresearch-results/state.json` first (primary recovery source), followed by `autoresearch-results/results.tsv`, `autoresearch-results/lessons.md`, and recent `experiment:` commits.
-2. Apply the Recovery Priority Matrix from `session-resume-protocol.md`:
+2. Apply the Recovery Priority Matrix from `session-resume.md`:
    - JSON valid + TSV consistent -> full resume (skip wizard).
    - JSON valid + TSV inconsistent -> mini-wizard (1 round).
    - JSON missing + TSV exists -> TSV fallback (reconstruct state, confirm, then create a fresh launch manifest).

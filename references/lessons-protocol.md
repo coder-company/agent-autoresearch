@@ -120,5 +120,5 @@ Lessons older than 14 days receive reduced weight during hypothesis selection. L
 - **Phase 7 (Decide):** after keep -> extract positive lesson.
 - **Phase 9 (Repeat):** after pivot -> extract strategic lesson.
 - **Completion:** extract summary lesson.
-- **Session Resume:** lessons file is a moderate-weight detection signal for prior runs (see `session-resume-protocol.md`). Lessons persist across runs and are read at run start regardless of whether JSON state or TSV is used for recovery.
+- **Session Resume:** lessons file is a moderate-weight detection signal for prior runs (see `session-resume.md`). Lessons persist across runs and are read at run start regardless of whether JSON state or TSV is used for recovery.
 - **Exec Mode:** exec mode reads lessons for hypothesis filtering but never creates or modifies the lessons file.

@@ -11,7 +11,7 @@ Iterate toward a measurable outcome by making one focused change, verifying mech
 ## Before Launch
 
 - Use `interaction-wizard.md` for every new interactive launch.
-- Use `session-resume-protocol.md` before deciding whether the run is fresh or resumable.
+- Use `session-resume.md` before deciding whether the run is fresh or resumable.
 - Use `environment-awareness.md` before choosing hardware-sensitive work.
 
 ## Runtime Cycle

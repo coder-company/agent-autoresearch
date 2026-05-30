@@ -104,5 +104,5 @@ Thresholds:
 - **parallel-experiments-protocol.md:** native parallel batch closeout should reuse the lightweight health/worktree preflight before it accepts a completed batch into the authoritative run state.
 - **multi-repo runs:** the command remains anchored in the primary repo for results/state/log integrity, but companion repos participate in worktree-scope checks through the launch-manifest repo list.
 - **results-logging.md:** `autoresearch health` returns structured findings; append TSV rows only when the runtime explicitly chooses to log a blocker or recovery event.
-- **session-resume-protocol.md:** JSON/TSV integrity checks should reuse `autoresearch resume` decisions and launch/runtime control files instead of maintaining a second row-count heuristic.
+- **session-resume.md:** JSON/TSV integrity checks should reuse `autoresearch resume` decisions and launch/runtime control files instead of maintaining a second row-count heuristic.
 - **SKILL.md:** Listed in the load order for iterating modes.

@@ -248,7 +248,7 @@ In exec mode, the runtime keeps JSON state in scratch storage by default and mus
 
 ## Cross-Validation with JSON State
 
-`autoresearch-results/state.json` is the primary recovery source for session resume (see `references/session-resume-protocol.md`). The TSV log and the JSON state file serve complementary roles:
+`autoresearch-results/state.json` is the primary recovery source for session resume (see `references/session-resume.md`). The TSV log and the JSON state file serve complementary roles:
 
 | Aspect | `autoresearch-results/results.tsv` | `autoresearch-results/state.json` |
 |--------|----------------------|--------------------------|
