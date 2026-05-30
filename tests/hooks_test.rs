@@ -736,6 +736,43 @@ fn test_session_init_includes_resumable_run_context() {
         .stdout(predicate::str::contains("iteration 3"));
 }
 
+// ── Stop Check ───────────────────────────────────────────────────────
+
+#[test]
+fn test_stop_check_uses_repo_root_state_from_subdir() {
+    let dir = tempfile::tempdir().unwrap();
+    init_git_repo(dir.path());
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+    let results = dir.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    let state = serde_json::json!({
+        "iteration": 7,
+        "current_metric": "31",
+        "best_metric": "29",
+        "consecutive_discards": 5,
+        "phase": {
+            "phase": "iterating"
+        }
+    });
+    std::fs::write(results.join("state.json"), state.to_string()).unwrap();
+    std::fs::write(
+        results.join("escalation.json"),
+        serde_json::json!({
+            "pivots_since_last_keep": 1
+        })
+        .to_string(),
+    )
+    .unwrap();
+
+    run_hook_in(&subdir, "stop-check", "{}")
+        .success()
+        .stdout(predicate::str::contains("\"additionalContext\""))
+        .stdout(predicate::str::contains("continue iterating"))
+        .stdout(predicate::str::contains("Iteration:** 7"))
+        .stdout(predicate::str::contains("PIVOT needed"));
+}
+
 // ── Session End ──────────────────────────────────────────────────────
 
 #[test]

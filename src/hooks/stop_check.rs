@@ -1,12 +1,14 @@
 use super::{HookInput, HookResponse};
 use std::path::PathBuf;
+use std::process::Command;
 
 /// Stop hook: fires after each Claude Code turn.
 /// If an active autoresearch run exists but the turn didn't complete an iteration,
 /// inject a reminder to continue the loop.
 pub fn run(_input: Option<&HookInput>) -> HookResponse {
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let state_path = cwd.join("autoresearch-results/state.json");
+    let project_root = git_output(&cwd, &["rev-parse", "--show-toplevel"]).unwrap_or(cwd);
+    let state_path = project_root.join("autoresearch-results/state.json");
 
     if !state_path.exists() {
         return HookResponse::allow();
@@ -48,7 +50,7 @@ pub fn run(_input: Option<&HookInput>) -> HookResponse {
         .unwrap_or(0);
 
     // Check escalation state
-    let esc_path = cwd.join("autoresearch-results/escalation.json");
+    let esc_path = project_root.join("autoresearch-results/escalation.json");
     let escalation_hint = if let Ok(esc_content) = std::fs::read_to_string(&esc_path) {
         if let Ok(esc) = serde_json::from_str::<serde_json::Value>(&esc_content) {
             let pivots = esc
@@ -76,4 +78,19 @@ pub fn run(_input: Option<&HookInput>) -> HookResponse {
          **Iteration:** {iteration} | **Metric:** {current} (best: {best}) | **Consecutive discards:** {consecutive}\n\
          Next: read context → ideate → modify → commit → verify → decide{escalation_hint}"
     ))
+}
+
+fn git_output(cwd: &std::path::Path, args: &[&str]) -> Option<PathBuf> {
+    let output = Command::new("git")
+        .args(args)
+        .current_dir(cwd)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    String::from_utf8(output.stdout)
+        .ok()
+        .map(|value| PathBuf::from(value.trim()))
+        .filter(|value| !value.as_os_str().is_empty())
 }
