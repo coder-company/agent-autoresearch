@@ -441,11 +441,11 @@ Health Check runs strictly between Log (Phase 8) and Phase 8.7 (Re-Anchoring). T
 
 Run health checks per `references/health-check-protocol.md`:
 
-- **Every managed-runtime cycle boundary:** before each detached `codex exec` session (and therefore before every relaunch), `autoresearch_runtime_ctl.py` runs `autoresearch_health_check.py` for disk space, git state, verify command existence, and resume-helper-based TSV/JSON integrity.
+- **Every managed-runtime cycle boundary:** before each detached `codex exec` session (and therefore before every relaunch), run `autoresearch health` for disk space, git state, verify command existence, and TSV/JSON integrity.
 - **Commit safety at the same boundary:** when the managed repos are git-backed, `autoresearch_runtime_ctl.py` also runs `autoresearch_commit_gate.py` with the launch-manifest repo list and per-repo scopes before each detached session. Relaunch is blocked if staged autoresearch artifacts or out-of-scope worktree changes are present in any managed repo.
 - **Extended review:** scope integrity, environment drift, verify/guard consistency, and context health when the workflow explicitly schedules the protocol-level extended checks.
 - Log integrity should use the helper-script reconstruction of main rows and retained state, not raw TSV row counts.
-- `autoresearch_health_check.py` only returns structured `ok / warn / block` findings. Any retries, repairs, or blocker logging must be implemented by the caller.
+- `autoresearch health` only returns structured `ok / warn / block` findings. Any retries, repairs, or blocker logging must be implemented by the caller.
 - Within a live Codex session, the model must still honor the same scope-aware commit rule before creating a trial commit; the runtime controller can only enforce these checks between detached sessions.
 
 ## Phase 8.7: Protocol Re-Anchoring

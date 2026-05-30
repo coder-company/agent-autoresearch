@@ -5,14 +5,13 @@ Self-monitoring system that validates environment and run integrity at managed-r
 The executable companions are:
 
 - `autoresearch status ...`
-- `autoresearch status (includes commit gate check)`
+- `autoresearch health ...`
 
-`autoresearch_health_check.py` is the canonical lightweight integrity checker. It must:
+`autoresearch health` is the canonical lightweight integrity checker. It must:
 
-- run the resume helper instead of re-parsing TSV/JSON heuristics independently,
-- report whether resume is `full_resume`, `tsv_fallback`, `mini_wizard`, or `fresh_start`,
 - treat corrupt or unreconstructable results/state combinations as blockers,
-- surface recoverable JSON/TSV divergence as warnings.
+- surface recoverable JSON/TSV divergence as warnings,
+- report git state, disk headroom, verify-command availability, and result/state row consistency as structured JSON.
 
 The extended checks below remain protocol-level review items. They may be orchestrated by the runtime or contributor gate, but the standalone helper must not claim to perform them unless the script actually does.
 
@@ -34,7 +33,7 @@ Run before each detached Codex session. In a runtime-managed loop, this means th
 
 ### Every 10 Iterations (Extended Review)
 
-Run at iterations 10, 20, 30, etc. only when the workflow or runtime explicitly schedules them. These are protocol-level review items, not behavior implemented by `autoresearch_health_check.py` itself:
+Run at iterations 10, 20, 30, etc. only when the workflow or runtime explicitly schedules them. These are protocol-level review items, not behavior implemented by `autoresearch health` itself:
 
 | Check | How | Failure Action |
 |-------|-----|----------------|
@@ -48,14 +47,17 @@ Run at iterations 10, 20, 30, etc. only when the workflow or runtime explicitly 
 
 ## Helper Output Contract
 
-`autoresearch_health_check.py` does not mutate `autoresearch-results/results.tsv`, retry verify commands, or escalate warnings over time. The standalone helper returns structured JSON:
+`autoresearch health` does not mutate `autoresearch-results/results.tsv`, retry verify commands, or escalate warnings over time. The standalone helper returns structured JSON:
 
 ```json
 {
   "decision": "ok|warn|block",
-  "warnings": ["..."],
-  "blockers": ["..."],
-  "resume_decision": "full_resume|tsv_fallback|mini_wizard|fresh_start"
+  "git_state": "clean|only_artifacts|dirty|unavailable",
+  "free_mb": 1024,
+  "main_rows": 4,
+  "expected_rows": 4,
+  "warnings": [{"code": "...", "message": "..."}],
+  "blockers": [{"code": "...", "message": "..."}]
 }
 ```
 
