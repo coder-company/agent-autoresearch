@@ -2404,22 +2404,10 @@ fn cmd_progress(cwd: Option<PathBuf>) -> Result<()> {
     let tsv_path = results_dir.join("results.tsv");
     let trend = if tsv_path.exists() {
         let content = std::fs::read_to_string(&tsv_path)?;
-        let keep_metrics: Vec<Decimal> = content
-            .lines()
-            .filter(|l| l.contains("\tkeep\t"))
-            .filter(|l| {
-                l.split('\t')
-                    .next()
-                    .is_some_and(|iteration| iteration.parse::<u32>().is_ok())
-            })
-            .filter_map(|l| {
-                let cols: Vec<&str> = l.split('\t').collect();
-                if cols.len() >= 3 {
-                    Decimal::from_str(cols[2]).ok()
-                } else {
-                    None
-                }
-            })
+        let keep_metrics: Vec<Decimal> = parse_results_tsv(&content)?
+            .into_iter()
+            .filter(|row| is_keep_status(&row.status))
+            .map(|row| row.metric)
             .collect();
         let last5: Vec<&Decimal> = keep_metrics.iter().rev().take(5).collect();
         if last5.len() < 2 {

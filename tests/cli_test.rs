@@ -798,6 +798,38 @@ fn test_progress_lower_direction_trend_improves_on_decrease() {
 }
 
 #[test]
+fn test_progress_accepts_timestamp_and_guard_metric_columns() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    std::fs::write(
+        dir.path().join("autoresearch-results/results.tsv"),
+        "# metric_direction: higher\niteration\ttimestamp\tcommit\tmetric\tdelta\tguard\tguard-metric\tstatus\tdescription\n0\t2026-05-30T00:00:00Z\tbase\t50\t0\t-\t-\tbaseline\tinitial\n1\t2026-05-30T00:01:00Z\tabc1234\t55\t+5\tpass\tok\tkeep\timproved\n2\t2026-05-30T00:02:00Z\tbcd2345\t60\t+5\tpass\tok\tkeep\timproved again\n",
+    )
+    .unwrap();
+
+    cmd()
+        .args(["progress", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Trend: improving"));
+}
+
+#[test]
 fn test_log_drift_recalibrates_state() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
