@@ -746,6 +746,7 @@ fn cmd_init(
             &required_keep_criteria,
         )?;
     }
+    let baseline_guard = run_baseline_guard(guard, &workspace).context("Baseline guard failed")?;
 
     // Create results directory + protect from git staging
     let results_dir = ensure_results_dir_protected(&workspace)?;
@@ -762,7 +763,7 @@ fn cmd_init(
         commit: Some(head.clone()),
         metric: result.metric,
         delta: Decimal::ZERO,
-        guard: GuardResult::Skip,
+        guard: baseline_guard,
         status: IterationStatus::Baseline,
         description: "initial state".to_string(),
     };
@@ -866,6 +867,32 @@ fn display_workspace_path(workspace: &Path, path: &Path) -> String {
     path.strip_prefix(workspace)
         .map(|relative| relative.display().to_string())
         .unwrap_or_else(|_| path.display().to_string())
+}
+
+fn run_baseline_guard(guard: Option<&str>, workspace: &Path) -> Result<GuardResult> {
+    let Some(command) = guard.map(str::trim).filter(|command| !command.is_empty()) else {
+        return Ok(GuardResult::Skip);
+    };
+
+    let result = verify::run_guard(command, workspace)?;
+    if !result.passed {
+        let stderr_tail = result
+            .stderr
+            .lines()
+            .rev()
+            .take(3)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .collect::<Vec<_>>()
+            .join(" | ");
+        if stderr_tail.is_empty() {
+            anyhow::bail!("baseline guard command exited non-zero");
+        }
+        anyhow::bail!("baseline guard command exited non-zero. stderr: {stderr_tail}");
+    }
+
+    Ok(GuardResult::Pass)
 }
 
 // ── Verify ────────────────────────────────────────────────────────────
@@ -3569,12 +3596,22 @@ fn cmd_exec_inner(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
     // Extract display values before moving config
     let direction = config.direction;
     let verify_cmd = config.verify.clone();
+    let guard_cmd = config.guard.clone();
     let fmt = config.verify_format;
     let primary_key = config.primary_metric_key.clone();
 
     // Screen
     if let Err(e) = verify::screen_command(&verify_cmd) {
         return exec_hard_error("unsafe_command", e.to_string());
+    }
+    if let Some(command) = guard_cmd
+        .as_deref()
+        .map(str::trim)
+        .filter(|command| !command.is_empty())
+    {
+        if let Err(e) = verify::screen_command(command) {
+            return exec_hard_error("unsafe_command", e.to_string());
+        }
     }
 
     // Git check
@@ -3592,6 +3629,10 @@ fn cmd_exec_inner(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
     // Baseline
     let result = verify::run_verify(&verify_cmd, fmt, primary_key.as_deref(), &workspace)
         .context("exec: baseline verification failed")?;
+    let baseline_guard = match run_baseline_guard(guard_cmd.as_deref(), &workspace) {
+        Ok(guard) => guard,
+        Err(err) => return exec_hard_error("guard_failed", format!("exec: {err}")),
+    };
     let head = git.head_short()?;
 
     // Init artifacts + protect from git staging
@@ -3604,7 +3645,7 @@ fn cmd_exec_inner(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
         commit: Some(head.clone()),
         metric: result.metric,
         delta: Decimal::ZERO,
-        guard: GuardResult::Skip,
+        guard: baseline_guard,
         status: IterationStatus::Baseline,
         description: "initial state".to_string(),
     })?;

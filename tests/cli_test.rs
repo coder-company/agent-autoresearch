@@ -1948,6 +1948,98 @@ fn test_exec_persists_cli_iteration_cap() {
 }
 
 #[test]
+fn test_exec_baseline_guard_pass_is_logged() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let config = serde_json::json!({
+        "goal": "fresh exec",
+        "scope": ["metric.txt"],
+        "metric": "score",
+        "direction": "higher",
+        "verify": "cat metric.txt",
+        "guard": "true"
+    });
+
+    cmd()
+        .args([
+            "exec",
+            "--iterations",
+            "1",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .write_stdin(config.to_string())
+        .assert()
+        .success();
+
+    let results =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/results.tsv")).unwrap();
+    assert!(results.contains("\t50\t0\tpass\tbaseline\tinitial state"));
+}
+
+#[test]
+fn test_exec_baseline_guard_failure_blocks_launch() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let config = serde_json::json!({
+        "goal": "fresh exec",
+        "scope": ["metric.txt"],
+        "metric": "score",
+        "direction": "higher",
+        "verify": "cat metric.txt",
+        "guard": "false"
+    });
+
+    cmd()
+        .args([
+            "exec",
+            "--iterations",
+            "1",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .write_stdin(config.to_string())
+        .assert()
+        .code(2)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains("\"code\":\"guard_failed\""))
+        .stderr(predicate::str::contains(
+            "baseline guard command exited non-zero",
+        ));
+
+    assert!(!dir.path().join("autoresearch-results/results.tsv").exists());
+}
+
+#[test]
+fn test_exec_baseline_guard_screens_command() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let config = serde_json::json!({
+        "goal": "fresh exec",
+        "scope": ["metric.txt"],
+        "metric": "score",
+        "direction": "higher",
+        "verify": "cat metric.txt",
+        "guard": "echo 'DROP TABLE users'"
+    });
+
+    cmd()
+        .args([
+            "exec",
+            "--iterations",
+            "1",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .write_stdin(config.to_string())
+        .assert()
+        .code(2)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains("\"code\":\"unsafe_command\""))
+        .stderr(predicate::str::contains("dangerous pattern"));
+}
+
+#[test]
 fn test_exec_archives_existing_artifacts_before_fresh_start() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
@@ -2883,6 +2975,60 @@ fn test_init_screens_guard_command() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("dangerous pattern"));
+}
+
+#[test]
+fn test_init_baseline_guard_pass_is_logged() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--guard",
+            "true",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let results =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/results.tsv")).unwrap();
+    assert!(results.contains("\t50\t0\tpass\tbaseline\tinitial state"));
+}
+
+#[test]
+fn test_init_baseline_guard_failure_blocks_launch() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--guard",
+            "false",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Baseline guard failed"))
+        .stderr(predicate::str::contains(
+            "baseline guard command exited non-zero",
+        ));
+
+    assert!(!dir.path().join("autoresearch-results/results.tsv").exists());
 }
 
 #[test]
