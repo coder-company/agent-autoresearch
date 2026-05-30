@@ -48,6 +48,10 @@ impl GuardResult {
 
 impl ResultRow {
     pub fn to_tsv(&self) -> String {
+        self.to_tsv_with_iteration_label(&self.iteration.to_string())
+    }
+
+    pub fn to_tsv_with_iteration_label(&self, iteration: &str) -> String {
         let commit = self.commit.as_deref().unwrap_or("-");
         let delta_str = if self.delta.is_zero() {
             "0".to_string()
@@ -59,7 +63,7 @@ impl ResultRow {
 
         format!(
             "{}\t{}\t{}\t{}\t{}\t{}\t{}",
-            self.iteration,
+            iteration,
             commit,
             self.metric,
             delta_str,
@@ -95,11 +99,17 @@ impl ResultsLog {
 
     /// Append a row to the log.
     pub fn append(&self, row: &ResultRow) -> Result<()> {
+        self.append_labeled(&row.iteration.to_string(), row)
+    }
+
+    /// Append a row with a custom iteration label, such as `5a` for parallel worker detail.
+    pub fn append_labeled(&self, iteration: &str, row: &ResultRow) -> Result<()> {
         let mut file = OpenOptions::new()
             .append(true)
             .open(&self.path)
             .context("Failed to open results TSV for append")?;
-        writeln!(file, "{}", row.to_tsv()).context("Failed to write result row")?;
+        writeln!(file, "{}", row.to_tsv_with_iteration_label(iteration))
+            .context("Failed to write result row")?;
         Ok(())
     }
 
@@ -114,12 +124,17 @@ impl ResultsLog {
         Ok(rows[start..].iter().map(|s| s.to_string()).collect())
     }
 
-    /// Count total data rows.
+    /// Count authoritative main rows. Parallel worker rows such as `5a` are audit detail only.
     pub fn count(&self) -> Result<usize> {
         let content = fs::read_to_string(&self.path).context("Failed to read results TSV")?;
         Ok(content
             .lines()
             .filter(|l| !l.starts_with('#') && !l.starts_with("iteration\t") && !l.is_empty())
+            .filter(|line| {
+                line.split('\t')
+                    .next()
+                    .is_some_and(|iteration| iteration.parse::<u32>().is_ok())
+            })
             .count())
     }
 
@@ -268,5 +283,56 @@ mod tests {
             row.to_tsv(),
             "2\t-\t84\t-1\t-\tdiscard\trefactor broke tests"
         );
+    }
+
+    #[test]
+    fn test_result_row_parallel_worker_label() {
+        let row = ResultRow {
+            iteration: 5,
+            commit: Some("abc1234".to_string()),
+            metric: Decimal::from(38),
+            delta: Decimal::from(-3),
+            guard: GuardResult::Pass,
+            status: IterationStatus::Keep,
+            description: "[PARALLEL worker-a] narrowed auth types".to_string(),
+        };
+        assert_eq!(
+            row.to_tsv_with_iteration_label("5a"),
+            "5a\tabc1234\t38\t-3\tpass\tkeep\t[PARALLEL worker-a] narrowed auth types"
+        );
+    }
+
+    #[test]
+    fn test_count_ignores_parallel_worker_rows() {
+        let dir = tempfile::tempdir().unwrap();
+        let log = ResultsLog::create(dir.path(), Direction::Lower).unwrap();
+        log.append(&ResultRow {
+            iteration: 0,
+            commit: Some("base".to_string()),
+            metric: Decimal::from(41),
+            delta: Decimal::ZERO,
+            guard: GuardResult::Skip,
+            status: IterationStatus::Baseline,
+            description: "baseline".to_string(),
+        })
+        .unwrap();
+        let worker = ResultRow {
+            iteration: 1,
+            commit: Some("abc1234".to_string()),
+            metric: Decimal::from(38),
+            delta: Decimal::from(-3),
+            guard: GuardResult::Pass,
+            status: IterationStatus::Keep,
+            description: "[PARALLEL worker-a] narrowed auth types".to_string(),
+        };
+        log.append_labeled("1a", &worker).unwrap();
+        log.append(&ResultRow {
+            iteration: 1,
+            description: "[PARALLEL batch] selected worker-a".to_string(),
+            ..worker
+        })
+        .unwrap();
+
+        assert_eq!(log.count().unwrap(), 2);
     }
 }

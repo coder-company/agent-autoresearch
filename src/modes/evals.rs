@@ -93,9 +93,9 @@ pub fn parse_results_tsv(content: &str) -> Result<Vec<ParsedRow>> {
             continue;
         }
 
-        let iteration = parts[0]
-            .parse::<u32>()
-            .context("Invalid iteration number")?;
+        let Ok(iteration) = parts[0].parse::<u32>() else {
+            continue;
+        };
         let commit = if parts[1] == "-" {
             None
         } else {
@@ -293,6 +293,20 @@ mod tests {
         assert_eq!(rows[0].iteration, 1);
         assert_eq!(rows[0].status, "keep");
         assert_eq!(rows[1].status, "discard");
+    }
+
+    #[test]
+    fn test_parse_results_tsv_skips_parallel_worker_rows() {
+        let tsv = "# metric_direction: lower\niteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n\
+                   0\tbase\t41\t0\t-\tbaseline\tinitial\n\
+                   1a\tabc1234\t38\t-3\tpass\tkeep\tworker\n\
+                   1\tabc1234\t38\t-3\tpass\tkeep\tbatch\n";
+
+        let rows = parse_results_tsv(tsv).unwrap();
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].iteration, 0);
+        assert_eq!(rows[1].iteration, 1);
+        assert_eq!(rows[1].description, "batch");
     }
 
     #[test]
