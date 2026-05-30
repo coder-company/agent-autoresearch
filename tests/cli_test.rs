@@ -1948,6 +1948,39 @@ fn test_exec_persists_cli_iteration_cap() {
 }
 
 #[test]
+fn test_exec_accepts_codex_direction_alias() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let config = serde_json::json!({
+        "goal": "fresh exec",
+        "scope": ["metric.txt"],
+        "metric": "score",
+        "direction": "higher_is_better",
+        "verify": "cat metric.txt"
+    });
+
+    cmd()
+        .args([
+            "exec",
+            "--iterations",
+            "1",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .write_stdin(config.to_string())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"direction\":\"higher\""));
+
+    let state: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(state["direction"], "higher");
+    assert_eq!(state["config"]["direction"], "higher");
+}
+
+#[test]
 fn test_exec_baseline_guard_pass_is_logged() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

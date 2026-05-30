@@ -5,7 +5,9 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Direction {
+    #[serde(alias = "higher_is_better")]
     Higher,
+    #[serde(alias = "lower_is_better")]
     Lower,
 }
 
