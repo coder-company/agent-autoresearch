@@ -44,7 +44,7 @@ update_skill_version() {
 }
 
 # ── 1. Check clean worktree ─────────────────────────────────────────
-if ! git -C "$ROOT" diff --quiet HEAD 2>/dev/null; then
+if [[ -n "$(git -C "$ROOT" status --porcelain)" ]]; then
     echo "Error: working tree is dirty. Commit or stash changes first."
     exit 1
 fi

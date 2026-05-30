@@ -102,3 +102,12 @@ fn release_script_updates_agent_package_versions() {
     assert!(script.contains("\"$ROOT/scripts/transform.sh\""));
     assert!(script.contains("plugins/autoresearch/skills/autoresearch"));
 }
+
+#[test]
+fn release_script_blocks_untracked_dirty_worktrees() {
+    let root = repo_root();
+    let script = std::fs::read_to_string(root.join("scripts/release.sh")).unwrap();
+
+    assert!(script.contains("git -C \"$ROOT\" status --porcelain"));
+    assert!(!script.contains("git -C \"$ROOT\" diff --quiet HEAD"));
+}
