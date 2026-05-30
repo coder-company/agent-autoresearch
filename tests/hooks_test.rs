@@ -665,6 +665,8 @@ fn test_session_init_injects_project_context() {
 fn test_session_init_includes_resumable_run_context() {
     let dir = tempfile::tempdir().unwrap();
     init_git_repo(dir.path());
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
     let results = dir.path().join("autoresearch-results");
     std::fs::create_dir_all(&results).unwrap();
     let state = serde_json::json!({
@@ -680,7 +682,7 @@ fn test_session_init_includes_resumable_run_context() {
     });
     std::fs::write(results.join("state.json"), state.to_string()).unwrap();
 
-    run_hook_in(dir.path(), "session-init", "{}")
+    run_hook_in(&subdir, "session-init", "{}")
         .success()
         .stdout(predicate::str::contains("Session initialized"))
         .stdout(predicate::str::contains(

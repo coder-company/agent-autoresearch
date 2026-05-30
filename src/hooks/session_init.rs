@@ -26,7 +26,7 @@ pub fn run(_input: Option<&HookInput>) -> HookResponse {
     );
 
     // Check if there's an existing run to resume
-    let state_path = cwd.join("autoresearch-results/state.json");
+    let state_path = project_root.join("autoresearch-results/state.json");
     if state_path.exists() {
         if let Ok(content) = std::fs::read_to_string(&state_path) {
             if let Ok(state) = serde_json::from_str::<serde_json::Value>(&content) {
