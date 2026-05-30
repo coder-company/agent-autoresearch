@@ -859,9 +859,13 @@ fn cmd_decide(
         };
 
     let delta = metric - state.current_metric;
-    let trial_metrics =
-        build_trial_metrics(metric, metrics_json, &primary_metric_key, verify_format)?;
-    if verify_format == VerifyFormat::MetricsJson {
+    let requires_trial_metrics = !matches!(decision, "crash" | "no-op");
+    let trial_metrics = if requires_trial_metrics {
+        build_trial_metrics(metric, metrics_json, &primary_metric_key, verify_format)?
+    } else {
+        retained_trial_metrics(&state, metric, &primary_metric_key)
+    };
+    if requires_trial_metrics && verify_format == VerifyFormat::MetricsJson {
         ensure_metrics_json_keys(
             &trial_metrics,
             &primary_metric_key,
@@ -2246,6 +2250,19 @@ fn cmd_exec(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
 
 fn resolve_cwd(cwd: Option<PathBuf>) -> PathBuf {
     cwd.unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+}
+
+fn retained_trial_metrics(
+    state: &RunState,
+    metric: Decimal,
+    primary_metric_key: &str,
+) -> BTreeMap<String, Decimal> {
+    let mut metrics = state.current_metrics.clone();
+    metrics
+        .entry(primary_metric_key.to_string())
+        .or_insert(metric);
+    metrics.entry("metric".to_string()).or_insert(metric);
+    metrics
 }
 
 fn build_trial_metrics(
