@@ -39,6 +39,7 @@ pub enum Recommendation {
 pub struct ParsedRow {
     pub iteration: u32,
     pub commit: Option<String>,
+    pub guard: Option<String>,
     pub metric: Decimal,
     pub delta: Decimal,
     pub status: String,
@@ -116,6 +117,7 @@ pub fn parse_results_tsv(content: &str) -> Result<Vec<ParsedRow>> {
             let value = parts[index];
             (value != "-").then(|| value.to_string())
         });
+        let guard = columns.guard.map(|index| parts[index].to_string());
         let metric = Decimal::from_str(parts[columns.metric])
             .with_context(|| format!("Invalid metric value at iteration {iteration_label}"))?;
         let delta_str = parts[columns.delta].trim_start_matches('+');
@@ -136,6 +138,7 @@ pub fn parse_results_tsv(content: &str) -> Result<Vec<ParsedRow>> {
             rows.push(ParsedRow {
                 iteration,
                 commit,
+                guard,
                 metric,
                 delta,
                 status,
@@ -393,6 +396,7 @@ mod tests {
         let rows = parse_results_tsv(tsv).unwrap();
         assert_eq!(rows.len(), 2);
         assert_eq!(rows[0].iteration, 1);
+        assert_eq!(rows[0].guard.as_deref(), Some("pass"));
         assert_eq!(rows[0].status, "keep");
         assert_eq!(rows[1].status, "discard");
     }
@@ -509,6 +513,7 @@ mod tests {
             .map(|i| ParsedRow {
                 iteration: i,
                 commit: Some("abc".into()),
+                guard: None,
                 metric: Decimal::from(80 + i),
                 delta: Decimal::from(1),
                 status: "keep".into(),
@@ -524,6 +529,7 @@ mod tests {
             .map(|i| ParsedRow {
                 iteration: i,
                 commit: None,
+                guard: None,
                 metric: Decimal::from(80),
                 delta: Decimal::ZERO,
                 status: "discard".into(),
@@ -539,6 +545,7 @@ mod tests {
             .map(|i| ParsedRow {
                 iteration: i,
                 commit: None,
+                guard: None,
                 metric: Decimal::from(80),
                 delta: Decimal::ZERO,
                 status: "discard".into(),
@@ -554,6 +561,7 @@ mod tests {
             .map(|i| ParsedRow {
                 iteration: i,
                 commit: None,
+                guard: None,
                 metric: Decimal::from(80),
                 delta: Decimal::ZERO,
                 status: "discard".into(),
@@ -563,6 +571,7 @@ mod tests {
         rows.push(ParsedRow {
             iteration: 4,
             commit: Some("abc".into()),
+            guard: None,
             metric: Decimal::from(82),
             delta: Decimal::from(2),
             status: "keep".into(),
@@ -577,6 +586,7 @@ mod tests {
             ParsedRow {
                 iteration: 1,
                 commit: Some("a".into()),
+                guard: None,
                 metric: Decimal::from(82),
                 delta: Decimal::from(2),
                 status: "keep".into(),
@@ -585,6 +595,7 @@ mod tests {
             ParsedRow {
                 iteration: 2,
                 commit: None,
+                guard: None,
                 metric: Decimal::from(80),
                 delta: Decimal::from(-2),
                 status: "discard".into(),
@@ -593,6 +604,7 @@ mod tests {
             ParsedRow {
                 iteration: 3,
                 commit: Some("b".into()),
+                guard: None,
                 metric: Decimal::from(83),
                 delta: Decimal::from(3),
                 status: "keep".into(),
@@ -611,6 +623,7 @@ mod tests {
             ParsedRow {
                 iteration: 0,
                 commit: Some("base".into()),
+                guard: None,
                 metric: Decimal::from(10),
                 delta: Decimal::ZERO,
                 status: "baseline".into(),
@@ -619,6 +632,7 @@ mod tests {
             ParsedRow {
                 iteration: 1,
                 commit: Some("a".into()),
+                guard: None,
                 metric: Decimal::from(8),
                 delta: Decimal::from(-2),
                 status: "keep".into(),
@@ -627,6 +641,7 @@ mod tests {
             ParsedRow {
                 iteration: 2,
                 commit: None,
+                guard: None,
                 metric: Decimal::from(9),
                 delta: Decimal::from(1),
                 status: "discard".into(),

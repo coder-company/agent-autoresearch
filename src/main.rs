@@ -1232,6 +1232,10 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
         .iter()
         .filter(|row| is_failure_status(&row.status))
         .count();
+    let guard_failures = metrics
+        .iter()
+        .filter(|row| row.guard.as_deref() == Some("fail"))
+        .count();
     let baseline = metrics.first().map(|row| row.metric).unwrap_or_default();
     let final_metric = metrics.last().map(|row| row.metric).unwrap_or_default();
     let improvement = if direction == "higher" {
@@ -1313,6 +1317,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 "keeps": keeps,
                 "discards": discards,
                 "crashes": crashes,
+                "guard_failures": guard_failures,
                 "baseline": baseline.to_string(),
                 "final": final_metric.to_string(),
                 "best": best.to_string(),
@@ -1336,6 +1341,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 keeps,
                 discards,
                 crashes,
+                guard_failures,
                 efficiency,
                 baseline,
                 final_metric,
@@ -1356,6 +1362,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 keeps,
                 discards,
                 crashes,
+                guard_failures,
                 efficiency,
                 baseline,
                 final_metric,
@@ -1416,6 +1423,7 @@ struct EvalsReport<'a> {
     keeps: usize,
     discards: usize,
     crashes: usize,
+    guard_failures: usize,
     efficiency: u32,
     baseline: Decimal,
     final_metric: Decimal,
@@ -1438,6 +1446,7 @@ fn render_evals_markdown(report: EvalsReport<'_>) -> String {
     writeln!(out, "| Kept | {} |", report.keeps).unwrap();
     writeln!(out, "| Discarded | {} |", report.discards).unwrap();
     writeln!(out, "| Crashes | {} |", report.crashes).unwrap();
+    writeln!(out, "| Guard failures | {} |", report.guard_failures).unwrap();
     writeln!(out, "| Efficiency | {}% |", report.efficiency).unwrap();
     writeln!(out, "| Baseline | {} |", report.baseline).unwrap();
     writeln!(out, "| Final | {} |", report.final_metric).unwrap();

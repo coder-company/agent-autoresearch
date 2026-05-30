@@ -438,6 +438,29 @@ fn test_evals_without_baseline_counts_all_rows() {
 }
 
 #[test]
+fn test_evals_reports_guard_failures() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: higher").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t50\t0\t-\tbaseline\tinitial").unwrap();
+    writeln!(file, "1\t-\t55\t+5\tfail\tdiscard\tguard failed").unwrap();
+    writeln!(file, "2\tbcd2345\t60\t+10\tpass\tkeep\tguard passed").unwrap();
+
+    cmd()
+        .args(["evals", tsv_path.to_str().unwrap(), "--format", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"guard_failures\": 1"));
+}
+
+#[test]
 fn test_evals_rejects_invalid_metric() {
     let dir = TempDir::new().unwrap();
     let tsv_path = dir.path().join("results.tsv");
