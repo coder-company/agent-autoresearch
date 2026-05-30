@@ -51,6 +51,17 @@ impl GitRepo {
         Ok(oid.to_string())
     }
 
+    /// Return true when the current HEAD starts with the provided short or full hash.
+    pub fn head_matches(&self, commit: &str) -> Result<bool> {
+        Ok(self.head_full()?.starts_with(commit))
+    }
+
+    /// Get the current HEAD commit summary.
+    pub fn head_summary(&self) -> Result<String> {
+        let head = self.repo.head()?.peel_to_commit()?;
+        Ok(head.summary().unwrap_or("").to_string())
+    }
+
     /// Check the working tree status.
     pub fn worktree_status(&self) -> Result<WorktreeStatus> {
         let mut opts = StatusOptions::new();

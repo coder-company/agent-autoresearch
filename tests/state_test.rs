@@ -32,6 +32,7 @@ fn test_state_from_baseline() {
         .unwrap();
 
     // Create a metric file and commit
+    std::fs::write(dir_path.join(".gitignore"), "autoresearch-results/\n").unwrap();
     std::fs::write(dir_path.join("metric.txt"), "50\n").unwrap();
     std::process::Command::new("git")
         .args(["add", "."])
@@ -174,7 +175,8 @@ fn test_state_record_keep_then_discard() {
     assert!(state_content.contains("\"keeps\": 1"));
     assert!(state_content.contains("\"current_metric\": \"60\""));
 
-    // Now simulate a discard
+    // Now simulate a discard from a real trial experiment commit
+    commit_metric(dir_path, "45\n", "experiment: regress metric");
     Command::cargo_bin("autoresearch")
         .unwrap()
         .args([
@@ -289,6 +291,7 @@ fn test_escalation_thresholds_via_consecutive_discards() {
         .output()
         .unwrap();
 
+    std::fs::write(dir_path.join(".gitignore"), "autoresearch-results/\n").unwrap();
     std::fs::write(dir_path.join("metric.txt"), "50\n").unwrap();
     std::process::Command::new("git")
         .args(["add", "."])
@@ -318,6 +321,7 @@ fn test_escalation_thresholds_via_consecutive_discards() {
 
     // Issue 2 discards — no escalation yet
     for i in 0..2 {
+        commit_metric(dir_path, "40\n", &format!("experiment: discard {}", i + 1));
         Command::cargo_bin("autoresearch")
             .unwrap()
             .args([
@@ -337,6 +341,7 @@ fn test_escalation_thresholds_via_consecutive_discards() {
     }
 
     // 3rd discard triggers REFINE
+    commit_metric(dir_path, "40\n", "experiment: discard 3");
     Command::cargo_bin("autoresearch")
         .unwrap()
         .args([
@@ -361,6 +366,7 @@ fn test_escalation_thresholds_via_consecutive_discards() {
 
     // Issue 2 more discards (total 5) — should trigger PIVOT
     for _ in 3..4 {
+        commit_metric(dir_path, "38\n", "experiment: discard 4");
         Command::cargo_bin("autoresearch")
             .unwrap()
             .args([
@@ -379,6 +385,7 @@ fn test_escalation_thresholds_via_consecutive_discards() {
     }
 
     // 5th discard triggers PIVOT
+    commit_metric(dir_path, "38\n", "experiment: discard 5");
     Command::cargo_bin("autoresearch")
         .unwrap()
         .args([
@@ -512,4 +519,87 @@ fn test_decide_auto_uses_metric_direction() {
         std::fs::read_to_string(dir_path.join("autoresearch-results/state.json")).unwrap();
     assert!(state_content.contains("\"current_metric\": \"60\""));
     assert!(state_content.contains("\"discards\": 1"));
+}
+
+#[test]
+fn test_decide_refuses_rollback_without_experiment_head() {
+    use assert_cmd::Command;
+    use predicates::prelude::*;
+    use tempfile::TempDir;
+
+    let dir = TempDir::new().unwrap();
+    let dir_path = dir.path();
+
+    std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["config", "user.email", "test@test.com"])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["config", "user.name", "Test"])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+    std::fs::write(dir_path.join(".gitignore"), "autoresearch-results/\n").unwrap();
+    std::fs::write(dir_path.join("metric.txt"), "50\n").unwrap();
+    std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["commit", "-m", "initial"])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+
+    Command::cargo_bin("autoresearch")
+        .unwrap()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            dir_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    Command::cargo_bin("autoresearch")
+        .unwrap()
+        .args([
+            "decide",
+            "--decision",
+            "discard",
+            "--metric",
+            "40",
+            "--description",
+            "bad manual discard",
+            "--cwd",
+            dir_path.to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Refusing rollback"));
+}
+
+fn commit_metric(dir_path: &std::path::Path, value: &str, message: &str) {
+    std::fs::write(dir_path.join("metric.txt"), value).unwrap();
+    std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["commit", "-m", message])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
 }

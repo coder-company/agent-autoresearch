@@ -675,6 +675,20 @@ fn cmd_decide(
 
     // Apply rollback if needed
     if needs_rollback {
+        if let Some(expected_commit) = resolved_commit.as_deref() {
+            if !git.head_matches(expected_commit)? {
+                anyhow::bail!(
+                    "Refusing rollback: trial commit {expected_commit} is not current HEAD"
+                );
+            }
+        }
+        let head_summary = git.head_summary()?;
+        if !head_summary.starts_with("experiment:") {
+            anyhow::bail!(
+                "Refusing rollback: current HEAD is not an experiment commit ({head_summary:?})"
+            );
+        }
+
         let strategy = match rollback_str {
             "hard-reset" => RollbackStrategy::HardReset,
             _ => RollbackStrategy::Revert,
