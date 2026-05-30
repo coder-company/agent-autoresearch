@@ -1467,6 +1467,7 @@ fn test_handoff_defaults_to_repo_root_results_from_subdir() {
     assert!(handoff.contains("\"chain\": ["));
     assert!(handoff.contains("\"scenario\""));
     assert!(handoff.contains("\"fix\""));
+    assert!(handoff.contains("\"next_target\": \"scenario\""));
     assert!(!subdir.join("autoresearch-results").exists());
 }
 

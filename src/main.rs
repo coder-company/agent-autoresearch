@@ -2751,6 +2751,11 @@ fn cmd_handoff(
     let timestamp = chrono::Utc::now().to_rfc3339();
     let handoff_path = results_dir.join("handoff.json");
     let chain_targets = parse_handoff_chain_targets(chain)?;
+    let next_target = chain_targets
+        .first()
+        .cloned()
+        .map(serde_json::Value::String)
+        .unwrap_or(serde_json::Value::Null);
 
     let handoff = serde_json::json!({
         "version": "0.1.0",
@@ -2772,6 +2777,7 @@ fn cmd_handoff(
         "findings": findings_val,
         "config": config_val,
         "chain": chain_targets,
+        "next_target": next_target,
     });
 
     std::fs::write(&handoff_path, serde_json::to_string_pretty(&handoff)?)?;
