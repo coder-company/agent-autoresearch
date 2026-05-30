@@ -763,6 +763,41 @@ fn test_init_blocks_stale_git_lock() {
 }
 
 #[test]
+fn test_init_blocks_staged_autoresearch_artifacts() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    std::fs::create_dir_all(dir.path().join("autoresearch-results")).unwrap();
+    std::fs::write(dir.path().join("autoresearch-results/state.json"), "{}\n").unwrap();
+    std::process::Command::new("git")
+        .args(["add", "-f", "autoresearch-results/state.json"])
+        .current_dir(dir.path())
+        .output()
+        .unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("init preflight blocked"))
+        .stderr(predicate::str::contains(
+            "autoresearch-owned artifacts are staged",
+        ))
+        .stderr(predicate::str::contains("autoresearch-results/state.json"));
+
+    assert!(!dir.path().join("autoresearch-results/results.tsv").exists());
+}
+
+#[test]
 fn test_resume_reports_baseline_as_resumable() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

@@ -554,6 +554,13 @@ fn cmd_init(
     if git.head_detached()? {
         anyhow::bail!("init preflight blocked: detached_head");
     }
+    let staged_artifacts = git.staged_owned_artifacts()?;
+    if !staged_artifacts.is_empty() {
+        anyhow::bail!(
+            "init preflight blocked: autoresearch-owned artifacts are staged: {}",
+            staged_artifacts.join(", ")
+        );
+    }
     if let WorktreeStatus::Dirty(files) = git.worktree_status()? {
         anyhow::bail!(
             "init preflight blocked: unexpected worktree changes before launch: {}",
