@@ -2040,6 +2040,43 @@ fn test_exec_baseline_guard_screens_command() {
 }
 
 #[test]
+fn test_exec_metrics_json_requires_criteria_keys() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let config = serde_json::json!({
+        "goal": "fresh exec",
+        "scope": ["metric.txt"],
+        "metric": "score",
+        "direction": "higher",
+        "verify": "printf '{\"score\":50}\\n'",
+        "verify_format": "metrics_json",
+        "primary_metric_key": "score",
+        "acceptance_criteria": [
+            {"metric_key": "coverage", "operator": ">=", "target": "90"}
+        ]
+    });
+
+    cmd()
+        .args([
+            "exec",
+            "--iterations",
+            "1",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .write_stdin(config.to_string())
+        .assert()
+        .code(2)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains(
+            "\"code\":\"invalid_metrics_json\"",
+        ))
+        .stderr(predicate::str::contains("metrics keys: coverage"));
+
+    assert!(!dir.path().join("autoresearch-results/results.tsv").exists());
+}
+
+#[test]
 fn test_exec_archives_existing_artifacts_before_fresh_start() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

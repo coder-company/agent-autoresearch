@@ -3629,6 +3629,21 @@ fn cmd_exec_inner(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
     // Baseline
     let result = verify::run_verify(&verify_cmd, fmt, primary_key.as_deref(), &workspace)
         .context("exec: baseline verification failed")?;
+    if fmt == VerifyFormat::MetricsJson {
+        let metrics = result
+            .metrics
+            .as_ref()
+            .context("exec: verify_format=metrics_json requires structured baseline metrics")?;
+        let primary_metric_key = primary_key.as_deref().unwrap_or("metric");
+        if let Err(err) = ensure_metrics_json_keys(
+            metrics,
+            primary_metric_key,
+            &config.acceptance_criteria,
+            &config.required_keep_criteria,
+        ) {
+            return exec_hard_error("invalid_metrics_json", format!("exec: {err}"));
+        }
+    }
     let baseline_guard = match run_baseline_guard(guard_cmd.as_deref(), &workspace) {
         Ok(guard) => guard,
         Err(err) => return exec_hard_error("guard_failed", format!("exec: {err}")),
