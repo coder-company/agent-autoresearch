@@ -3321,7 +3321,9 @@ fn cmd_watch(cwd: Option<PathBuf>, lines: usize, once: bool, interval_ms: u64) -
                 .iter()
                 .find(|line| line.starts_with("iteration\t"))
             {
-                println!("{header}");
+                if !write_stdout_line(header)? {
+                    return Ok(());
+                }
             }
 
             let data_rows: Vec<&str> = visible_lines
@@ -3331,12 +3333,16 @@ fn cmd_watch(cwd: Option<PathBuf>, lines: usize, once: bool, interval_ms: u64) -
                 .collect();
             let start = data_rows.len().saturating_sub(lines);
             for row in &data_rows[start..] {
-                println!("{row}");
+                if !write_stdout_line(row)? {
+                    return Ok(());
+                }
             }
             printed_lines = visible_lines.len();
         } else if visible_lines.len() > printed_lines {
             for row in &visible_lines[printed_lines..] {
-                println!("{row}");
+                if !write_stdout_line(row)? {
+                    return Ok(());
+                }
             }
             printed_lines = visible_lines.len();
         }
@@ -3349,6 +3355,19 @@ fn cmd_watch(cwd: Option<PathBuf>, lines: usize, once: bool, interval_ms: u64) -
     }
 
     Ok(())
+}
+
+fn write_stdout_line(line: &str) -> Result<bool> {
+    let mut stdout = std::io::stdout().lock();
+    if let Err(err) = IoWrite::write_all(&mut stdout, line.as_bytes())
+        .and_then(|_| IoWrite::write_all(&mut stdout, b"\n"))
+    {
+        if err.kind() == std::io::ErrorKind::BrokenPipe {
+            return Ok(false);
+        }
+        return Err(err).context("failed writing to stdout");
+    }
+    Ok(true)
 }
 
 // ── Lessons ──────────────────────────────────────────────────────────
