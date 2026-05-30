@@ -1200,8 +1200,12 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
     let mut metrics: Vec<(u32, &str, Decimal, &str)> = Vec::new(); // (iter, status, metric, desc)
     for row in &rows {
         let cols: Vec<&str> = row.split('\t').collect();
-        if cols.len() < 7 {
-            continue;
+        if cols.len() != 7 {
+            anyhow::bail!(
+                "Invalid column count at iteration {}: got {}, expected 7",
+                cols.first().copied().unwrap_or("<missing>"),
+                cols.len()
+            );
         }
         let iter: u32 = cols[0].parse().unwrap_or(0);
         let metric = Decimal::from_str(cols[2])
