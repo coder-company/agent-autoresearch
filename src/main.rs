@@ -540,6 +540,17 @@ fn cmd_init(
 
     // Verify git repo
     let git = GitRepo::open(&workspace).context("autoresearch requires a git repository")?;
+    let lock_files = git.lock_files();
+    if !lock_files.is_empty() {
+        anyhow::bail!(
+            "init preflight blocked: stale git lock files found: {}",
+            lock_files
+                .iter()
+                .map(|path| path.display().to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+    }
     if git.head_detached()? {
         anyhow::bail!("init preflight blocked: detached_head");
     }

@@ -736,6 +736,33 @@ fn test_init_blocks_detached_head() {
 }
 
 #[test]
+fn test_init_blocks_stale_git_lock() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    std::fs::write(dir.path().join(".git/index.lock"), "stale\n").unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("init preflight blocked"))
+        .stderr(predicate::str::contains("stale git lock files found"))
+        .stderr(predicate::str::contains("index.lock"));
+
+    assert!(!dir.path().join("autoresearch-results/results.tsv").exists());
+}
+
+#[test]
 fn test_resume_reports_baseline_as_resumable() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
