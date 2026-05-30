@@ -1480,6 +1480,10 @@ fn test_runtime_start_records_spawn_failure() {
         .success()
         .stdout(predicate::str::contains("\"decision\": \"needs_human\""))
         .stdout(predicate::str::contains("\"reason\": \"spawn_failed\""));
+
+    let supervised_runtime =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/runtime.json")).unwrap();
+    assert!(supervised_runtime.contains("definitely-missing-codex-for-autoresearch-test"));
 }
 
 #[test]

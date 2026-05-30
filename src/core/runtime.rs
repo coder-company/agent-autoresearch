@@ -469,7 +469,9 @@ pub fn supervise_runtime(
         }
         "needs_human" => {
             snapshot.status = "needs_human".to_string();
-            snapshot.last_error = Some(status.reason.clone());
+            if snapshot.last_error.is_none() {
+                snapshot.last_error = Some(status.reason.clone());
+            }
         }
         _ => {}
     }
