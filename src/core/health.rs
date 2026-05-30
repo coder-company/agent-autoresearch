@@ -30,6 +30,7 @@ pub struct HealthReport {
     pub git_state: String,
     pub free_mb: Option<u64>,
     pub verify_command: Option<String>,
+    pub guard_command: Option<String>,
     pub resume_decision: &'static str,
     pub warnings: Vec<HealthFinding>,
     pub blockers: Vec<HealthFinding>,
@@ -121,6 +122,7 @@ pub fn run_health_check(
     let mut main_rows = 0usize;
     let mut expected_rows = None;
     let mut state_verify = None;
+    let mut state_guard = None;
     let mut results_usable = false;
     let mut state_usable = false;
 
@@ -142,6 +144,10 @@ pub fn run_health_check(
                 Ok(state) => {
                     expected_rows = Some(state.iteration + 1);
                     state_verify = state.config.as_ref().map(|config| config.verify.clone());
+                    state_guard = state
+                        .config
+                        .as_ref()
+                        .and_then(|config| config.guard.clone());
                     state_usable = true;
                 }
                 Err(err) => blockers.push(HealthFinding {
@@ -244,6 +250,21 @@ pub fn run_health_check(
         }),
     }
 
+    let effective_guard = state_guard.filter(|command| !command.trim().is_empty());
+    if let Some(command) = effective_guard.as_deref() {
+        if let Err(err) = verify::screen_command(command) {
+            blockers.push(HealthFinding {
+                code: "guard_command_unsafe",
+                message: err.to_string(),
+            });
+        } else if !verify::command_exists(command) {
+            blockers.push(HealthFinding {
+                code: "guard_command_missing",
+                message: format!("guard command binary not found for: {command}"),
+            });
+        }
+    }
+
     let decision = if !blockers.is_empty() {
         "block"
     } else if !warnings.is_empty() {
@@ -266,6 +287,7 @@ pub fn run_health_check(
         git_state,
         free_mb,
         verify_command: effective_verify,
+        guard_command: effective_guard,
         resume_decision: health_resume_decision(results_usable, state_usable, has_results),
         warnings,
         blockers,

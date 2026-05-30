@@ -2404,6 +2404,52 @@ fn test_health_blocks_unsafe_verify_command() {
 }
 
 #[test]
+fn test_health_blocks_missing_guard_command() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--guard",
+            "true",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let state_path = dir.path().join("autoresearch-results/state.json");
+    let mut state: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&state_path).unwrap()).unwrap();
+    state["config"]["guard"] = serde_json::json!("definitely_missing_autoresearch_guard --check");
+    std::fs::write(&state_path, serde_json::to_string_pretty(&state).unwrap()).unwrap();
+
+    cmd()
+        .args([
+            "health",
+            "--verify",
+            "cat metric.txt",
+            "--min-free-mb",
+            "1",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .code(2)
+        .stdout(predicate::str::contains("\"decision\": \"block\""))
+        .stdout(predicate::str::contains("guard_command_missing"))
+        .stdout(predicate::str::contains(
+            "\"guard_command\": \"definitely_missing_autoresearch_guard --check\"",
+        ));
+}
+
+#[test]
 fn test_health_blocks_detached_head() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
