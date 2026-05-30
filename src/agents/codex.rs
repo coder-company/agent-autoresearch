@@ -105,13 +105,86 @@ tools:
           guard:
             type: string
             description: "Safety command that must exit 0"
+          verify_format:
+            type: string
+            enum: [scalar, metrics_json]
+            description: "Verify output format. Use metrics_json when verify emits a final-line JSON metrics object"
+          primary_metric_key:
+            type: string
+            description: "Primary metric key to optimize when verify_format is metrics_json"
+          acceptance_criteria:
+            type: array
+            description: "Terminal success criteria for structured metrics"
+            items:
+              type: object
+              properties:
+                metric_key:
+                  type: string
+                operator:
+                  type: string
+                  enum: ["<", "<=", ">", ">=", "=="]
+                target:
+                  type: string
+              required: [metric_key, operator, target]
+          required_keep_criteria:
+            type: array
+            description: "Structured metric criteria that an improved trial must satisfy before it can be kept"
+            items:
+              type: object
+              properties:
+                metric_key:
+                  type: string
+                operator:
+                  type: string
+                  enum: ["<", "<=", ">", ">=", "=="]
+                target:
+                  type: string
+              required: [metric_key, operator, target]
+          required_keep_labels:
+            type: array
+            description: "Labels required before an improved trial can be retained"
+            items:
+              type: string
+          required_stop_labels:
+            type: array
+            description: "Labels required before a stop condition can end a retained run"
+            items:
+              type: string
           iterations:
             type: integer
             description: "Max iterations (default varies by mode)"
+          run_tag:
+            type: string
+            description: "Stable tag for grouping artifacts, lessons, and iteration references"
+          stop_condition:
+            type: string
+            description: "Natural language or simple metric threshold that can end the run"
           direction:
             type: string
             enum: [higher_is_better, lower_is_better]
             description: "Metric optimization direction"
+          run_mode:
+            type: string
+            enum: [foreground, background]
+            description: "Run in the current Codex session or through the managed background runtime"
+          rollback_strategy:
+            type: string
+            enum: [revert, hard-reset, hard_reset]
+            description: "Rollback strategy approved for discarded trials"
+          environment_summary:
+            type: string
+            description: "Resource and tool profile persisted in results metadata"
+          workspace_root:
+            type: string
+            description: "Workspace root for autoresearch-results and canonical context"
+          primary_repo:
+            type: string
+            description: "Primary repository path for scoped or multi-repo runs"
+          companion_repo_scope:
+            type: array
+            description: "Companion repository scopes as PATH=SCOPE entries"
+            items:
+              type: string
           depth:
             type: string
             enum: [shallow, standard, deep]
@@ -151,6 +224,30 @@ mod tests {
         let yaml = CodexAdapter::agent_yaml();
 
         for property in ["chain:", "evals:", "evals_interval:"] {
+            assert!(yaml.contains(property), "missing property {property}");
+        }
+    }
+
+    #[test]
+    fn agent_yaml_advertises_advanced_run_controls() {
+        let yaml = CodexAdapter::agent_yaml();
+
+        for property in [
+            "verify_format:",
+            "primary_metric_key:",
+            "acceptance_criteria:",
+            "required_keep_criteria:",
+            "required_keep_labels:",
+            "required_stop_labels:",
+            "run_tag:",
+            "stop_condition:",
+            "run_mode:",
+            "rollback_strategy:",
+            "environment_summary:",
+            "workspace_root:",
+            "primary_repo:",
+            "companion_repo_scope:",
+        ] {
             assert!(yaml.contains(property), "missing property {property}");
         }
     }
