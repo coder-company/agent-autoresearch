@@ -10,6 +10,30 @@ fn run_hook(hook_name: &str, input: &str) -> assert_cmd::assert::Assert {
         .assert()
 }
 
+fn run_hook_in(dir: &std::path::Path, hook_name: &str, input: &str) -> assert_cmd::assert::Assert {
+    Command::cargo_bin("autoresearch")
+        .unwrap()
+        .current_dir(dir)
+        .args(["hook", hook_name])
+        .write_stdin(input)
+        .assert()
+}
+
+fn write_scope_state(dir: &std::path::Path, scope: &[&str]) {
+    let results = dir.join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    let scope = scope
+        .iter()
+        .map(|item| serde_json::Value::String((*item).to_string()))
+        .collect::<Vec<_>>();
+    let state = serde_json::json!({
+        "config": {
+            "scope": scope
+        }
+    });
+    std::fs::write(results.join("state.json"), state.to_string()).unwrap();
+}
+
 // ── Scout Block ──────────────────────────────────────────────────────
 
 #[test]
@@ -41,6 +65,60 @@ fn test_scout_block_allows_read_tools() {
     run_hook("scout-block", &input.to_string())
         .success()
         .stdout(predicate::str::contains("\"decision\":\"block\"").not());
+}
+
+#[test]
+fn test_scout_block_allows_in_scope_write() {
+    let dir = tempfile::tempdir().unwrap();
+    write_scope_state(dir.path(), &["src/**/*.rs"]);
+    let input = serde_json::json!({
+        "tool_name": "Write",
+        "tool_input": {
+            "file_path": "src/main.rs",
+            "content": "fn main() {}"
+        }
+    });
+
+    run_hook_in(dir.path(), "scout-block", &input.to_string())
+        .success()
+        .stdout(predicate::str::contains("\"decision\":\"block\"").not());
+}
+
+#[test]
+fn test_scout_block_blocks_out_of_scope_write() {
+    let dir = tempfile::tempdir().unwrap();
+    write_scope_state(dir.path(), &["src/**/*.rs"]);
+    let input = serde_json::json!({
+        "tool_name": "Edit",
+        "tool_input": {
+            "file_path": "README.md",
+            "old_string": "old",
+            "new_string": "new"
+        }
+    });
+
+    run_hook_in(dir.path(), "scout-block", &input.to_string())
+        .success()
+        .stdout(predicate::str::contains("\"decision\":\"block\""))
+        .stdout(predicate::str::contains("outside autoresearch scope"));
+}
+
+#[test]
+fn test_scout_block_blocks_workspace_escape() {
+    let dir = tempfile::tempdir().unwrap();
+    write_scope_state(dir.path(), &["src/**"]);
+    let input = serde_json::json!({
+        "tool_name": "Write",
+        "tool_input": {
+            "path": "../outside.rs",
+            "content": "fn main() {}"
+        }
+    });
+
+    run_hook_in(dir.path(), "scout-block", &input.to_string())
+        .success()
+        .stdout(predicate::str::contains("\"decision\":\"block\""))
+        .stdout(predicate::str::contains("outside the workspace"));
 }
 
 // ── Privacy Block ────────────────────────────────────────────────────
