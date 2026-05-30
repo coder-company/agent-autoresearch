@@ -516,6 +516,29 @@ fn test_evals_reports_keep_and_failure_streaks() {
 }
 
 #[test]
+fn test_evals_reports_unknown_columns() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: higher").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\ttechnique"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t50\t0\t-\tbaseline\tinitial\tbaseline").unwrap();
+    writeln!(file, "1\tbcd2345\t55\t+5\tpass\tkeep\timproved\trefactor").unwrap();
+
+    cmd()
+        .args(["evals", tsv_path.to_str().unwrap(), "--format", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"unknown_columns\""))
+        .stdout(predicate::str::contains("\"technique\""));
+}
+
+#[test]
 fn test_evals_rejects_invalid_metric() {
     let dir = TempDir::new().unwrap();
     let tsv_path = dir.path().join("results.tsv");

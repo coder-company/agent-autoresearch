@@ -1204,6 +1204,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
 
     // Parse direction from header
     let direction = evals_direction(&content)?;
+    let unknown_columns = evals_unknown_columns(&content);
 
     let has_data_rows = content
         .lines()
@@ -1380,6 +1381,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 "longest_plateau": longest_plateau,
                 "trend": trend,
                 "recommendation": recommendation,
+                "unknown_columns": &unknown_columns,
                 "top_improvements": top_keeps.iter().take(5).map(|(d, desc)| {
                     serde_json::json!({"delta": d.to_string(), "description": desc})
                 }).collect::<Vec<_>>(),
@@ -1410,6 +1412,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 improvement_pct: improvement_pct.as_deref(),
                 trend,
                 longest_plateau,
+                unknown_columns: &unknown_columns,
                 top_keeps: &top_keeps,
                 top_regressions: &top_regressions,
             });
@@ -1435,6 +1438,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 improvement_pct: improvement_pct.as_deref(),
                 trend,
                 longest_plateau,
+                unknown_columns: &unknown_columns,
                 top_keeps: &top_keeps,
                 top_regressions: &top_regressions,
             });
@@ -1483,6 +1487,32 @@ fn infer_evals_direction_from_header(content: &str) -> Option<&'static str> {
     }
 }
 
+fn evals_unknown_columns(content: &str) -> Vec<String> {
+    let Some(header) = content.lines().find(|line| {
+        !line.starts_with('#') && !line.trim().is_empty() && line.starts_with("iteration\t")
+    }) else {
+        return Vec::new();
+    };
+    let known = BTreeSet::from([
+        "iteration",
+        "timestamp",
+        "commit",
+        "metric",
+        "metric_value",
+        "error_count",
+        "delta",
+        "guard",
+        "guard-metric",
+        "status",
+        "description",
+    ]);
+    header
+        .split('\t')
+        .filter(|column| !known.contains(*column))
+        .map(str::to_string)
+        .collect()
+}
+
 struct EvalsReport<'a> {
     direction: &'a str,
     total_iterations: usize,
@@ -1501,6 +1531,7 @@ struct EvalsReport<'a> {
     improvement_pct: Option<&'a str>,
     trend: &'a str,
     longest_plateau: u32,
+    unknown_columns: &'a [String],
     top_keeps: &'a [(Decimal, &'a str)],
     top_regressions: &'a [(Decimal, &'a str)],
 }
@@ -1553,6 +1584,14 @@ fn render_evals_markdown(report: EvalsReport<'_>) -> String {
         report.longest_plateau
     )
     .unwrap();
+    if !report.unknown_columns.is_empty() {
+        writeln!(
+            out,
+            "| Unknown columns | {} |",
+            report.unknown_columns.join(", ")
+        )
+        .unwrap();
+    }
     writeln!(out).unwrap();
 
     if !report.top_keeps.is_empty() {
