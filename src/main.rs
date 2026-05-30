@@ -2743,6 +2743,7 @@ fn cmd_handoff(
         .unwrap_or(serde_json::Value::Null);
 
     let timestamp = chrono::Utc::now().to_rfc3339();
+    let handoff_path = results_dir.join("handoff.json");
 
     let handoff = serde_json::json!({
         "version": "0.1.0",
@@ -2756,6 +2757,7 @@ fn cmd_handoff(
         "workspace_root": workspace.to_string_lossy().to_string(),
         "artifact_root": results_dir.to_string_lossy().to_string(),
         "results_path": results_dir.join("results.tsv").to_string_lossy().to_string(),
+        "handoff_path": handoff_path.to_string_lossy().to_string(),
         "goal": goal,
         "scope": scope,
         "hypothesis_queue": hypothesis_queue,
@@ -2764,7 +2766,6 @@ fn cmd_handoff(
         "config": config_val,
     });
 
-    let handoff_path = results_dir.join("handoff.json");
     std::fs::write(&handoff_path, serde_json::to_string_pretty(&handoff)?)?;
 
     println!(r#"{{"status":"ok","path":"autoresearch-results/handoff.json"}}"#);

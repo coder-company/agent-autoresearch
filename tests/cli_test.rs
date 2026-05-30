@@ -1459,7 +1459,9 @@ fn test_handoff_defaults_to_repo_root_results_from_subdir() {
     assert!(handoff.contains("\"workspace_root\":"));
     assert!(handoff.contains("\"artifact_root\":"));
     assert!(handoff.contains("\"results_path\":"));
+    assert!(handoff.contains("\"handoff_path\":"));
     assert!(handoff.contains("autoresearch-results/results.tsv"));
+    assert!(handoff.contains("autoresearch-results/handoff.json"));
     assert!(!subdir.join("autoresearch-results").exists());
 }
 
