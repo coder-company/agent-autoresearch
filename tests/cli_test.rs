@@ -2842,6 +2842,36 @@ fn test_init_persists_runtime_config() {
 }
 
 #[test]
+fn test_init_protects_artifacts_without_dirtying_gitignore() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture_with_gitignore(&dir, "target/\n");
+    let root = dir.path().to_str().unwrap();
+    let original_gitignore = std::fs::read_to_string(dir.path().join(".gitignore")).unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join(".gitignore")).unwrap(),
+        original_gitignore
+    );
+    let exclude = std::fs::read_to_string(dir.path().join(".git/info/exclude")).unwrap();
+    assert!(exclude.contains("autoresearch-results/"));
+    assert!(exclude.contains(".codex-autoresearch/"));
+    assert_eq!(git_output(dir.path(), &["status", "--short"]), "");
+}
+
+#[test]
 fn test_init_persists_environment_summary_metadata() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
@@ -6409,6 +6439,37 @@ fn init_git_fixture(dir: &TempDir) {
         "autoresearch-results/\n.codex-autoresearch/\n",
     )
     .unwrap();
+    std::fs::write(path.join("metric.txt"), "50\n").unwrap();
+    std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["commit", "-m", "initial"])
+        .current_dir(path)
+        .output()
+        .unwrap();
+}
+
+fn init_git_fixture_with_gitignore(dir: &TempDir, gitignore: &str) {
+    let path = dir.path();
+    std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["config", "user.email", "test@test.com"])
+        .current_dir(path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["config", "user.name", "Test"])
+        .current_dir(path)
+        .output()
+        .unwrap();
+    std::fs::write(path.join(".gitignore"), gitignore).unwrap();
     std::fs::write(path.join("metric.txt"), "50\n").unwrap();
     std::process::Command::new("git")
         .args(["add", "."])

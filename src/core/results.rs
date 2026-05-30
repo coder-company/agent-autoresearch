@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
+use git2::Repository;
 use rust_decimal::Decimal;
 use std::fmt::Write as FmtWrite;
 use std::fs::{self, OpenOptions};
@@ -474,8 +475,7 @@ pub fn results_dir(workspace_root: &Path) -> PathBuf {
 ///
 /// 1. Creates the directory
 /// 2. Writes `autoresearch-results/.gitignore` containing `*\n!.gitignore\n`
-/// 3. If `<workspace>/.gitignore` exists and doesn't contain `autoresearch-results/`, appends it
-/// 4. If no `.gitignore` exists, creates one with `autoresearch-results/\n`
+/// 3. Adds autoresearch artifact dirs to the repo-local `.git/info/exclude`
 pub fn ensure_results_dir_protected(workspace: &Path) -> Result<PathBuf> {
     let results = workspace.join(artifact_dir_name());
     fs::create_dir_all(&results).context("Failed to create autoresearch-results directory")?;
@@ -485,37 +485,42 @@ pub fn ensure_results_dir_protected(workspace: &Path) -> Result<PathBuf> {
     fs::write(&inner_gitignore, "*\n!.gitignore\n")
         .context("Failed to write autoresearch-results/.gitignore")?;
 
-    // Protect from workspace-level git staging
-    let ws_gitignore = workspace.join(".gitignore");
     let entries = ["autoresearch-results/", ".codex-autoresearch/"];
-    if ws_gitignore.exists() {
-        let content =
-            fs::read_to_string(&ws_gitignore).context("Failed to read workspace .gitignore")?;
-        let missing: Vec<&str> = entries
-            .iter()
-            .copied()
-            .filter(|entry| !content.lines().any(|l| l.trim() == *entry))
-            .collect();
-        if !missing.is_empty() {
-            use std::io::Write;
-            let mut file = OpenOptions::new()
-                .append(true)
-                .open(&ws_gitignore)
-                .context("Failed to open workspace .gitignore for append")?;
-            // Ensure we start on a new line
-            if !content.ends_with('\n') && !content.is_empty() {
-                writeln!(file)?;
-            }
-            for entry in missing {
-                writeln!(file, "{entry}")?;
-            }
-        }
-    } else {
-        fs::write(&ws_gitignore, entries.join("\n") + "\n")
-            .context("Failed to create workspace .gitignore")?;
-    }
+    protect_artifacts_in_git_exclude(workspace, &entries)?;
 
     Ok(results)
+}
+
+fn protect_artifacts_in_git_exclude(workspace: &Path, entries: &[&str]) -> Result<()> {
+    let repo = Repository::discover(workspace).context("Failed to locate git repository")?;
+    let exclude_path = repo.path().join("info/exclude");
+    if let Some(parent) = exclude_path.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("Failed to create {}", parent.display()))?;
+    }
+
+    let content = fs::read_to_string(&exclude_path).unwrap_or_default();
+    let missing = entries
+        .iter()
+        .copied()
+        .filter(|entry| !content.lines().any(|line| line.trim() == *entry))
+        .collect::<Vec<_>>();
+    if missing.is_empty() {
+        return Ok(());
+    }
+
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&exclude_path)
+        .with_context(|| format!("Failed to open {} for append", exclude_path.display()))?;
+    if !content.ends_with('\n') && !content.is_empty() {
+        writeln!(file)?;
+    }
+    for entry in missing {
+        writeln!(file, "{entry}")?;
+    }
+    Ok(())
 }
 
 /// Generate a timestamped run tag.
