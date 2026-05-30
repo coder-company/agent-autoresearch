@@ -549,6 +549,26 @@ fn test_session_init_includes_resumable_run_context() {
         .stdout(predicate::str::contains("iteration 3"));
 }
 
+// ── Session End ──────────────────────────────────────────────────────
+
+#[test]
+fn test_session_end_emits_terminal_notification() {
+    let dir = tempfile::tempdir().unwrap();
+    let results = dir.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    std::fs::write(
+        results.join("results.tsv"),
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n0\tabc\t10\t0\t-\tbaseline\tinitial\n",
+    )
+    .unwrap();
+
+    run_hook_in(dir.path(), "session-end", "{}")
+        .success()
+        .stdout(predicate::str::contains("\"terminalSequence\""))
+        .stdout(predicate::str::contains("Session completed"))
+        .stdout(predicate::str::contains("1 iterations, metric: 10"));
+}
+
 // ── Simplify Gate ────────────────────────────────────────────────────
 
 #[test]

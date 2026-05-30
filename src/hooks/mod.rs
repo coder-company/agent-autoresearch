@@ -26,6 +26,9 @@ pub struct HookResponse {
     /// Reason for blocking (shown to agent).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
+    /// Optional terminal notification sequence for session-end style hooks.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub terminal_sequence: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
