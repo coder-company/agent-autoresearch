@@ -79,18 +79,6 @@ impl ClaudeAdapter {
                         ]
                     }
                 ],
-                "PostToolUse": [
-                    {
-                        "matcher": "Bash",
-                        "hooks": [
-                            {
-                                "type": "command",
-                                "command": "autoresearch hook verify-capture",
-                                "timeout": 5
-                            }
-                        ]
-                    }
-                ],
                 "UserPromptSubmit": [
                     {
                         "hooks": [
@@ -145,17 +133,6 @@ impl ClaudeAdapter {
                         ]
                     }
                 ],
-                "SubagentEnd": [
-                    {
-                        "hooks": [
-                            {
-                                "type": "command",
-                                "command": "autoresearch hook subagent-collect",
-                                "timeout": 5
-                            }
-                        ]
-                    }
-                ],
                 "SessionStart": [
                     {
                         "hooks": [
@@ -174,28 +151,6 @@ impl ClaudeAdapter {
                                 "type": "command",
                                 "command": "autoresearch hook session-end",
                                 "timeout": 5
-                            }
-                        ]
-                    }
-                ],
-                "PreCompact": [
-                    {
-                        "hooks": [
-                            {
-                                "type": "command",
-                                "command": "autoresearch hook pre-compact-snapshot",
-                                "timeout": 5
-                            }
-                        ]
-                    }
-                ],
-                "Notification": [
-                    {
-                        "hooks": [
-                            {
-                                "type": "command",
-                                "command": "autoresearch hook notification-relay",
-                                "timeout": 3
                             }
                         ]
                     }

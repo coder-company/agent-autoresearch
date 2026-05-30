@@ -107,10 +107,6 @@ pub fn dispatch(hook_name: &str) -> Result<()> {
         "compaction-reanchor" => compaction_reanchor::run(input.as_ref()),
         "subagent-context" => subagent_context::run(input.as_ref()),
         "dev-rules-reminder" => dev_rules_reminder::run(input.as_ref()),
-        // Referenced in hooks.json but no custom logic needed — pass through.
-        "verify-capture" | "subagent-collect" | "pre-compact-snapshot" | "notification-relay" => {
-            HookResponse::allow()
-        }
         _ => HookResponse::allow(),
     };
 
