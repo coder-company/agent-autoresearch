@@ -1395,6 +1395,42 @@ fn test_progress_defaults_to_repo_root_results_from_subdir() {
 }
 
 #[test]
+fn test_watch_once_defaults_to_repo_root_results_from_subdir() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+    let results = dir.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    let tsv_path = results.join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: higher").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t50\t0\t-\tbaseline\tinitial state").unwrap();
+    writeln!(file, "1\tbcd2345\t55\t+5\tpass\tkeep\timprovement").unwrap();
+
+    cmd()
+        .args([
+            "watch",
+            "--once",
+            "--lines",
+            "1",
+            "--cwd",
+            subdir.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("iteration\tcommit\tmetric"))
+        .stdout(predicate::str::contains("improvement"))
+        .stdout(predicate::str::contains("initial state").not());
+}
+
+#[test]
 fn test_lessons_defaults_to_repo_root_results_from_subdir() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

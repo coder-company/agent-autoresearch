@@ -254,6 +254,22 @@ enum Commands {
         cwd: Option<PathBuf>,
     },
 
+    /// Tail the active results.tsv for live run monitoring
+    Watch {
+        /// Number of recent data rows to print on startup
+        #[arg(long, default_value_t = 20)]
+        lines: usize,
+        /// Print once and exit instead of following
+        #[arg(long)]
+        once: bool,
+        /// Poll interval while following
+        #[arg(long, default_value_t = 1000)]
+        interval_ms: u64,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
     /// Query the lessons.md file for relevant strategies
     Lessons {
         /// Filter lessons containing this query (case-insensitive)
@@ -500,6 +516,13 @@ fn main() -> Result<()> {
         Commands::Resume { cwd } => cmd_resume(cwd),
 
         Commands::Progress { cwd } => cmd_progress(cwd),
+
+        Commands::Watch {
+            lines,
+            once,
+            interval_ms,
+            cwd,
+        } => cmd_watch(cwd, lines, once, interval_ms),
 
         Commands::Lessons { search, last, cwd } => cmd_lessons(search.as_deref(), last, cwd),
 
@@ -2681,6 +2704,61 @@ fn cmd_progress(cwd: Option<PathBuf>) -> Result<()> {
     );
     println!("Escalation: {}", escalation_label);
     println!("---");
+    Ok(())
+}
+
+// ── Watch ────────────────────────────────────────────────────────────
+
+fn cmd_watch(cwd: Option<PathBuf>, lines: usize, once: bool, interval_ms: u64) -> Result<()> {
+    let cwd = resolve_cwd(cwd);
+    let tsv_path = default_results_tsv(&cwd)
+        .context("No results.tsv found. Provide --cwd inside a run workspace.")?;
+    let mut printed_lines = 0usize;
+
+    loop {
+        let content = std::fs::read_to_string(&tsv_path)
+            .with_context(|| format!("Cannot read {}", tsv_path.display()))?;
+        let visible_lines: Vec<&str> = content
+            .lines()
+            .filter(|line| !line.starts_with('#') && !line.is_empty())
+            .collect();
+
+        if visible_lines.len() < printed_lines {
+            printed_lines = 0;
+        }
+
+        if printed_lines == 0 {
+            if let Some(header) = visible_lines
+                .iter()
+                .find(|line| line.starts_with("iteration\t"))
+            {
+                println!("{header}");
+            }
+
+            let data_rows: Vec<&str> = visible_lines
+                .iter()
+                .copied()
+                .filter(|line| !line.starts_with("iteration\t"))
+                .collect();
+            let start = data_rows.len().saturating_sub(lines);
+            for row in &data_rows[start..] {
+                println!("{row}");
+            }
+            printed_lines = visible_lines.len();
+        } else if visible_lines.len() > printed_lines {
+            for row in &visible_lines[printed_lines..] {
+                println!("{row}");
+            }
+            printed_lines = visible_lines.len();
+        }
+
+        if once {
+            break;
+        }
+
+        std::thread::sleep(std::time::Duration::from_millis(interval_ms));
+    }
+
     Ok(())
 }
 
