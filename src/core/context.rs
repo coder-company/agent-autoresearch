@@ -85,7 +85,9 @@ pub fn write_context(workspace: &Path, config: Option<&RunConfig>) -> Result<Pat
 }
 
 fn write_pointer(primary_repo: &str, workspace_root: &str, context_path: &Path) -> Result<()> {
-    let pointer_dir = Path::new(primary_repo).join(".codex-autoresearch");
+    let primary_repo = Path::new(primary_repo);
+    protect_pointer_dir(primary_repo)?;
+    let pointer_dir = primary_repo.join(".codex-autoresearch");
     fs::create_dir_all(&pointer_dir)
         .with_context(|| format!("failed to create {}", pointer_dir.display()))?;
     let pointer_path = pointer_dir.join("pointer.json");
@@ -97,6 +99,35 @@ fn write_pointer(primary_repo: &str, workspace_root: &str, context_path: &Path) 
     });
     fs::write(&pointer_path, serde_json::to_string_pretty(&payload)?)
         .with_context(|| format!("failed to write {}", pointer_path.display()))
+}
+
+fn protect_pointer_dir(primary_repo: &Path) -> Result<()> {
+    let git_exclude = primary_repo.join(".git/info/exclude");
+    if git_exclude.exists() {
+        let content = fs::read_to_string(&git_exclude)
+            .with_context(|| format!("failed to read {}", git_exclude.display()))?;
+        if !content
+            .lines()
+            .any(|line| line.trim() == ".codex-autoresearch/")
+        {
+            use std::io::Write;
+            let mut file = fs::OpenOptions::new()
+                .append(true)
+                .open(&git_exclude)
+                .with_context(|| format!("failed to open {}", git_exclude.display()))?;
+            if !content.ends_with('\n') && !content.is_empty() {
+                writeln!(file)?;
+            }
+            writeln!(file, ".codex-autoresearch/")?;
+        }
+        return Ok(());
+    }
+
+    let pointer_dir = primary_repo.join(".codex-autoresearch");
+    fs::create_dir_all(&pointer_dir)
+        .with_context(|| format!("failed to create {}", pointer_dir.display()))?;
+    fs::write(pointer_dir.join(".gitignore"), "*\n")
+        .with_context(|| format!("failed to protect {}", pointer_dir.display()))
 }
 
 fn absolute_display(path: &Path) -> String {

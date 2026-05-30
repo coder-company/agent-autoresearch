@@ -1157,6 +1157,48 @@ fn test_init_persists_runtime_config() {
 }
 
 #[test]
+fn test_init_protects_pointer_in_separate_primary_repo() {
+    let workspace = TempDir::new().unwrap();
+    init_git_fixture(&workspace);
+    let workspace_root = workspace.path().to_str().unwrap();
+
+    let primary = TempDir::new().unwrap();
+    init_git_fixture(&primary);
+    let primary_root = primary.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--workspace-root",
+            workspace_root,
+            "--primary-repo",
+            primary_root,
+            "--cwd",
+            workspace_root,
+        ])
+        .assert()
+        .success();
+
+    assert!(primary
+        .path()
+        .join(".codex-autoresearch/pointer.json")
+        .exists());
+    let exclude = std::fs::read_to_string(primary.path().join(".git/info/exclude")).unwrap();
+    assert!(exclude.contains(".codex-autoresearch/"));
+
+    let status = std::process::Command::new("git")
+        .args(["-C", primary_root, "status", "--short"])
+        .output()
+        .unwrap();
+    assert!(status.status.success());
+    assert_eq!(String::from_utf8_lossy(&status.stdout), "");
+}
+
+#[test]
 fn test_init_screens_guard_command() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
