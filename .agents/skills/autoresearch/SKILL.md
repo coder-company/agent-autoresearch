@@ -99,6 +99,7 @@ Load only what the current mode requires:
 - `references/runtime-protocol.md` — Closeout order, state machine, TSV format, verify/guard contracts
 - `references/interaction-wizard.md` — Guided setup flow from natural-language goals
 - `references/session-resume.md` — Recovery flow for interrupted runs and stale artifacts
+- `references/escalation.md` — REFINE/PIVOT/web-search escalation thresholds and lessons
 - `references/security-checklist.md` — STRIDE + OWASP tables
 - `references/predict-personas.md` — Expert persona definitions
 - `references/reason-judge-protocol.md` — Adversarial debate judge protocol
