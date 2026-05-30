@@ -115,8 +115,11 @@ Optional:
 | `autoresearch verify --format metrics_json --key coverage --command "..."` | Parse structured metrics and select the optimization key |
 | `autoresearch guard --command "..."` | Run guard → JSON `{passed, duration_ms}` |
 | `autoresearch decide --decision auto --metric X --metrics-json '{...}' --description "..."` | Evaluate keep/discard, criteria gates, rollback, and escalation |
+| `autoresearch parallel prepare --workers 3` | Create branch-backed worker worktrees, prompts, manifest, and batch file |
+| `autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json` | Launch prepared worker prompts with `codex exec` |
 | `autoresearch parallel template --workers 3 --output autoresearch-results/parallel-workers.json` | Generate an editable worker batch JSON file |
 | `autoresearch parallel closeout --batch-file workers.json` | Select a parallel worker winner, log audit rows, and update retained state once |
+| `autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.json` | Remove worker worktrees and branches |
 | `autoresearch log --iteration N --status keep --metric X --description "..."` | Append TSV row (alternative to decide) |
 | `autoresearch status` | Show full state JSON |
 | `autoresearch progress` | Formatted progress summary |
