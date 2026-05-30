@@ -2217,6 +2217,51 @@ fn test_resume_resolves_workspace_from_repo_pointer() {
 }
 
 #[test]
+fn test_resume_ignores_stale_repo_pointer_context() {
+    let workspace = TempDir::new().unwrap();
+    init_git_fixture(&workspace);
+    let workspace_root = workspace.path().to_str().unwrap();
+
+    let primary = TempDir::new().unwrap();
+    init_git_fixture(&primary);
+    let primary_root = primary.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--workspace-root",
+            workspace_root,
+            "--primary-repo",
+            primary_root,
+            "--cwd",
+            workspace_root,
+        ])
+        .assert()
+        .success();
+
+    let pointer_path = primary.path().join(".codex-autoresearch/pointer.json");
+    let mut pointer: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&pointer_path).unwrap()).unwrap();
+    pointer["context_path"] = serde_json::json!("/tmp/missing-autoresearch-context.json");
+    std::fs::write(
+        &pointer_path,
+        serde_json::to_string_pretty(&pointer).unwrap(),
+    )
+    .unwrap();
+
+    cmd()
+        .args(["resume", "--cwd", primary_root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"resumable\":false"))
+        .stdout(predicate::str::contains("\"reason\":\"no_artifacts\""));
+}
+
+#[test]
 fn test_resume_uses_results_tsv_fallback_without_state() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
