@@ -1452,6 +1452,7 @@ fn test_handoff_defaults_to_repo_root_results_from_subdir() {
 
     let handoff =
         std::fs::read_to_string(dir.path().join("autoresearch-results/handoff.json")).unwrap();
+    assert!(handoff.contains("\"version\": \"2.1.0\""));
     assert!(handoff.contains("\"protocol_version\": \"2.1.0\""));
     assert!(handoff.contains("\"binary_version\": \"0.1.0\""));
     assert!(handoff.contains("\"source\": \"debug\""));

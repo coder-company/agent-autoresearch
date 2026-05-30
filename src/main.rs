@@ -2776,7 +2776,7 @@ fn cmd_handoff(
         .unwrap_or(serde_json::Value::Null);
 
     let handoff = serde_json::json!({
-        "version": "0.1.0",
+        "version": "2.1.0",
         "protocol_version": "2.1.0",
         "binary_version": env!("CARGO_PKG_VERSION"),
         "source": source,
