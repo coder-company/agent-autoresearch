@@ -720,6 +720,7 @@ fn cmd_verify(
 
 fn cmd_guard(command: &str, cwd: Option<PathBuf>) -> Result<()> {
     let workspace = resolve_cwd(cwd);
+    verify::screen_command(command)?;
     let result = verify::run_guard(command, &workspace)?;
 
     let out = serde_json::json!({

@@ -177,6 +177,23 @@ fn test_verify_screens_dangerous_commands() {
         .stderr(predicate::str::contains("dangerous pattern"));
 }
 
+#[test]
+fn test_guard_screens_dangerous_commands() {
+    let dir = TempDir::new().unwrap();
+
+    cmd()
+        .args([
+            "guard",
+            "--command",
+            "echo 'DROP DATABASE prod'",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("dangerous pattern"));
+}
+
 // ── Evals Command ────────────────────────────────────────────────────
 
 #[test]
