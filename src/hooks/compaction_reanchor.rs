@@ -41,21 +41,41 @@ pub fn run(_input: Option<&HookInput>) -> HookResponse {
         .and_then(|m| m.as_str())
         .unwrap_or("?");
 
-    HookResponse::inject(format!(
+    HookResponse::inject(build_reanchor_context(iteration, current, best))
+}
+
+fn build_reanchor_context(iteration: u64, current: &str, best: &str) -> String {
+    format!(
         "## ⚠️ Context compacted — Protocol Re-Anchor\n\n\
          **Active autoresearch run** (iteration {iteration}, metric: {current}, best: {best})\n\n\
          ### Core Protocol (each turn)\n\
-         1. Read: `git log --oneline -10` + last rows of `autoresearch-results/results.tsv` + lessons.md\n\
+         1. Read: `git log --oneline -10` + last rows of `autoresearch-results/results.tsv` + lessons.md + context.json\n\
          2. Ideate: ONE specific, testable hypothesis (different from all previous)\n\
          3. Modify: ONE focused change within scope\n\
          4. Commit: `git add -- <files>; git commit -m \"experiment: <desc>\"`\n\
-         5. Verify: `autoresearch verify --command \"<cmd>\"`\n\
+         5. Verify: `autoresearch verify --format metrics_json --key <metric> --command \"<cmd>\"` for structured metrics, otherwise scalar verify\n\
          6. Guard: `autoresearch guard --command \"<cmd>\"` (if configured)\n\
-         7. Decide: `autoresearch decide --decision <keep|discard|crash> --metric <val> --description \"<text>\"`\n\n\
+         7. Decide: `autoresearch decide --decision auto --metric <val> --metrics-json '<json>' --description \"<text>\"`\n\n\
          ### Critical Rules\n\
-         - ONE change per turn. Never stage autoresearch-results/.\n\
-         - Mechanical verification only. Automatic rollback on failure.\n\
+         - ONE change per turn. Never stage autoresearch-results/ or .codex-autoresearch/.\n\
+         - Mechanical verification only. Let the binary handle criteria gates and rollback.\n\
          - 3 discards → REFINE. 5 → PIVOT. 3 PIVOTs → stop.\n\
          - Never ask the user. Apply best practices. Keep iterating."
-    ))
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_reanchor_context;
+
+    #[test]
+    fn reanchor_uses_current_binary_protocol() {
+        let context = build_reanchor_context(7, "82.5", "84.0");
+
+        assert!(context.contains("context.json"));
+        assert!(context.contains("autoresearch verify --format metrics_json"));
+        assert!(context.contains("autoresearch decide --decision auto"));
+        assert!(context.contains(".codex-autoresearch/"));
+        assert!(!context.contains("--decision <keep|discard|crash>"));
+    }
 }
