@@ -17,7 +17,7 @@ use autoresearch::core::runtime;
 use autoresearch::core::state::{IterationStatus, RunPhase, RunState};
 use autoresearch::core::verify;
 use autoresearch::escalation::lessons::{self, LessonsLog};
-use autoresearch::escalation::pivot::EscalationState;
+use autoresearch::escalation::pivot::{EscalationAction, EscalationState};
 use autoresearch::hooks;
 
 #[derive(Parser)]
@@ -837,6 +837,10 @@ fn cmd_decide(
         }
         other => anyhow::bail!("Unknown decision: {other}. Use keep, discard, crash, or no-op."),
     };
+    if escalation_action == Some(EscalationAction::Pivot) {
+        let lesson = lessons::extract_pivot_lesson(description, EscalationAction::Pivot.guidance());
+        let _ = lessons_log.append(&lesson);
+    }
 
     // Apply rollback if needed
     if needs_rollback {
