@@ -136,6 +136,17 @@ impl RunState {
         };
     }
 
+    /// Record a keep decision with the full structured metric payload.
+    pub fn record_keep_with_metrics(
+        &mut self,
+        metric: Decimal,
+        commit: String,
+        metrics: BTreeMap<String, Decimal>,
+    ) {
+        self.record_keep(metric, commit);
+        self.set_current_metrics(metrics);
+    }
+
     /// Record a discard decision.
     pub fn record_discard(&mut self, trial_metric: Decimal, trial_commit: Option<String>) {
         self.iteration += 1;
@@ -151,6 +162,17 @@ impl RunState {
             best_metric: self.best_metric,
             best_iteration: self.best_iteration,
         };
+    }
+
+    /// Record a discard decision with the full structured trial metric payload.
+    pub fn record_discard_with_metrics(
+        &mut self,
+        trial_metric: Decimal,
+        trial_commit: Option<String>,
+        metrics: BTreeMap<String, Decimal>,
+    ) {
+        self.record_discard(trial_metric, trial_commit);
+        self.last_trial_metrics = metrics;
     }
 
     /// Record a crash.

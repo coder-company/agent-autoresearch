@@ -914,7 +914,11 @@ fn cmd_decide(
 
     let (status, needs_rollback, escalation_action) = match decision {
         "keep" => {
-            state.record_keep(metric, resolved_commit.clone().unwrap());
+            state.record_keep_with_metrics(
+                metric,
+                resolved_commit.clone().unwrap(),
+                trial_metrics.clone(),
+            );
             escalation.record_keep();
 
             // Extract positive lesson
@@ -927,7 +931,11 @@ fn cmd_decide(
             (IterationStatus::Keep, false, None)
         }
         "discard" => {
-            state.record_discard(metric, resolved_commit.clone());
+            state.record_discard_with_metrics(
+                metric,
+                resolved_commit.clone(),
+                trial_metrics.clone(),
+            );
             let action = escalation.record_discard();
             (IterationStatus::Discard, true, Some(action))
         }

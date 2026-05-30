@@ -1032,6 +1032,73 @@ fn test_init_metrics_json_persists_state_metric_maps() {
 }
 
 #[test]
+fn test_decide_metrics_json_persists_state_metric_maps() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    std::fs::write(
+        dir.path().join("metrics.json"),
+        r#"{"score":50,"accuracy":0.8}"#,
+    )
+    .unwrap();
+    std::process::Command::new("git")
+        .args(["add", "metrics.json"])
+        .current_dir(dir.path())
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["commit", "-m", "add metrics"])
+        .current_dir(dir.path())
+        .output()
+        .unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metrics.json",
+            "--format",
+            "metrics_json",
+            "--key",
+            "score",
+            "--direction",
+            "higher",
+            "--acceptance-criteria",
+            r#"[{"metric_key":"accuracy","operator":">=","target":"0.9"}]"#,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "decide",
+            "--metric",
+            "60",
+            "--metrics-json",
+            r#"{"score":60,"accuracy":0.95}"#,
+            "--description",
+            "improved score and accuracy",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"keep\""));
+
+    let state: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(state["current_metric"], "60");
+    assert_eq!(state["current_metrics"]["score"], "60");
+    assert_eq!(state["current_metrics"]["accuracy"], "0.95");
+    assert_eq!(state["last_trial_metrics"], state["current_metrics"]);
+}
+
+#[test]
 fn test_resume_reports_baseline_as_resumable() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
