@@ -229,6 +229,29 @@ fn test_evals_md_format_writes_summary_file() {
 }
 
 #[test]
+fn test_evals_without_baseline_counts_all_rows() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: higher").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "1\tabc1234\t55\t+5\tpass\tkeep\timprovement").unwrap();
+    writeln!(file, "2\t-\t54\t-1\t-\tdiscard\tregression").unwrap();
+
+    cmd()
+        .args(["evals", tsv_path.to_str().unwrap(), "--format", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"total_iterations\": 2"))
+        .stdout(predicate::str::contains("\"efficiency_pct\": 50"));
+}
+
+#[test]
 fn test_evals_lower_direction_trend_improves_on_decrease() {
     let dir = TempDir::new().unwrap();
     let tsv_path = dir.path().join("results.tsv");

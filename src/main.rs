@@ -1041,6 +1041,10 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
     }
 
     let total = metrics.len();
+    let has_baseline = metrics
+        .first()
+        .is_some_and(|(iteration, status, _, _)| *iteration == 0 || *status == "baseline");
+    let total_iterations = total.saturating_sub(usize::from(has_baseline));
     let keeps = metrics.iter().filter(|m| m.1 == "keep").count();
     let discards = metrics.iter().filter(|m| m.1 == "discard").count();
     let crashes = metrics.iter().filter(|m| m.1 == "crash").count();
@@ -1084,8 +1088,8 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
         .collect();
     top_keeps.sort_by_key(|entry| std::cmp::Reverse(entry.0));
 
-    let efficiency = if total > 1 {
-        (keeps as f64 / (total - 1) as f64 * 100.0).round() as u32
+    let efficiency = if total_iterations > 0 {
+        (keeps as f64 / total_iterations as f64 * 100.0).round() as u32
     } else {
         0
     };
@@ -1115,7 +1119,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
         "json" => {
             let out = serde_json::json!({
                 "direction": direction,
-                "total_iterations": total - 1,
+                "total_iterations": total_iterations,
                 "keeps": keeps,
                 "discards": discards,
                 "crashes": crashes,
@@ -1136,7 +1140,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
         "md" => {
             let report = render_evals_markdown(EvalsReport {
                 direction,
-                total,
+                total_iterations,
                 keeps,
                 discards,
                 crashes,
@@ -1154,7 +1158,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
         _ => {
             let report = render_evals_markdown(EvalsReport {
                 direction,
-                total,
+                total_iterations,
                 keeps,
                 discards,
                 crashes,
@@ -1175,7 +1179,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
 
 struct EvalsReport<'a> {
     direction: &'a str,
-    total: usize,
+    total_iterations: usize,
     keeps: usize,
     discards: usize,
     crashes: usize,
@@ -1195,7 +1199,7 @@ fn render_evals_markdown(report: EvalsReport<'_>) -> String {
     writeln!(out, "| Stat | Value |").unwrap();
     writeln!(out, "|------|-------|").unwrap();
     writeln!(out, "| Direction | {} |", report.direction).unwrap();
-    writeln!(out, "| Iterations | {} |", report.total.saturating_sub(1)).unwrap();
+    writeln!(out, "| Iterations | {} |", report.total_iterations).unwrap();
     writeln!(out, "| Kept | {} |", report.keeps).unwrap();
     writeln!(out, "| Discarded | {} |", report.discards).unwrap();
     writeln!(out, "| Crashes | {} |", report.crashes).unwrap();
@@ -1238,7 +1242,7 @@ fn render_evals_markdown(report: EvalsReport<'_>) -> String {
         )
         .unwrap();
     }
-    if report.efficiency < 20 && report.total > 10 {
+    if report.efficiency < 20 && report.total_iterations > 10 {
         writeln!(
             out,
             "- Low efficiency ({}%). Hypotheses may need better grounding.",
