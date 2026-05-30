@@ -419,6 +419,29 @@ fn test_evals_md_format_writes_summary_file() {
 }
 
 #[test]
+fn test_evals_rejects_invalid_format() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: higher").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t50\t0\t-\tbaseline\tinitial").unwrap();
+
+    cmd()
+        .args(["evals", tsv_path.to_str().unwrap(), "--format", "xml"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "Invalid evals format \"xml\"; use text, json, or md",
+        ));
+}
+
+#[test]
 fn test_evals_without_baseline_counts_all_rows() {
     let dir = TempDir::new().unwrap();
     let tsv_path = dir.path().join("results.tsv");

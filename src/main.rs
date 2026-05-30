@@ -1416,7 +1416,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
             std::fs::write(summary_dir.join("evals-summary.md"), &report)?;
             print!("{report}");
         }
-        _ => {
+        "text" => {
             let report = render_evals_markdown(EvalsReport {
                 direction,
                 total_iterations,
@@ -1440,6 +1440,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
             });
             print!("{report}");
         }
+        other => anyhow::bail!("Invalid evals format {other:?}; use text, json, or md"),
     }
 
     Ok(())
