@@ -160,6 +160,7 @@ require_grep 'plugins/autoresearch/skills/autoresearch' CONTRIBUTING.md
 require_grep 'Codex plugin package' docs/system-architecture.md
 require_grep 'runtime run/start/status/supervise/stop' docs/project-overview-pdr.md
 require_grep 'parallel prepare/run/closeout/cleanup' docs/project-overview-pdr.md
+require_grep 'Hook system reference \(11 hooks' guide/README.md
 require_grep 'Codex plugin package \+ local marketplace entry' docs/development-roadmap.md
 require_grep 'Companion repo registration through `--companion-repo-scope PATH=SCOPE`' docs/development-roadmap.md
 require_grep 'Claude marketplace/plugin' COMPARISON.md

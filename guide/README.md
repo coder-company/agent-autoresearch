@@ -29,7 +29,7 @@ Practical documentation for every command and pattern.
 
 - [Chains & Combinations](chains-and-combinations.md) — How to pipe commands together
 - [Examples by Domain](examples-by-domain.md) — Real configs for TypeScript, Python, bundlers, APIs
-- [Hooks](hooks.md) — Hook system reference (9 hooks, enable/disable)
+- [Hooks](hooks.md) — Hook system reference (11 hooks, enable/disable)
 - [Advanced Patterns](advanced-patterns.md) — Parallel experiments, multi-repo, CI/CD
 
 ## Conventions
