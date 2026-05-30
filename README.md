@@ -4,6 +4,8 @@
 
 <p><i>Autonomous goal-driven experimentation for Claude Code, Codex, and OpenCode.</i></p>
 
+<p><b>13 command protocols · 11 native hooks · background runtime · parallel verified closeout</b></p>
+
 <p>
   <a href="https://docs.anthropic.com/en/docs/claude-code"><img src="https://img.shields.io/badge/Claude_Code-Plugin-blue?logo=anthropic&logoColor=white" alt="Claude Code Plugin"></a>
   <a href="https://developers.openai.com/codex"><img src="https://img.shields.io/badge/Codex-Skill-green?logo=openai&logoColor=white" alt="Codex Skill"></a>
@@ -67,7 +69,7 @@ Each improvement stacks. Each failure reverts. Everything is logged.
 
 > **Codex users:** start Codex with `codex --dangerously-bypass-approvals-and-sandbox` for the smoothest runtime experience, then `$skill-installer install https://github.com/coder-company/agent-autoresearch` and invoke `$autoresearch`. Local plugin package users can also add `.agents/plugins/marketplace.json` and install `autoresearch` from that marketplace.
 >
-> **OpenCode users:** clone the repo and run `./install.sh --yes --opencode`. Add `--local` when running the installer from a target project to install into `./.opencode`. Commands install as `/autoresearch` and `/autoresearch_debug`, `/autoresearch_fix`, etc.
+> **OpenCode users:** clone the repo and run `./install.sh --yes --opencode`. Add `--local` when running the installer from a target project to install into `./.opencode`. Commands install as `/autoresearch` and `/autoresearch_debug`, `/autoresearch_fix`, etc., with a hidden `docs-manager` helper agent for documentation updates.
 >
 > **From source:** `git clone` + `./install.sh --yes --all`, or run `./install.sh` for the guided installer. See [Getting Started](guide/getting-started.md).
 

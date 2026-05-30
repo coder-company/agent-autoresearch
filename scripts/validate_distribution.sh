@@ -131,6 +131,7 @@ require_grep 'timeout-seconds' references/parallel-experiments-protocol.md
 require_grep 'autoresearch parallel cleanup' references/parallel-experiments-protocol.md
 require_grep '\$autoresearch exec' guide/autoresearch-codex.md
 require_grep 'Claude Code, Codex, and OpenCode' README.md
+require_grep '13 command protocols · 11 native hooks · background runtime · parallel verified closeout' README.md
 require_grep 'Companion Repo' CONTEXT.md
 require_grep 'Structured Metrics' CONTEXT.md
 require_grep 'Runtime Snapshot' CONTEXT.md
