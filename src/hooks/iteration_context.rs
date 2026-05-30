@@ -1,4 +1,5 @@
 use std::fs;
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
@@ -15,6 +16,9 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
 
     // Find the active TSV file
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    if !should_inject_now(_input, &cwd) {
+        return HookResponse::allow();
+    }
     let tsv_path = match find_recent_tsv(&cwd) {
         Some(p) => p,
         None => return HookResponse::allow(),
@@ -63,6 +67,30 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
     ));
 
     HookResponse::inject(text)
+}
+
+fn should_inject_now(input: &HookInput, cwd: &Path) -> bool {
+    let Some(session_id) = input.session_id.as_deref() else {
+        return true;
+    };
+    let counter_path = session_counter_path(cwd, session_id);
+    let count = fs::read_to_string(&counter_path)
+        .ok()
+        .and_then(|value| value.trim().parse::<u64>().ok())
+        .unwrap_or(0)
+        + 1;
+    let _ = fs::write(counter_path, count.to_string());
+    count % 5 == 0
+}
+
+fn session_counter_path(cwd: &Path, session_id: &str) -> PathBuf {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    cwd.hash(&mut hasher);
+    session_id.hash(&mut hasher);
+    std::env::temp_dir().join(format!(
+        "autoresearch-iteration-context-{}.count",
+        hasher.finish()
+    ))
 }
 
 fn find_recent_tsv(cwd: &Path) -> Option<PathBuf> {

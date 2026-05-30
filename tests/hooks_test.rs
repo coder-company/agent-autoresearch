@@ -507,6 +507,33 @@ fn test_iteration_context_handles_empty_input() {
     run_hook("iteration-context", "{}").success();
 }
 
+#[test]
+fn test_iteration_context_throttles_by_session_id() {
+    let dir = tempfile::tempdir().unwrap();
+    let results = dir.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    std::fs::write(
+        results.join("results.tsv"),
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n0\tabc\t10\t0\t-\tbaseline\tinitial\n1\tdef\t11\t+1\tpass\tkeep\timproved\n",
+    )
+    .unwrap();
+    let input = serde_json::json!({
+        "session_id": "throttle-test",
+        "prompt": "autoresearch status"
+    });
+
+    for _ in 0..4 {
+        run_hook_in(dir.path(), "iteration-context", &input.to_string())
+            .success()
+            .stdout(predicate::str::contains("\"additionalContext\"").not());
+    }
+
+    run_hook_in(dir.path(), "iteration-context", &input.to_string())
+        .success()
+        .stdout(predicate::str::contains("\"additionalContext\""))
+        .stdout(predicate::str::contains("Active iteration state"));
+}
+
 // ── Session Init ─────────────────────────────────────────────────────
 
 #[test]
