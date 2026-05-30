@@ -655,6 +655,29 @@ fn test_iteration_context_throttles_by_session_id() {
 // ── Dev Rules Reminder ───────────────────────────────────────────────
 
 #[test]
+fn test_hooks_config_wires_dev_rules_reminder() {
+    let config: serde_json::Value =
+        serde_json::from_str(include_str!("../hooks/hooks.json")).unwrap();
+    let user_prompt_hooks = config
+        .pointer("/hooks/UserPromptSubmit/0/hooks")
+        .and_then(|value| value.as_array())
+        .unwrap();
+    let commands = user_prompt_hooks
+        .iter()
+        .filter_map(|hook| hook.get("command").and_then(|value| value.as_str()))
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        commands,
+        [
+            "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook iteration-context",
+            "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook dev-rules-reminder",
+            "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook simplify-gate",
+        ]
+    );
+}
+
+#[test]
 fn test_dev_rules_reminder_throttles_by_session_id() {
     let dir = tempfile::tempdir().unwrap();
     init_git_repo(dir.path());

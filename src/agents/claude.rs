@@ -89,6 +89,11 @@ impl ClaudeAdapter {
                             },
                             {
                                 "type": "command",
+                                "command": "autoresearch hook dev-rules-reminder",
+                                "timeout": 5
+                            },
+                            {
+                                "type": "command",
                                 "command": "autoresearch hook simplify-gate",
                                 "timeout": 5
                             }
@@ -152,5 +157,32 @@ impl ClaudeAdapter {
                 "security-audit"
             ]
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ClaudeAdapter;
+
+    #[test]
+    fn hooks_json_wires_dev_rules_reminder() {
+        let config = ClaudeAdapter::hooks_json();
+        let hooks = config
+            .pointer("/hooks/UserPromptSubmit/0/hooks")
+            .and_then(|value| value.as_array())
+            .unwrap();
+        let commands = hooks
+            .iter()
+            .filter_map(|hook| hook.get("command").and_then(|value| value.as_str()))
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            commands,
+            [
+                "autoresearch hook iteration-context",
+                "autoresearch hook dev-rules-reminder",
+                "autoresearch hook simplify-gate",
+            ]
+        );
     }
 }

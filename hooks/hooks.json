@@ -74,6 +74,11 @@
           },
           {
             "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook dev-rules-reminder",
+            "timeout": 5
+          },
+          {
+            "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/bin/autoresearch hook simplify-gate",
             "timeout": 5
           }
