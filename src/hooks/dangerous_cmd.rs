@@ -8,7 +8,7 @@ const DANGEROUS: &[&str] = &[
     "rm -rf ~",
     "rm -rf .",
     ":(){ :|:& };:",
-    "mkfs.",
+    "mkfs",
     "> /dev/sd",
     "dd if=/dev/zero",
     "chmod -R 777 /",

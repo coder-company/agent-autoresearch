@@ -617,16 +617,18 @@ fn test_privacy_block_allows_normal_content() {
 
 #[test]
 fn test_dangerous_cmd_blocks_rm_rf_root() {
-    let input = serde_json::json!({
-        "tool_name": "Bash",
-        "tool_input": {
-            "command": "rm -rf /"
-        }
-    });
+    for command in ["rm -rf /", "mkfs /dev/sda"] {
+        let input = serde_json::json!({
+            "tool_name": "Bash",
+            "tool_input": {
+                "command": command
+            }
+        });
 
-    run_hook("dangerous-cmd-block", &input.to_string())
-        .success()
-        .stdout(predicate::str::contains("\"decision\":\"block\""));
+        run_hook("dangerous-cmd-block", &input.to_string())
+            .success()
+            .stdout(predicate::str::contains("\"decision\":\"block\""));
+    }
 }
 
 #[test]
