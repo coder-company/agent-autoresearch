@@ -11,7 +11,7 @@ The executable companions are:
 
 - treat corrupt or unreconstructable results/state combinations as blockers,
 - surface recoverable JSON/TSV divergence as warnings,
-- report git state, disk headroom, verify-command availability, and result/state row consistency as structured JSON.
+- report git state, disk headroom, verify/guard command availability, and result/state row consistency as structured JSON.
 
 The extended checks below remain protocol-level review items. They may be orchestrated by the runtime or contributor gate, but `autoresearch health` must not claim to perform them unless the command actually does.
 
@@ -28,6 +28,7 @@ Run before each detached Codex session. `autoresearch runtime run` repeats this 
 | Disk space | `df -m . \| awk 'NR==2{print $4}'` >= 500MB | Warning at <1GB, hard blocker at <500MB |
 | Git state | For single-repo runs, `git status --porcelain` shows only expected files and autoresearch-owned artifacts, HEAD is attached to a branch, no stale git lock files are present, and autoresearch-owned artifacts are not staged. For multi-repo runs, apply the same check to the primary repo and every companion repo declared in the launch manifest. | Warning if unexpected files; hard blocker if repo is corrupt, HEAD is detached, git lock files are present, or autoresearch artifacts are staged |
 | Verify command | Confirm the configured verify command still resolves to an executable | Hard blocker if the verify command is missing |
+| Guard command | When configured, confirm the guard command is safe and still resolves to an executable | Hard blocker if the guard command is unsafe or missing |
 | Log integrity | `autoresearch resume ...` can reconstruct TSV state | Hard blocker if the TSV is corrupt |
 | JSON state integrity | `autoresearch resume` reports `full_resume` or a recoverable fallback | Warning on divergence; optionally rewrite state from TSV. Hard blocker if both TSV and JSON are unusable |
 
@@ -54,6 +55,8 @@ Run at iterations 10, 20, 30, etc. only when the workflow or runtime explicitly 
   "decision": "ok|warn|block",
   "git_state": "clean|only_artifacts|dirty|unavailable",
   "free_mb": 1024,
+  "verify_command": "cargo test -- --coverage",
+  "guard_command": "cargo test",
   "main_rows": 4,
   "expected_rows": 4,
   "warnings": [{"code": "...", "message": "..."}],
@@ -78,6 +81,7 @@ These issues stop the loop immediately:
 | Both JSON state and TSV corrupted | Cannot recover run state; data integrity lost |
 | Git repo in broken state | Cannot commit or revert |
 | Verify command no longer exists | Cannot measure progress |
+| Guard command no longer exists | Cannot prove retained changes are regression-safe |
 | All scope files deleted | Nothing to modify |
 
 The command itself only reports the blocker. Runtime-specific revert/log/summary behavior must be implemented by the caller if desired.
