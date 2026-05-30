@@ -1208,6 +1208,8 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
             .with_context(|| format!("Invalid metric value at iteration {}", cols[0]))?;
         Decimal::from_str(cols[3].trim_start_matches('+'))
             .with_context(|| format!("Invalid delta value at iteration {}", cols[0]))?;
+        parse_status(cols[5])
+            .with_context(|| format!("Invalid status at iteration {}", cols[0]))?;
         let status = cols[5];
         let desc = cols[6];
         metrics.push((iter, status, metric, desc));
