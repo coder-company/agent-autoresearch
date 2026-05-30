@@ -28,7 +28,7 @@ cargo build --release
 
 The release profile is configured with `opt-level = "z"`, LTO, single codegen unit, and symbol stripping for minimal binary size.
 
-The built binary lands in `target/release/autoresearch` (or `target/debug/autoresearch` for debug builds). The `install.sh` script copies it to `bin/autoresearch` for the plugin system.
+The built binary lands in `target/release/autoresearch` (or `target/debug/autoresearch` for debug builds). The `install.sh` script copies the release binary to the selected PATH directory; the Claude plugin uses the tracked `bin/autoresearch` wrapper to find the installed binary at hook runtime.
 
 ---
 
@@ -75,7 +75,7 @@ Validate the generated and maintained distributions without rewriting files:
 ./scripts/validate_distribution.sh
 ```
 
-This checks required package files, Codex metadata, `$autoresearch` invocation examples, the local Codex marketplace entry, and closed/synced reference links in `.agents/`, `plugins/autoresearch/`, and `.opencode/`.
+This checks required package files, Claude and Codex marketplace metadata, `$autoresearch` invocation examples, local install docs, and closed/synced reference links in `.agents/`, `plugins/autoresearch/`, and `.opencode/`.
 
 Run the lightweight end-to-end binary smoke:
 
@@ -229,7 +229,7 @@ Hooks must respond in under 3 seconds (5 seconds for `Stop` hooks). Use `HookRes
 ## Release Process
 
 1. Bump version in `Cargo.toml`.
-2. Update `CHANGELOG.md` (if present) with the new version's changes.
+2. Update `docs/changelog.md` with the new version's changes.
 3. Ensure CI passes on `main`.
 4. Tag the release: `git tag v0.x.y && git push --tags`.
 5. GitHub Actions builds the release binary. Verify binary size stays under 5MB.
@@ -238,7 +238,7 @@ Hooks must respond in under 3 seconds (5 seconds for `Stop` hooks). Use `HookRes
 
 ## Areas of Interest for Contributors
 
-- **New mode implementations** — The `src/modes/` directory is empty and ready for Rust implementations of the 12 modes currently defined as command markdown files.
+- **Mode implementations** — Expand the `src/modes/` validation/state helpers when command markdown protocols need stronger mechanical support.
 - **Hook improvements** — Expand `scout_block.rs` regression coverage for more shell path forms, symlinks, and multi-root scope policies.
 - **Platform adapters** — `src/agents/claude.rs` and `src/agents/codex.rs` can be expanded with platform-specific optimizations.
 - **Verification templates** — Pre-built verify command templates for common frameworks (Jest, pytest, Go test, etc.).

@@ -150,7 +150,8 @@ require_grep 'out-of-scope writes' docs/architecture.md
 require_grep 'plugins/autoresearch/skills/autoresearch' CONTRIBUTING.md
 require_grep 'Codex plugin package' docs/system-architecture.md
 require_grep 'Codex plugin package \+ local marketplace entry' docs/development-roadmap.md
-require_grep 'local Codex plugin marketplace' COMPARISON.md
+require_grep 'Claude marketplace/plugin' COMPARISON.md
+require_grep '13-command surface' COMPARISON.md
 require_grep 'Structured metrics' COMPARISON.md
 
 check_synced_reference_package "$ROOT/.agents/skills/autoresearch"

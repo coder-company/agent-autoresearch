@@ -10,9 +10,9 @@ Andrej Karpathy shared a 630-line Python script that ran **700 experiments overn
 
 The idea was simple enough that several people generalized it:
 
-- **uditgoenka/autoresearch** — turned it into a full Claude Code command system with 12 modes (debug, fix, security, scenario, etc.)
+- **uditgoenka/autoresearch** — turned it into a full Claude Code command system with 13 commands (loop plus plan, debug, fix, security, scenario, improve, etc.)
 - **codex-autoresearch** — ported it to OpenAI's Codex with support for background runs
-- **this project** — combines the best of both into a compiled binary plus maintained Claude, OpenCode, Codex skill, and Codex plugin packages
+- **this project** — combines the best of both into a compiled binary plus maintained Claude marketplace/plugin, OpenCode, Codex skill, and Codex plugin packages
 
 ---
 
@@ -20,10 +20,10 @@ The idea was simple enough that several people generalized it:
 
 | | Karpathy's | uditgoenka | codex-autoresearch | **This** |
 |---|---|---|---|---|
-| What it does | ML training loops | Any metric, 12 commands | Any metric, background mode | Any metric, 12 commands + runtime control |
-| Install | Clone + Python | Copy .md files | Skill installer | Binary, Claude plugin, Codex skill, local Codex plugin marketplace |
+| What it does | ML training loops | Any metric, 13 commands | Any metric, background mode | Any metric, 13 commands + runtime control |
+| Install | Clone + Python | Copy/plugin install | Skill installer | Binary, Claude marketplace/plugin, OpenCode assets, Codex skill, local Codex plugin marketplace |
 | Works with | Standalone | Claude Code | Codex CLI | **Claude Code, Codex, OpenCode, any agent** |
-| Commands | 1 (the loop) | 12 | Codex loop modes | **12 modes + exec + runtime + parallel closeout** |
+| Commands | 1 (the loop) | 13 | Codex loop modes | **13 command protocols + exec + runtime + parallel closeout** |
 | When it gets stuck | You restart | Refine → Pivot → Stop | Re-anchor/resume | **Refine → Pivot → Web Search → Soft Blocker** |
 | Remembers across runs | No | Yes (lessons.md) | Yes (cross-run learning) | **Yes (lessons.md)** |
 | Health preflight | No | Markdown checklist | Helper scripts | **Native `autoresearch health` for git/artifact/disk/verify/guard/context** |
@@ -43,10 +43,10 @@ The idea was simple enough that several people generalized it:
 
 **Use this project** if:
 - You want to use it with **multiple agents** (Claude Code, Codex, or anything else)
-- You want Codex install choices: `$skill-installer`, direct `.agents` skill copy, or `plugins/autoresearch` via `.agents/plugins/marketplace.json`
+- You want install choices: Claude marketplace/plugin, OpenCode global/local assets, `$skill-installer`, direct `.agents` skill copy, or `plugins/autoresearch` via `.agents/plugins/marketplace.json`
 - You care about **hook speed** — the safety checks fire on every tool call, and they're fast enough to be invisible
 - You want a **single binary** with no Python/Node.js dependency chain
-- You want the full 12-command surface **plus** native runtime control, health preflight, structured metrics, parallel verified closeout, escalation, and cross-run learning
+- You want the full 13-command surface **plus** native runtime control, health preflight, structured metrics, parallel verified closeout, escalation, and cross-run learning
 
 ---
 
@@ -54,7 +54,7 @@ The idea was simple enough that several people generalized it:
 
 From **Karpathy**: the core philosophy — one metric, one change at a time, mechanical verification, automatic rollback, git as the experiment log.
 
-From **uditgoenka/autoresearch**: the 12-command surface (debug, fix, security, scenario, predict, learn, reason, probe, evals, ship, plan, improve), Codex package layout ideas, the escalation ladder, the lessons log, and structured outputs per mode.
+From **uditgoenka/autoresearch**: the 13-command surface (loop, debug, fix, security, scenario, predict, learn, reason, probe, evals, ship, plan, improve), Codex package layout ideas, the escalation ladder, the lessons log, and structured outputs per mode.
 
 From **codex-autoresearch**: Codex-first interaction guidance, exec mode for CI/CD, background runtime control, full-access launch guidance, and multi-agent design patterns.
 
@@ -65,9 +65,9 @@ From **codex-autoresearch**: Codex-first interaction guidance, exec mode for CI/
 ```
 Karpathy's autoresearch
      │
-     ├── uditgoenka/autoresearch (generalized to any metric, 12 commands)
+     ├── uditgoenka/autoresearch (generalized to any metric, 13 commands)
      │
      ├── codex-autoresearch (background mode, parallel experiments)
      │
-     └── coder-company/agent-autoresearch (compiled binary, all agents, Codex plugin package)
+     └── coder-company/agent-autoresearch (compiled binary, all agents, Claude and Codex plugin packages)
 ```

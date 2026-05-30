@@ -9,6 +9,7 @@ selection.
 | Component | Role |
 |-----------|------|
 | `autoresearch` binary | CLI, hook dispatcher, verifier, rollback controller, runtime supervisor |
+| `.claude-plugin/marketplace.json` | Claude marketplace manifest pointing at the repo-root plugin package |
 | `commands/` | Claude Code slash command instructions |
 | `skills/autoresearch/` | Claude/OpenCode skill package and shared references |
 | `.agents/skills/autoresearch/` | Codex/generic agent skill package |
