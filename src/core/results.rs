@@ -172,7 +172,8 @@ impl ResultsLog {
                     columns.len()
                 );
             }
-            if let Ok(iteration) = columns[0].parse::<u32>() {
+            let main_iteration = columns[0].parse::<u32>().ok();
+            if let Some(iteration) = main_iteration {
                 if iteration != expected_main_iteration {
                     anyhow::bail!(
                         "results.tsv line {} has main iteration {}; expected {}",
@@ -203,6 +204,21 @@ impl ResultsLog {
                     index + 1,
                     columns[5]
                 );
+            }
+            if let Some(iteration) = main_iteration {
+                match (iteration, columns[5]) {
+                    (0, "baseline") => {}
+                    (0, status) => anyhow::bail!(
+                        "results.tsv line {} has baseline iteration with status {:?}",
+                        index + 1,
+                        status
+                    ),
+                    (_, "baseline") => anyhow::bail!(
+                        "results.tsv line {} has baseline status after iteration 0",
+                        index + 1
+                    ),
+                    _ => {}
+                }
             }
         }
 
@@ -463,5 +479,41 @@ mod tests {
         let err = log.validate().unwrap_err().to_string();
 
         assert!(err.contains("main iteration 2; expected 1"));
+    }
+
+    #[test]
+    fn test_validate_requires_baseline_status_for_iteration_zero() {
+        let dir = tempfile::tempdir().unwrap();
+        let log = ResultsLog::create(dir.path(), Direction::Higher).unwrap();
+        fs::write(
+            log.path(),
+            format!(
+                "{}\n0\tbase\t10\t0\t-\tkeep\twrong first status\n",
+                tsv_header(Direction::Higher)
+            ),
+        )
+        .unwrap();
+
+        let err = log.validate().unwrap_err().to_string();
+
+        assert!(err.contains("baseline iteration with status"));
+    }
+
+    #[test]
+    fn test_validate_rejects_late_baseline_status() {
+        let dir = tempfile::tempdir().unwrap();
+        let log = ResultsLog::create(dir.path(), Direction::Higher).unwrap();
+        fs::write(
+            log.path(),
+            format!(
+                "{}\n0\tbase\t10\t0\t-\tbaseline\tbaseline\n1\tabc1234\t11\t+1\tpass\tbaseline\tlate baseline\n",
+                tsv_header(Direction::Higher)
+            ),
+        )
+        .unwrap();
+
+        let err = log.validate().unwrap_err().to_string();
+
+        assert!(err.contains("baseline status after iteration 0"));
     }
 }
