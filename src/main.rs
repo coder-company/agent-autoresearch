@@ -408,6 +408,18 @@ enum ParallelCommands {
         #[arg(long)]
         cwd: Option<PathBuf>,
     },
+    /// Remove parallel worker worktrees and branches from a prepare manifest
+    Cleanup {
+        /// Manifest written by `autoresearch parallel prepare`
+        #[arg(long)]
+        manifest: PathBuf,
+        /// Keep worker branches after removing worktrees
+        #[arg(long)]
+        keep_branches: bool,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
     /// Generate an editable worker batch JSON template for parallel closeout
     Template {
         /// Number of workers to include in the template
@@ -1975,6 +1987,19 @@ struct ParallelWorkerRecord {
     diff_size: u64,
 }
 
+#[derive(Debug, serde::Deserialize)]
+struct ParallelPrepareManifest {
+    #[serde(default)]
+    workers: Vec<ParallelPreparedWorker>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct ParallelPreparedWorker {
+    worker_id: String,
+    branch: String,
+    worktree: String,
+}
+
 fn default_completed_status() -> String {
     "completed".to_string()
 }
@@ -1998,6 +2023,15 @@ fn cmd_parallel(command: ParallelCommands) -> Result<()> {
                 batch_file,
                 &branch_prefix,
             )?;
+            println!("{}", serde_json::to_string_pretty(&out)?);
+        }
+        ParallelCommands::Cleanup {
+            manifest,
+            keep_branches,
+            cwd,
+        } => {
+            let workspace = resolve_results_workspace(cwd);
+            let out = cmd_parallel_cleanup(&workspace, manifest, keep_branches)?;
             println!("{}", serde_json::to_string_pretty(&out)?);
         }
         ParallelCommands::Template {
@@ -2152,6 +2186,79 @@ fn cmd_parallel_prepare(
         "manifest": manifest_path.display().to_string(),
         "batch_file": batch_path.display().to_string(),
         "workers": manifest_json["workers"],
+    }))
+}
+
+fn cmd_parallel_cleanup(
+    workspace: &Path,
+    manifest: PathBuf,
+    keep_branches: bool,
+) -> Result<serde_json::Value> {
+    let manifest_path = resolve_workspace_path(workspace, manifest);
+    let manifest_text = std::fs::read_to_string(&manifest_path)
+        .with_context(|| format!("failed to read {}", manifest_path.display()))?;
+    let manifest_json: serde_json::Value = serde_json::from_str(&manifest_text)
+        .with_context(|| format!("failed to parse {}", manifest_path.display()))?;
+    let manifest: ParallelPrepareManifest = serde_json::from_value(manifest_json.clone())
+        .with_context(|| format!("failed to parse {}", manifest_path.display()))?;
+    if manifest.workers.is_empty() {
+        anyhow::bail!("parallel cleanup manifest must contain at least one worker");
+    }
+
+    let mut cleaned = Vec::new();
+    for worker in manifest.workers {
+        let worktree = PathBuf::from(&worker.worktree);
+        let mut removed_worktree = false;
+        let mut removed_branch = false;
+        if worktree.exists() {
+            run_git_command(
+                workspace,
+                &[
+                    "worktree".to_string(),
+                    "remove".to_string(),
+                    "--force".to_string(),
+                    worktree.display().to_string(),
+                ],
+            )
+            .with_context(|| format!("failed to remove worker-{} worktree", worker.worker_id))?;
+            removed_worktree = true;
+        }
+        if !keep_branches && git_branch_exists(workspace, &worker.branch)? {
+            run_git_command(
+                workspace,
+                &[
+                    "branch".to_string(),
+                    "-D".to_string(),
+                    worker.branch.clone(),
+                ],
+            )
+            .with_context(|| format!("failed to delete worker-{} branch", worker.worker_id))?;
+            removed_branch = true;
+        }
+        cleaned.push(serde_json::json!({
+            "worker_id": worker.worker_id,
+            "worktree": worktree.display().to_string(),
+            "branch": worker.branch,
+            "removed_worktree": removed_worktree,
+            "removed_branch": removed_branch,
+        }));
+    }
+
+    let mut updated_manifest = manifest_json;
+    if let Some(object) = updated_manifest.as_object_mut() {
+        object.insert("status".to_string(), serde_json::json!("cleaned"));
+        object.insert(
+            "cleaned_workers".to_string(),
+            serde_json::Value::Array(cleaned.clone()),
+        );
+    }
+    write_json_file(&manifest_path, &updated_manifest)?;
+
+    Ok(serde_json::json!({
+        "status": "ok",
+        "manifest": manifest_path.display().to_string(),
+        "keep_branches": keep_branches,
+        "workers": cleaned,
     }))
 }
 

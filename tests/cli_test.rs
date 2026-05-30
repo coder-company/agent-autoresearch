@@ -4693,6 +4693,93 @@ fn test_parallel_prepare_creates_worker_worktrees_and_files() {
 }
 
 #[test]
+fn test_parallel_cleanup_removes_worker_worktrees_and_branches() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+    write_metric_and_commit(&dir, "41\n");
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "lower",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "parallel",
+            "prepare",
+            "--workers",
+            "2",
+            "--branch-prefix",
+            "ar/cleanup",
+            "--manifest",
+            "autoresearch-results/cleanup-manifest.json",
+            "--cwd",
+            subdir.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "parallel",
+            "cleanup",
+            "--manifest",
+            "autoresearch-results/cleanup-manifest.json",
+            "--cwd",
+            subdir.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"removed_worktree\": true"))
+        .stdout(predicate::str::contains("\"removed_branch\": true"));
+
+    let manifest_path = dir
+        .path()
+        .join("autoresearch-results/cleanup-manifest.json");
+    let manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(manifest_path).unwrap()).unwrap();
+    assert_eq!(manifest["status"], "cleaned");
+    assert_eq!(manifest["cleaned_workers"].as_array().unwrap().len(), 2);
+
+    for worker in ["a", "b"] {
+        let worktree = dir.path().join(format!(
+            "autoresearch-results/parallel-worktrees/iteration-1/worker-{worker}"
+        ));
+        assert!(!worktree.exists());
+        let branch = std::process::Command::new("git")
+            .args([
+                "-C",
+                root,
+                "show-ref",
+                "--verify",
+                "--quiet",
+                &format!("refs/heads/ar/cleanup-1-{worker}"),
+            ])
+            .status()
+            .unwrap();
+        assert!(!branch.success());
+    }
+
+    let status = std::process::Command::new("git")
+        .args(["-C", root, "status", "--short"])
+        .output()
+        .unwrap();
+    assert!(status.status.success());
+    assert_eq!(String::from_utf8_lossy(&status.stdout), "");
+}
+
+#[test]
 fn test_parallel_closeout_selects_best_worker() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
