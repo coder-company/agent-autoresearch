@@ -13,7 +13,8 @@ use autoresearch::core::criteria;
 use autoresearch::core::git::{GitRepo, WorktreeStatus};
 use autoresearch::core::health;
 use autoresearch::core::results::{
-    ensure_results_dir_protected, worker_iteration_prefix, GuardResult, ResultRow, ResultsLog,
+    ensure_results_dir_protected, parse_metric_direction_value, worker_iteration_prefix,
+    GuardResult, ResultRow, ResultsLog,
 };
 use autoresearch::core::runtime;
 use autoresearch::core::state::{IterationStatus, RunPhase, RunState};
@@ -2340,10 +2341,7 @@ fn results_tsv_direction(content: &str) -> Direction {
         .lines()
         .find_map(|line| line.strip_prefix("# metric_direction:"))
         .map(str::trim)
-        .map(|value| match value {
-            "lower" => Direction::Lower,
-            _ => Direction::Higher,
-        })
+        .and_then(parse_metric_direction_value)
         .unwrap_or(Direction::Higher)
 }
 

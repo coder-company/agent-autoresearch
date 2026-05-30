@@ -152,14 +152,39 @@ impl ResultsLog {
     /// Validate that data rows are structurally parseable before health/runtime trust them.
     pub fn validate(&self) -> Result<()> {
         let content = fs::read_to_string(&self.path).context("Failed to read results TSV")?;
+        let mut saw_direction = false;
         let mut saw_header = false;
         let mut expected_main_iteration = 0u32;
 
         for (index, line) in content.lines().enumerate() {
-            if line.is_empty() || line.starts_with('#') {
+            if line.is_empty() {
+                continue;
+            }
+            if let Some(value) = line.strip_prefix("# metric_direction:") {
+                if saw_direction {
+                    anyhow::bail!(
+                        "results.tsv line {} has a duplicate metric_direction header",
+                        index + 1
+                    );
+                }
+                let value = value.trim();
+                if parse_metric_direction_value(value).is_none() {
+                    anyhow::bail!(
+                        "results.tsv line {} has invalid metric_direction {:?}",
+                        index + 1,
+                        value
+                    );
+                }
+                saw_direction = true;
+                continue;
+            }
+            if line.starts_with('#') {
                 continue;
             }
             if line.starts_with("iteration\t") {
+                if !saw_direction {
+                    anyhow::bail!("results.tsv is missing the metric_direction header");
+                }
                 if saw_header {
                     anyhow::bail!(
                         "results.tsv line {} has a duplicate column header",
@@ -265,6 +290,9 @@ impl ResultsLog {
         if !saw_header {
             anyhow::bail!("results.tsv is missing the column header");
         }
+        if !saw_direction {
+            anyhow::bail!("results.tsv is missing the metric_direction header");
+        }
         if expected_main_iteration == 0 {
             anyhow::bail!("results.tsv is missing the baseline row");
         }
@@ -304,6 +332,14 @@ pub fn worker_iteration_prefix(value: &str) -> Option<u32> {
         return None;
     }
     main.parse::<u32>().ok()
+}
+
+pub fn parse_metric_direction_value(value: &str) -> Option<Direction> {
+    match value {
+        "higher" | "higher_is_better" => Some(Direction::Higher),
+        "lower" | "lower_is_better" => Some(Direction::Lower),
+        _ => None,
+    }
 }
 
 /// Generate a completion summary.
@@ -576,6 +612,36 @@ mod tests {
         let err = log.validate().unwrap_err().to_string();
 
         assert!(err.contains("duplicate column header"));
+    }
+
+    #[test]
+    fn test_validate_requires_metric_direction_header() {
+        let dir = tempfile::tempdir().unwrap();
+        let log = ResultsLog::create(dir.path(), Direction::Higher).unwrap();
+        fs::write(
+            log.path(),
+            "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n0\tbase\t10\t0\t-\tbaseline\tbaseline\n",
+        )
+        .unwrap();
+
+        let err = log.validate().unwrap_err().to_string();
+
+        assert!(err.contains("missing the metric_direction header"));
+    }
+
+    #[test]
+    fn test_validate_rejects_invalid_metric_direction_header() {
+        let dir = tempfile::tempdir().unwrap();
+        let log = ResultsLog::create(dir.path(), Direction::Higher).unwrap();
+        fs::write(
+            log.path(),
+            "# metric_direction: sideways\niteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n0\tbase\t10\t0\t-\tbaseline\tbaseline\n",
+        )
+        .unwrap();
+
+        let err = log.validate().unwrap_err().to_string();
+
+        assert!(err.contains("invalid metric_direction \"sideways\""));
     }
 
     #[test]

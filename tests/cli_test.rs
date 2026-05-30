@@ -2390,6 +2390,40 @@ fn test_resume_blocks_corrupt_results_with_valid_state() {
 }
 
 #[test]
+fn test_resume_blocks_invalid_metric_direction() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    std::fs::write(
+        dir.path().join("autoresearch-results/results.tsv"),
+        "# metric_direction: sideways\niteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n0\tabc1234\t50\t0\t-\tbaseline\tinitial\n",
+    )
+    .unwrap();
+
+    cmd()
+        .args(["resume", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"resumable\": false"))
+        .stdout(predicate::str::contains("\"reason\": \"results_corrupt\""))
+        .stdout(predicate::str::contains("invalid metric_direction"));
+}
+
+#[test]
 fn test_resume_blocks_missing_results_with_valid_state() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
