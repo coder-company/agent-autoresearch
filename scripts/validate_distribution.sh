@@ -209,6 +209,9 @@ require_grep 'update_cargo_version "\$ROOT/Cargo.toml" "\$VERSION"' scripts/rele
 if grep -q 'sed -i' "$ROOT/scripts/release.sh"; then
     fail "release script still uses non-portable sed -i"
 fi
+if grep -q 'mapfile' "$ROOT/scripts/release.sh"; then
+    fail "release script still uses non-portable mapfile"
+fi
 require_grep 'workflow_dispatch:' .github/workflows/ci.yml
 require_grep 'timeout-minutes: 25' .github/workflows/ci.yml
 require_grep 'actions/cache@v4' .github/workflows/ci.yml

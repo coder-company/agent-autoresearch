@@ -75,6 +75,16 @@ update_cargo_version() {
     mv "$tmp" "$path"
 }
 
+collect_change_lines() {
+    local range_args=("$@")
+    local line
+
+    CHANGE_LINES=()
+    while IFS= read -r line; do
+        CHANGE_LINES+=("$line")
+    done < <(git -C "$ROOT" log --format='- %s' "${range_args[@]}")
+}
+
 # ── 1. Check clean worktree ─────────────────────────────────────────
 if [[ -n "$(git -C "$ROOT" status --porcelain)" ]]; then
     echo "Error: working tree is dirty. Commit or stash changes first."
@@ -135,9 +145,9 @@ if [ -f "$CHANGELOG" ]; then
 
     LATEST_TAG=$(git -C "$ROOT" describe --tags --abbrev=0 2>/dev/null || true)
     if [[ -n "$LATEST_TAG" ]]; then
-        mapfile -t CHANGE_LINES < <(git -C "$ROOT" log --format='- %s' "${LATEST_TAG}..HEAD")
+        collect_change_lines "${LATEST_TAG}..HEAD"
     else
-        mapfile -t CHANGE_LINES < <(git -C "$ROOT" log --format='- %s' --max-count=20)
+        collect_change_lines --max-count=20
     fi
     if [[ ${#CHANGE_LINES[@]} -eq 0 ]]; then
         CHANGE_LINES=("- Release v$VERSION")

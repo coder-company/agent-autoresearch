@@ -178,6 +178,17 @@ fn release_script_uses_portable_file_rewrites() {
 }
 
 #[test]
+fn release_script_avoids_mapfile_for_macos_bash() {
+    let root = repo_root();
+    let script = std::fs::read_to_string(root.join("scripts/release.sh")).unwrap();
+
+    assert!(script.contains("collect_change_lines()"));
+    assert!(script.contains("while IFS= read -r line"));
+    assert!(script.contains("CHANGE_LINES+=(\"$line\")"));
+    assert!(!script.contains("mapfile"));
+}
+
+#[test]
 fn release_script_blocks_untracked_dirty_worktrees() {
     let root = repo_root();
     let script = std::fs::read_to_string(root.join("scripts/release.sh")).unwrap();
