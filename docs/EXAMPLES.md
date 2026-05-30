@@ -68,15 +68,17 @@ Guard: npm test
 Iterations: 15
 ```
 
-## Parallel Batch Closeout
+## Parallel Experiments
 
-Use this after several worker branches or worktrees have tested different
-hypotheses:
+Use this when several hypotheses are plausible and the run has enough CPU, RAM,
+and disk for isolated worker worktrees:
 
 ```bash
-autoresearch parallel template --workers 3 --output autoresearch-results/parallel-workers.json
+autoresearch parallel prepare --workers 3
+autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json
 # Fill in each worker metric, guard status, commit, and description.
 autoresearch parallel closeout --batch-file autoresearch-results/parallel-workers.json
+autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.json
 ```
 
 More domain-specific examples are in
