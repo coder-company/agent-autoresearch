@@ -82,44 +82,55 @@ pub struct EvalsAnalysis {
 /// Parse a results TSV string into rows.
 pub fn parse_results_tsv(content: &str) -> Result<Vec<ParsedRow>> {
     let mut rows = Vec::new();
+    let mut columns = None;
 
     for line in content.lines() {
-        // Skip comments and header.
-        if line.starts_with('#') || line.starts_with("iteration\t") || line.trim().is_empty() {
+        if line.starts_with('#') || line.trim().is_empty() {
             continue;
         }
 
         let parts: Vec<&str> = line.split('\t').collect();
-        if parts.len() != 7 {
+        if columns.is_none() && parts.first() == Some(&"iteration") {
+            columns = Some(parse_results_tsv_header(&parts)?);
+            continue;
+        }
+
+        let columns = columns.get_or_insert_with(ResultsTsvColumns::legacy);
+        if parts.len() != columns.width {
             bail!(
-                "Invalid column count at iteration {}: got {}, expected 7",
-                parts.first().copied().unwrap_or("<missing>"),
-                parts.len()
+                "Invalid column count at iteration {}: got {}, expected {}",
+                parts.get(columns.iteration).copied().unwrap_or("<missing>"),
+                parts.len(),
+                columns.width
             );
         }
 
-        let iteration = match parts[0].parse::<u32>() {
+        let iteration_label = parts[columns.iteration];
+        let iteration = match iteration_label.parse::<u32>() {
             Ok(iteration) => Some(iteration),
-            Err(_) if worker_iteration_prefix(parts[0]).is_some() => None,
-            Err(_) => bail!("Invalid iteration label {}", parts[0]),
+            Err(_) if worker_iteration_prefix(iteration_label).is_some() => None,
+            Err(_) => bail!("Invalid iteration label {}", iteration_label),
         };
-        let commit = if parts[1] == "-" {
-            None
-        } else {
-            Some(parts[1].to_string())
-        };
-        let metric = Decimal::from_str(parts[2]).context("Invalid metric value")?;
-        let delta_str = parts[3].trim_start_matches('+');
+
+        let commit = columns.commit.and_then(|index| {
+            let value = parts[index];
+            (value != "-").then(|| value.to_string())
+        });
+        let metric = Decimal::from_str(parts[columns.metric])
+            .with_context(|| format!("Invalid metric value at iteration {iteration_label}"))?;
+        let delta_str = parts[columns.delta].trim_start_matches('+');
         let delta = Decimal::from_str(delta_str)
-            .with_context(|| format!("Invalid delta value at iteration {}", parts[0]))?;
-        if !matches!(parts[4], "pass" | "fail" | "-") {
-            bail!("Invalid guard value at iteration {}", parts[0]);
+            .with_context(|| format!("Invalid delta value at iteration {iteration_label}"))?;
+        if let Some(guard) = columns.guard {
+            if !matches!(parts[guard], "pass" | "fail" | "-" | "skip") {
+                bail!("Invalid guard value at iteration {}", iteration_label);
+            }
         }
-        if !is_valid_status(parts[5]) {
-            bail!("Invalid status at iteration {}", parts[0]);
+        if !is_valid_status(parts[columns.status]) {
+            bail!("Invalid status at iteration {}", iteration_label);
         }
-        let status = parts[5].to_string();
-        let description = parts[6].to_string();
+        let status = parts[columns.status].to_string();
+        let description = parts[columns.description].to_string();
 
         if let Some(iteration) = iteration {
             rows.push(ParsedRow {
@@ -134,6 +145,56 @@ pub fn parse_results_tsv(content: &str) -> Result<Vec<ParsedRow>> {
     }
 
     Ok(rows)
+}
+
+#[derive(Debug, Clone)]
+struct ResultsTsvColumns {
+    iteration: usize,
+    commit: Option<usize>,
+    metric: usize,
+    delta: usize,
+    guard: Option<usize>,
+    status: usize,
+    description: usize,
+    width: usize,
+}
+
+impl ResultsTsvColumns {
+    fn legacy() -> Self {
+        Self {
+            iteration: 0,
+            commit: Some(1),
+            metric: 2,
+            delta: 3,
+            guard: Some(4),
+            status: 5,
+            description: 6,
+            width: 7,
+        }
+    }
+}
+
+fn parse_results_tsv_header(parts: &[&str]) -> Result<ResultsTsvColumns> {
+    Ok(ResultsTsvColumns {
+        iteration: require_column(parts, "iteration", &["iteration"])?,
+        commit: find_column(parts, &["commit"]),
+        metric: require_column(parts, "metric", &["metric", "metric_value", "error_count"])?,
+        delta: require_column(parts, "delta", &["delta"])?,
+        guard: find_column(parts, &["guard"]),
+        status: require_column(parts, "status", &["status"])?,
+        description: require_column(parts, "description", &["description"])?,
+        width: parts.len(),
+    })
+}
+
+fn require_column(headers: &[&str], label: &str, names: &[&str]) -> Result<usize> {
+    find_column(headers, names).with_context(|| format!("Missing required column {label}"))
+}
+
+fn find_column(headers: &[&str], names: &[&str]) -> Option<usize> {
+    headers
+        .iter()
+        .position(|header| names.iter().any(|name| header == name))
 }
 
 fn is_valid_status(value: &str) -> bool {
@@ -334,6 +395,22 @@ mod tests {
         assert_eq!(rows[0].iteration, 1);
         assert_eq!(rows[0].status, "keep");
         assert_eq!(rows[1].status, "discard");
+    }
+
+    #[test]
+    fn test_parse_results_tsv_accepts_timestamp_and_guard_metric_columns() {
+        let tsv = "# metric_direction: higher_is_better\niteration\ttimestamp\tcommit\tmetric\tdelta\tguard\tguard-metric\tstatus\tdescription\n\
+                   0\t2026-05-30T00:00:00Z\tbase\t85\t0\t-\t-\tbaseline\tinitial\n\
+                   1\t2026-05-30T00:01:00Z\tabc1234\t88\t+3\tpass\tok\tkeep\tadd tests\n";
+
+        let rows = parse_results_tsv(tsv).unwrap();
+
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].status, "baseline");
+        assert_eq!(rows[1].commit.as_deref(), Some("abc1234"));
+        assert_eq!(rows[1].metric, Decimal::from(88));
+        assert_eq!(rows[1].delta, Decimal::from(3));
+        assert_eq!(rows[1].description, "add tests");
     }
 
     #[test]

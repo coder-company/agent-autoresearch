@@ -13,8 +13,7 @@ use autoresearch::core::criteria;
 use autoresearch::core::git::{GitRepo, WorktreeStatus};
 use autoresearch::core::health;
 use autoresearch::core::results::{
-    ensure_results_dir_protected, parse_metric_direction_value, worker_iteration_prefix,
-    GuardResult, ResultRow, ResultsLog,
+    ensure_results_dir_protected, parse_metric_direction_value, GuardResult, ResultRow, ResultsLog,
 };
 use autoresearch::core::runtime;
 use autoresearch::core::state::{IterationStatus, RunPhase, RunState};
@@ -1212,49 +1211,14 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
             .map(|s| s.trim()),
     )?;
 
-    // Parse data rows
-    let rows: Vec<&str> = content
+    let has_data_rows = content
         .lines()
-        .filter(|l| !l.starts_with('#') && !l.starts_with("iteration\t") && !l.is_empty())
-        .collect();
-
-    if rows.is_empty() {
+        .any(|l| !l.starts_with('#') && !l.starts_with("iteration\t") && !l.is_empty());
+    if !has_data_rows {
         anyhow::bail!("No data rows in results TSV.");
     }
 
-    // Parse metrics from each row
-    let mut metrics: Vec<(u32, &str, Decimal, &str)> = Vec::new(); // (iter, status, metric, desc)
-    let mut main_rows: Vec<&str> = Vec::new();
-    for row in &rows {
-        let cols: Vec<&str> = row.split('\t').collect();
-        if cols.len() != 7 {
-            anyhow::bail!(
-                "Invalid column count at iteration {}: got {}, expected 7",
-                cols.first().copied().unwrap_or("<missing>"),
-                cols.len()
-            );
-        }
-        let iter = match cols[0].parse::<u32>() {
-            Ok(iter) => Some(iter),
-            Err(_) if worker_iteration_prefix(cols[0]).is_some() => None,
-            Err(_) => anyhow::bail!("Invalid iteration label {}", cols[0]),
-        };
-        let metric = Decimal::from_str(cols[2])
-            .with_context(|| format!("Invalid metric value at iteration {}", cols[0]))?;
-        Decimal::from_str(cols[3].trim_start_matches('+'))
-            .with_context(|| format!("Invalid delta value at iteration {}", cols[0]))?;
-        if !matches!(cols[4], "pass" | "fail" | "-") {
-            anyhow::bail!("Invalid guard value at iteration {}", cols[0]);
-        }
-        parse_status(cols[5])
-            .with_context(|| format!("Invalid status at iteration {}", cols[0]))?;
-        let status = cols[5];
-        let desc = cols[6];
-        if let Some(iter) = iter {
-            main_rows.push(row);
-            metrics.push((iter, status, metric, desc));
-        }
-    }
+    let metrics = parse_results_tsv(&content)?;
 
     if metrics.is_empty() {
         anyhow::bail!("No main data rows in results TSV.");
@@ -1263,24 +1227,38 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
     let total = metrics.len();
     let has_baseline = metrics
         .first()
-        .is_some_and(|(iteration, status, _, _)| *iteration == 0 || *status == "baseline");
+        .is_some_and(|row| row.iteration == 0 || row.status == "baseline");
     let total_iterations = total.saturating_sub(usize::from(has_baseline));
-    let keeps = metrics.iter().filter(|m| is_keep_status(m.1)).count();
-    let discards = metrics.iter().filter(|m| m.1 == "discard").count();
-    let crashes = metrics.iter().filter(|m| is_failure_status(m.1)).count();
-    let baseline = metrics.first().map(|m| m.2).unwrap_or_default();
-    let final_metric = metrics.last().map(|m| m.2).unwrap_or_default();
+    let keeps = metrics
+        .iter()
+        .filter(|row| is_keep_status(&row.status))
+        .count();
+    let discards = metrics.iter().filter(|row| row.status == "discard").count();
+    let crashes = metrics
+        .iter()
+        .filter(|row| is_failure_status(&row.status))
+        .count();
+    let baseline = metrics.first().map(|row| row.metric).unwrap_or_default();
+    let final_metric = metrics.last().map(|row| row.metric).unwrap_or_default();
     let best = if direction == "higher" {
-        metrics.iter().map(|m| m.2).max().unwrap_or_default()
+        metrics
+            .iter()
+            .map(|row| row.metric)
+            .max()
+            .unwrap_or_default()
     } else {
-        metrics.iter().map(|m| m.2).min().unwrap_or_default()
+        metrics
+            .iter()
+            .map(|row| row.metric)
+            .min()
+            .unwrap_or_default()
     };
 
     // Find longest plateau (consecutive non-keep)
     let mut longest_plateau = 0u32;
     let mut current_plateau = 0u32;
-    for m in &metrics {
-        if !is_keep_status(m.1) && m.1 != "baseline" {
+    for row in &metrics {
+        if !is_keep_status(&row.status) && row.status != "baseline" {
             current_plateau += 1;
             longest_plateau = longest_plateau.max(current_plateau);
         } else {
@@ -1289,22 +1267,10 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
     }
 
     // Top improvements (keeps sorted by absolute delta)
-    let keep_rows: Vec<&str> = main_rows
+    let mut top_keeps: Vec<(Decimal, &str)> = metrics
         .iter()
-        .filter(|row| row.split('\t').nth(5).is_some_and(is_keep_status))
-        .copied()
-        .collect();
-    let mut top_keeps: Vec<(Decimal, &str)> = keep_rows
-        .iter()
-        .filter_map(|row| {
-            let cols: Vec<&str> = row.split('\t').collect();
-            if cols.len() >= 7 {
-                let delta = Decimal::from_str(cols[3].trim_start_matches('+')).ok()?;
-                Some((delta.abs(), cols[6]))
-            } else {
-                None
-            }
-        })
+        .filter(|row| is_keep_status(&row.status))
+        .map(|row| (row.delta.abs(), row.description.as_str()))
         .collect();
     top_keeps.sort_by_key(|entry| std::cmp::Reverse(entry.0));
 
@@ -1317,10 +1283,10 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
     // Determine trend from last 5 keeps
     let recent_keeps: Vec<Decimal> = metrics
         .iter()
-        .filter(|m| is_keep_status(m.1))
+        .filter(|row| is_keep_status(&row.status))
         .rev()
         .take(5)
-        .map(|m| m.2)
+        .map(|row| row.metric)
         .collect();
     let trend = if recent_keeps.len() < 2 {
         "insufficient data"

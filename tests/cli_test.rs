@@ -533,6 +533,36 @@ fn test_evals_accepts_legacy_result_statuses() {
 }
 
 #[test]
+fn test_evals_accepts_timestamp_and_guard_metric_columns() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: higher_is_better").unwrap();
+    writeln!(
+        file,
+        "iteration\ttimestamp\tcommit\tmetric\tdelta\tguard\tguard-metric\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(
+        file,
+        "0\t2026-05-30T00:00:00Z\tbase\t50\t0\t-\t-\tbaseline\tinitial state"
+    )
+    .unwrap();
+    writeln!(
+        file,
+        "1\t2026-05-30T00:01:00Z\tbcd2345\t55\t+5\tpass\tok\tkeep\timprovement"
+    )
+    .unwrap();
+
+    cmd()
+        .args(["evals", tsv_path.to_str().unwrap(), "--format", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"keeps\": 1"));
+}
+
+#[test]
 fn test_evals_rejects_invalid_guard() {
     let dir = TempDir::new().unwrap();
     let tsv_path = dir.path().join("results.tsv");
