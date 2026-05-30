@@ -348,12 +348,10 @@ install_codex_skill() {
             fi
 
             mkdir -p "$skill_dir"
+            rm -rf "$skill_dir/autoresearch"
 
             # Copy skill files
             cp "$REPO_DIR/SKILL.md" "$skill_dir/SKILL.md"
-            if [[ -d "$REPO_DIR/skills" ]]; then
-                cp -r "$REPO_DIR/skills/"* "$skill_dir/" 2>/dev/null || true
-            fi
             if [[ -d "$REPO_DIR/references" ]]; then
                 mkdir -p "$skill_dir/references"
                 cp -r "$REPO_DIR/references/"* "$skill_dir/references/" 2>/dev/null || true
