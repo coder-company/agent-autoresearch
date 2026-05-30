@@ -659,7 +659,7 @@ fn cmd_init(
 ) -> Result<()> {
     let workspace = resolve_workspace_root(cwd);
     let direction = parse_direction(direction_str)?;
-    let fmt = parse_format(format_str);
+    let fmt = parse_format(format_str)?;
     let run_mode = run_mode
         .as_deref()
         .map(parse_run_mode)
@@ -907,7 +907,7 @@ fn cmd_verify(
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let workspace = resolve_cwd(cwd);
-    let fmt = parse_format(format_str);
+    let fmt = parse_format(format_str)?;
 
     verify::screen_command(command)?;
     let result = verify::run_verify(command, fmt, key, &workspace)?;
@@ -4488,10 +4488,11 @@ fn parse_direction(s: &str) -> Result<Direction> {
     }
 }
 
-fn parse_format(s: &str) -> VerifyFormat {
+fn parse_format(s: &str) -> Result<VerifyFormat> {
     match s {
-        "metrics_json" => VerifyFormat::MetricsJson,
-        _ => VerifyFormat::Scalar,
+        "scalar" => Ok(VerifyFormat::Scalar),
+        "metrics_json" => Ok(VerifyFormat::MetricsJson),
+        _ => anyhow::bail!("Unknown verify format: {s}. Use 'scalar' or 'metrics_json'."),
     }
 }
 

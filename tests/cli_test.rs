@@ -178,6 +178,27 @@ fn test_verify_screens_dangerous_commands() {
 }
 
 #[test]
+fn test_verify_rejects_invalid_format() {
+    let dir = TempDir::new().unwrap();
+
+    cmd()
+        .args([
+            "verify",
+            "--command",
+            "echo 42",
+            "--format",
+            "json",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "Unknown verify format: json. Use 'scalar' or 'metrics_json'.",
+        ));
+}
+
+#[test]
 fn test_guard_screens_dangerous_commands() {
     let dir = TempDir::new().unwrap();
 
@@ -2896,6 +2917,33 @@ fn test_init_rejects_zero_iterations() {
         .failure()
         .stderr(predicate::str::contains(
             "--iterations must be greater than zero",
+        ));
+
+    assert!(!dir.path().join("autoresearch-results/results.tsv").exists());
+}
+
+#[test]
+fn test_init_rejects_invalid_verify_format() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--format",
+            "json",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "Unknown verify format: json. Use 'scalar' or 'metrics_json'.",
         ));
 
     assert!(!dir.path().join("autoresearch-results/results.tsv").exists());
