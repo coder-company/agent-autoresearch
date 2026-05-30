@@ -2626,12 +2626,14 @@ fn cmd_parallel_closeout(
                     winner_record.worker_id
                 );
             };
+            let retained_commit = cherry_pick_parallel_commit(workspace, &commit)
+                .with_context(|| format!("failed to merge worker-{} commit", winner_record.worker_id))?;
             (
                 IterationStatus::Keep,
                 winner_record.metric,
                 winner_record.metrics.clone(),
                 winner_record.labels.clone(),
-                Some(commit),
+                Some(retained_commit),
                 winner_record.guard,
                 format!(
                     "[PARALLEL batch] selected worker-{}: {}",
@@ -3629,6 +3631,58 @@ fn git_branch_exists(workspace: &Path, branch: &str) -> Result<bool> {
         Some(1) => Ok(false),
         _ => anyhow::bail!(
             "git show-ref failed: {}{}",
+            String::from_utf8_lossy(&output.stderr),
+            String::from_utf8_lossy(&output.stdout)
+        ),
+    }
+}
+
+fn cherry_pick_parallel_commit(workspace: &Path, commit: &str) -> Result<String> {
+    let before = GitRepo::open(workspace)?.head_full()?;
+    let Some(resolved) = git_resolve_commit(workspace, commit)? else {
+        anyhow::bail!("selected worker commit does not exist: {commit}");
+    };
+    if before == resolved {
+        return GitRepo::open(workspace)?.head_short();
+    }
+
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(workspace)
+        .args(["cherry-pick", "--no-edit", &resolved])
+        .output()
+        .context("failed to run git cherry-pick")?;
+    if !output.status.success() {
+        let _ = Command::new("git")
+            .arg("-C")
+            .arg(workspace)
+            .args(["cherry-pick", "--abort"])
+            .output();
+        anyhow::bail!(
+            "git cherry-pick {commit} failed: {}{}",
+            String::from_utf8_lossy(&output.stderr),
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+
+    GitRepo::open(workspace)?.head_short()
+}
+
+fn git_resolve_commit(workspace: &Path, commit: &str) -> Result<Option<String>> {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(workspace)
+        .args(["rev-parse", "--verify"])
+        .arg(format!("{commit}^{{commit}}"))
+        .output()
+        .context("failed to resolve git commit")?;
+    match output.status.code() {
+        Some(0) => Ok(Some(
+            String::from_utf8_lossy(&output.stdout).trim().to_string(),
+        )),
+        Some(1) => Ok(None),
+        _ => anyhow::bail!(
+            "git rev-parse failed: {}{}",
             String::from_utf8_lossy(&output.stderr),
             String::from_utf8_lossy(&output.stdout)
         ),

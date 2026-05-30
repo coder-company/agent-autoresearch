@@ -4981,14 +4981,20 @@ fn test_parallel_closeout_selects_best_worker() {
         .assert()
         .success();
 
+    let commit_a = create_branch_commit(&dir, "worker-a", "src/auth.txt", "narrowed\n", "worker a");
+    let commit_b =
+        create_branch_commit(&dir, "worker-b", "src/wrapper.txt", "wrapper\n", "worker b");
+    std::fs::create_dir_all(dir.path().join("src")).unwrap();
     let batch_path = dir.path().join("autoresearch-results/parallel-batch.json");
     std::fs::write(
         &batch_path,
-        r#"[
-  {"worker_id":"a","metric":"38","guard":"pass","commit":"abc1234","description":"narrowed auth types","diff_size":10},
-  {"worker_id":"b","metric":"42","guard":"pass","commit":"def5678","description":"wrapper approach","diff_size":3},
-  {"worker_id":"c","status":"crash","description":"timeout"}
-]"#,
+        format!(
+            r#"[
+  {{"worker_id":"a","metric":"38","guard":"pass","commit":"{commit_a}","description":"narrowed auth types","diff_size":10}},
+  {{"worker_id":"b","metric":"42","guard":"pass","commit":"{commit_b}","description":"wrapper approach","diff_size":3}},
+  {{"worker_id":"c","status":"crash","description":"timeout"}}
+]"#
+        ),
     )
     .unwrap();
 
@@ -5006,16 +5012,22 @@ fn test_parallel_closeout_selects_best_worker() {
         .stdout(predicate::str::contains("\"selected_worker\": \"a\""))
         .stdout(predicate::str::contains("\"decision\": \"keep\""));
 
+    let retained_commit = git_head_short(&dir);
     let results =
         std::fs::read_to_string(dir.path().join("autoresearch-results/results.tsv")).unwrap();
-    assert!(results
-        .contains("1a\tabc1234\t38\t-3\tpass\tkeep\t[PARALLEL worker-a] narrowed auth types"));
+    assert!(results.contains(&format!(
+        "1a\t{commit_a}\t38\t-3\tpass\tkeep\t[PARALLEL worker-a] narrowed auth types"
+    )));
     assert!(results.contains("1b\t-\t42\t+1\tpass\tdiscard\t[PARALLEL worker-b] wrapper approach"));
     assert!(results.contains("1c\t-\t41\t0\t-\tcrash\t[PARALLEL worker-c] timeout"));
-    assert!(results.contains(
-        "1\tabc1234\t38\t-3\tpass\tkeep\t[PARALLEL batch] selected worker-a: narrowed auth types"
-    ));
+    assert!(results.contains(&format!(
+        "1\t{retained_commit}\t38\t-3\tpass\tkeep\t[PARALLEL batch] selected worker-a: narrowed auth types"
+    )));
     assert!(!dir.path().join("src/autoresearch-results").exists());
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("src/auth.txt")).unwrap(),
+        "narrowed\n"
+    );
 
     let state =
         std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap();
@@ -5122,13 +5134,22 @@ fn test_parallel_closeout_applies_required_keep_criteria() {
         .assert()
         .success();
 
+    let commit_b = create_branch_commit(
+        &dir,
+        "criteria-worker-b",
+        "src/safe-coverage.txt",
+        "safe\n",
+        "safe coverage",
+    );
     let batch_path = dir.path().join("autoresearch-results/parallel-batch.json");
     std::fs::write(
         &batch_path,
-        r#"[
-  {"worker_id":"a","metric":"20","metrics":{"coverage":20,"errors":1},"guard":"pass","commit":"aaa1111","description":"raises coverage with error regression","diff_size":3},
-  {"worker_id":"b","metric":"15","metrics":{"coverage":15,"errors":0},"guard":"pass","commit":"bbb2222","description":"safe coverage gain","diff_size":8}
-]"#,
+        format!(
+            r#"[
+  {{"worker_id":"a","metric":"20","metrics":{{"coverage":20,"errors":1}},"guard":"pass","commit":"aaa1111","description":"raises coverage with error regression","diff_size":3}},
+  {{"worker_id":"b","metric":"15","metrics":{{"coverage":15,"errors":0}},"guard":"pass","commit":"{commit_b}","description":"safe coverage gain","diff_size":8}}
+]"#
+        ),
     )
     .unwrap();
 
@@ -5151,9 +5172,10 @@ fn test_parallel_closeout_applies_required_keep_criteria() {
     assert!(results.contains(
         "1a\t-\t20\t+10\tpass\tdiscard\t[PARALLEL worker-a] raises coverage with error regression [KEEP-CRITERIA miss] errors == 0 (actual 1)"
     ));
-    assert!(results.contains(
-        "1\tbbb2222\t15\t+5\tpass\tkeep\t[PARALLEL batch] selected worker-b: safe coverage gain"
-    ));
+    let retained_commit = git_head_short(&dir);
+    assert!(results.contains(&format!(
+        "1\t{retained_commit}\t15\t+5\tpass\tkeep\t[PARALLEL batch] selected worker-b: safe coverage gain"
+    )));
 
     let state: serde_json::Value = serde_json::from_str(
         &std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap(),
@@ -5186,13 +5208,22 @@ fn test_parallel_closeout_applies_required_keep_labels() {
         .assert()
         .success();
 
+    let commit_b = create_branch_commit(
+        &dir,
+        "label-worker-b",
+        "src/production-path.txt",
+        "production\n",
+        "production path",
+    );
     let batch_path = dir.path().join("autoresearch-results/parallel-batch.json");
     std::fs::write(
         &batch_path,
-        r#"[
-  {"worker_id":"a","metric":"60","guard":"pass","commit":"aaa1111","description":"generic improvement","diff_size":3},
-  {"worker_id":"b","metric":"55","guard":"pass","commit":"bbb2222","description":"production path improvement","labels":["Production-Path"],"diff_size":8}
-]"#,
+        format!(
+            r#"[
+  {{"worker_id":"a","metric":"60","guard":"pass","commit":"aaa1111","description":"generic improvement","diff_size":3}},
+  {{"worker_id":"b","metric":"55","guard":"pass","commit":"{commit_b}","description":"production path improvement","labels":["Production-Path"],"diff_size":8}}
+]"#
+        ),
     )
     .unwrap();
 
@@ -5215,9 +5246,10 @@ fn test_parallel_closeout_applies_required_keep_labels() {
     assert!(results.contains(
         "1a\t-\t60\t+10\tpass\tdiscard\t[PARALLEL worker-a] [KEEP-LABEL miss] missing required labels: production-path generic improvement"
     ));
-    assert!(results.contains(
-        "1\tbbb2222\t55\t+5\tpass\tkeep\t[PARALLEL batch] selected worker-b: [labels: production-path] production path improvement"
-    ));
+    let retained_commit = git_head_short(&dir);
+    assert!(results.contains(&format!(
+        "1\t{retained_commit}\t55\t+5\tpass\tkeep\t[PARALLEL batch] selected worker-b: [labels: production-path] production path improvement"
+    )));
 
     let state: serde_json::Value = serde_json::from_str(
         &std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap(),
@@ -5290,6 +5322,65 @@ fn write_metric_and_commit(dir: &TempDir, metric: &str) {
         .current_dir(path)
         .output()
         .unwrap();
+}
+
+fn create_branch_commit(
+    dir: &TempDir,
+    branch: &str,
+    file: &str,
+    content: &str,
+    message: &str,
+) -> String {
+    let path = dir.path();
+    let current = git_output(path, &["rev-parse", "--abbrev-ref", "HEAD"]);
+    git_ok(path, &["checkout", "-b", branch]);
+    let file_path = path.join(file);
+    if let Some(parent) = file_path.parent() {
+        std::fs::create_dir_all(parent).unwrap();
+    }
+    std::fs::write(&file_path, content).unwrap();
+    git_ok(path, &["add", file]);
+    git_ok(path, &["commit", "-m", message]);
+    let commit = git_output(path, &["rev-parse", "--short", "HEAD"]);
+    git_ok(path, &["checkout", current.trim()]);
+    commit.trim().to_string()
+}
+
+fn git_head_short(dir: &TempDir) -> String {
+    git_output(dir.path(), &["rev-parse", "--short", "HEAD"])
+        .trim()
+        .to_string()
+}
+
+fn git_ok(path: &std::path::Path, args: &[&str]) {
+    let output = std::process::Command::new("git")
+        .args(args)
+        .current_dir(path)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "git {} failed\nstdout:\n{}\nstderr:\n{}",
+        args.join(" "),
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+fn git_output(path: &std::path::Path, args: &[&str]) -> String {
+    let output = std::process::Command::new("git")
+        .args(args)
+        .current_dir(path)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "git {} failed\nstdout:\n{}\nstderr:\n{}",
+        args.join(" "),
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    String::from_utf8_lossy(&output.stdout).to_string()
 }
 
 fn init_git_fixture(dir: &TempDir) {
