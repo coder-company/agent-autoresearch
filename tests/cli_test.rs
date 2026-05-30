@@ -1436,6 +1436,8 @@ fn test_handoff_defaults_to_repo_root_results_from_subdir() {
             r#"[{"title":"fixed"}]"#,
             "--config",
             r#"{"goal":"fix login","scope":["src/auth/**"],"hypothesis_queue":["check auth"],"summary":{"risk":"low"}}"#,
+            "--chain",
+            "scenario,fix",
             "--cwd",
             subdir.to_str().unwrap(),
         ])
@@ -1462,6 +1464,9 @@ fn test_handoff_defaults_to_repo_root_results_from_subdir() {
     assert!(handoff.contains("\"handoff_path\":"));
     assert!(handoff.contains("autoresearch-results/results.tsv"));
     assert!(handoff.contains("autoresearch-results/handoff.json"));
+    assert!(handoff.contains("\"chain\": ["));
+    assert!(handoff.contains("\"scenario\""));
+    assert!(handoff.contains("\"fix\""));
     assert!(!subdir.join("autoresearch-results").exists());
 }
 
@@ -1548,6 +1553,30 @@ fn test_handoff_rejects_invalid_source() {
         .failure()
         .stderr(predicate::str::contains(
             "invalid handoff source \"mystery\"",
+        ));
+}
+
+#[test]
+fn test_handoff_rejects_invalid_chain_target() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+
+    cmd()
+        .args([
+            "handoff",
+            "--source",
+            "debug",
+            "--status",
+            "COMPLETE",
+            "--chain",
+            "fix,mystery",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "invalid handoff chain target \"mystery\"",
         ));
 }
 

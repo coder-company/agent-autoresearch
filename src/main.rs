@@ -281,6 +281,9 @@ enum Commands {
         /// Config as JSON object string
         #[arg(long)]
         config: Option<String>,
+        /// Comma-separated downstream command targets
+        #[arg(long)]
+        chain: Option<String>,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -499,12 +502,14 @@ fn main() -> Result<()> {
             status,
             findings,
             config,
+            chain,
             cwd,
         } => cmd_handoff(
             &source,
             &status,
             findings.as_deref(),
             config.as_deref(),
+            chain.as_deref(),
             cwd,
         ),
 
@@ -2703,6 +2708,7 @@ fn cmd_handoff(
     status: &str,
     findings: Option<&str>,
     config: Option<&str>,
+    chain: Option<&str>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let workspace = resolve_results_workspace(cwd);
@@ -2744,6 +2750,7 @@ fn cmd_handoff(
 
     let timestamp = chrono::Utc::now().to_rfc3339();
     let handoff_path = results_dir.join("handoff.json");
+    let chain_targets = parse_handoff_chain_targets(chain)?;
 
     let handoff = serde_json::json!({
         "version": "0.1.0",
@@ -2764,6 +2771,7 @@ fn cmd_handoff(
         "summary": summary,
         "findings": findings_val,
         "config": config_val,
+        "chain": chain_targets,
     });
 
     std::fs::write(&handoff_path, serde_json::to_string_pretty(&handoff)?)?;
@@ -2985,6 +2993,31 @@ fn is_valid_handoff_source(value: &str) -> bool {
             | "evals"
             | "exec"
     )
+}
+
+fn parse_handoff_chain_targets(value: Option<&str>) -> Result<Vec<String>> {
+    let Some(value) = value else {
+        return Ok(Vec::new());
+    };
+
+    let targets: Vec<String> = value
+        .split(',')
+        .map(str::trim)
+        .filter(|target| !target.is_empty())
+        .map(ToOwned::to_owned)
+        .collect();
+
+    if targets.is_empty() {
+        anyhow::bail!("handoff chain must include at least one target");
+    }
+
+    for target in &targets {
+        if !is_valid_handoff_source(target) {
+            anyhow::bail!("invalid handoff chain target {target:?}");
+        }
+    }
+
+    Ok(targets)
 }
 
 fn collect_results_tsvs_in_dir(dir: &Path, candidates: &mut BTreeSet<PathBuf>) {
