@@ -43,12 +43,16 @@ history as the next baseline.
 Parallel work is recorded as a batch:
 
 ```bash
-autoresearch parallel template --workers 3 --output autoresearch-results/parallel-workers.json
+autoresearch parallel prepare --workers 3
+autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json
 autoresearch parallel closeout --batch-file autoresearch-results/parallel-workers.json
+autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.json
 ```
 
-Workers fill in metrics, guard status, commits, and descriptions. Closeout writes
-worker audit rows and one authoritative batch row so retained state advances once.
+Prepare creates branch-backed worker worktrees, prompt files, a manifest, and the
+editable batch file. Run executes the prepared worker prompts in those worktrees.
+Closeout writes worker audit rows and one authoritative batch row so retained
+state advances once. Cleanup removes worker worktrees and branches.
 
 ## Background Runtime
 

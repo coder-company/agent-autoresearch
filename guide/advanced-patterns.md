@@ -19,11 +19,11 @@ Guard: npm test
 
 When the loop detects a plateau (3+ consecutive discards with different strategies), it may attempt parallel experiments:
 
-1. Create worktrees: `git worktree add ../experiment-a`, `../experiment-b`, `../experiment-c`
+1. Prepare worktrees: `autoresearch parallel prepare --workers 3`
 2. Apply 3 different hypotheses simultaneously
-3. Run verify in each worktree
-4. Keep the best result, discard others
-5. Merge winning worktree back to main branch
+3. Run prepared worker prompts with `autoresearch parallel run`
+4. Close out the best result with `autoresearch parallel closeout`
+5. Clean worker worktrees and branches with `autoresearch parallel cleanup`
 
 ### When Parallel Fires
 
@@ -31,17 +31,22 @@ When the loop detects a plateau (3+ consecutive discards with different strategi
 - When 3+ plausible hypotheses exist but none are clearly best
 - Not in the first 5 iterations (need baseline exploration first)
 
-### Native Batch Closeout
+### Native Parallel Batch
 
-Use the binary to create the worker result file and close out the batch:
+Use the binary to create worker worktrees, run prepared prompts, close out the
+batch, and clean up:
 
 ```bash
-autoresearch parallel template --workers 3 --output autoresearch-results/parallel-workers.json
-# Run worker branches/worktrees, then fill in metric, guard, commit, description.
+autoresearch parallel prepare --workers 3
+autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json
+# Workers fill in metric, guard, commit, and description in the batch file.
 autoresearch parallel closeout --batch-file autoresearch-results/parallel-workers.json
+autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.json
 ```
 
-Closeout records worker audit rows such as `5a`, `5b`, `5c`, then appends one authoritative main row for iteration `5`.
+Prepare creates branch-backed worker worktrees and prompt files. Run launches the
+prepared prompts with `codex exec`. Closeout records worker audit rows such as
+`5a`, `5b`, `5c`, then appends one authoritative main row for iteration `5`.
 
 ### Limitations
 

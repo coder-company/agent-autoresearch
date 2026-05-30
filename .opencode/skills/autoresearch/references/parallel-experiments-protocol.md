@@ -133,7 +133,22 @@ At the start of each parallel iteration batch:
 
 ### 2. Dispatch Workers
 
-For each hypothesis, launch a subagent with:
+Prepare worker worktrees and launch the worker prompts through the binary:
+
+```bash
+autoresearch parallel prepare --workers 3 --cwd <workspace_root>
+autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json --cwd <workspace_root>
+```
+
+`parallel prepare` creates one branch-backed git worktree per worker, writes
+`.codex-autoresearch/parallel-worker.md` inside each worktree, writes
+`autoresearch-results/parallel-manifest.json`, and writes the editable
+`autoresearch-results/parallel-workers.json` closeout file. `parallel run`
+executes each prepared prompt with `codex exec` in the corresponding worktree,
+captures `.codex-autoresearch/parallel-worker.log`, and records per-worker run
+status in the manifest.
+
+Each worker receives:
 
 - Task: apply hypothesis, run verify command, run guard command, report metric.
 - Isolation: git worktree (created from current HEAD).
@@ -168,7 +183,9 @@ Do NOT ask any questions. Do NOT interact with the user.
 
 ### 3. Collect Results
 
-Wait for all workers to complete (with a timeout of 2x the expected verify duration). If a worker hangs beyond the timeout, kill it, discard its result, and log `[PARALLEL worker-{id}] timeout`. Each worker returns:
+Wait for all workers to complete. If a worker crashes, keep its run status in the
+manifest and record its closeout entry as `crash`. Each worker fills its result
+into `autoresearch-results/parallel-workers.json`:
 
 ```
 worker_id: a
@@ -201,8 +218,8 @@ Selection rules:
 
 ### 6. Cleanup
 
-- Remove all worker worktrees.
-- Delete worker branches.
+- Remove all worker worktrees with `autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.json`.
+- Delete worker branches unless `--keep-branches` is passed.
 - Log all worker results in the results TSV (one line per worker per batch).
 
 ## Results Logging
@@ -219,8 +236,11 @@ iteration	commit	metric	delta	guard	status	description
 
 - Worker rows (`5a`, `5b`, `5c`) are audit detail.
 - The integer main row (`5`) is the authoritative retained-state update for the whole batch.
+- Prepare isolated worker worktrees with `autoresearch parallel prepare --workers 3 --cwd <workspace_root>`.
+- Launch prepared workers with `autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json --cwd <workspace_root>`.
 - Generate the editable worker JSON schema with `autoresearch parallel template --workers 3 --output autoresearch-results/parallel-workers.json --cwd <workspace_root>`.
 - Close out completed batches through `autoresearch parallel closeout --batch-file <workers.json> --cwd <workspace_root>`. Do not write worker/main rows by hand.
+- Clean up worktrees and branches with `autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.json --cwd <workspace_root>`.
 - Closeout runs health and worktree preflight first. It accepts clean worktrees and autoresearch-owned artifact changes, but blocks unexpected dirty files before appending any rows.
 
 The batch file is a JSON array of worker objects:
