@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use autoresearch::core::config::{Direction, RollbackStrategy, RunConfig, RunMode, VerifyFormat};
+use autoresearch::core::context;
 use autoresearch::core::criteria;
 use autoresearch::core::git::{GitRepo, WorktreeStatus};
 use autoresearch::core::health;
@@ -535,6 +536,7 @@ fn cmd_init(
     let state = RunState::from_baseline(result.metric, head.clone(), Some(run_config));
     let state_json = serde_json::to_string_pretty(&state)?;
     std::fs::write(results_dir.join("state.json"), &state_json)?;
+    let context_path = context::write_context(&workspace, state.config.as_ref())?;
 
     // Initialize lessons.md
     LessonsLog::open_or_create(&results_dir)?;
@@ -553,6 +555,7 @@ fn cmd_init(
             RunMode::Background => "background",
         }),
         "results_dir": results_dir.display().to_string(),
+        "context_path": context_path.display().to_string(),
         "verify_duration_ms": result.duration.as_millis(),
     });
     println!("{}", serde_json::to_string_pretty(&out)?);
@@ -1500,6 +1503,7 @@ fn cmd_exec(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
         results_dir.join("state.json"),
         serde_json::to_string_pretty(&state)?,
     )?;
+    context::write_context(&workspace, state.config.as_ref())?;
     LessonsLog::open_or_create(&results_dir)?;
 
     // Emit JSON line

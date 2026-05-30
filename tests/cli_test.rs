@@ -289,7 +289,8 @@ fn test_init_persists_runtime_config() {
         .assert()
         .success()
         .stdout(predicate::str::contains("\"iterations\": 7"))
-        .stdout(predicate::str::contains("\"run_mode\": \"foreground\""));
+        .stdout(predicate::str::contains("\"run_mode\": \"foreground\""))
+        .stdout(predicate::str::contains("\"context_path\""));
 
     let state =
         std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap();
@@ -298,6 +299,12 @@ fn test_init_persists_runtime_config() {
     assert!(state.contains("\"stop_condition\": \"coverage >= 90\""));
     assert!(state.contains("\"run_mode\": \"foreground\""));
     assert!(state.contains("\"rollback_strategy\": \"hard_reset\""));
+
+    let context =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/context.json")).unwrap();
+    assert!(context.contains("\"version\": 2"));
+    assert!(context.contains("\"session_mode\": \"foreground\""));
+    assert!(context.contains("\"verify_cwd\": \"workspace_root\""));
 
     cmd()
         .args(["status", "--cwd", root])
