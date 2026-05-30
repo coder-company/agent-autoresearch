@@ -295,7 +295,7 @@ fn is_valid_status(value: &str) -> bool {
     )
 }
 
-fn worker_iteration_prefix(value: &str) -> Option<u32> {
+pub fn worker_iteration_prefix(value: &str) -> Option<u32> {
     let Some(suffix_start) = value.find(|ch: char| !ch.is_ascii_digit()) else {
         return None;
     };

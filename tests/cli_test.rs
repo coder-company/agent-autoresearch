@@ -494,6 +494,27 @@ fn test_evals_rejects_wrong_column_count() {
 }
 
 #[test]
+fn test_evals_rejects_invalid_iteration_label() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: higher").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "one\tabc1234\t10\t0\t-\tbaseline\tbad label").unwrap();
+
+    cmd()
+        .args(["evals", tsv_path.to_str().unwrap(), "--format", "json"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Invalid iteration label one"));
+}
+
+#[test]
 fn test_evals_lower_direction_trend_improves_on_decrease() {
     let dir = TempDir::new().unwrap();
     let tsv_path = dir.path().join("results.tsv");

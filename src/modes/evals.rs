@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 use crate::core::config::RunConfig;
+use crate::core::results::worker_iteration_prefix;
 
 use super::{ModeDescription, ModeRunner};
 
@@ -97,8 +98,10 @@ pub fn parse_results_tsv(content: &str) -> Result<Vec<ParsedRow>> {
             );
         }
 
-        let Ok(iteration) = parts[0].parse::<u32>() else {
-            continue;
+        let iteration = match parts[0].parse::<u32>() {
+            Ok(iteration) => Some(iteration),
+            Err(_) if worker_iteration_prefix(parts[0]).is_some() => None,
+            Err(_) => bail!("Invalid iteration label {}", parts[0]),
         };
         let commit = if parts[1] == "-" {
             None
@@ -108,24 +111,26 @@ pub fn parse_results_tsv(content: &str) -> Result<Vec<ParsedRow>> {
         let metric = Decimal::from_str(parts[2]).context("Invalid metric value")?;
         let delta_str = parts[3].trim_start_matches('+');
         let delta = Decimal::from_str(delta_str)
-            .with_context(|| format!("Invalid delta value at iteration {iteration}"))?;
+            .with_context(|| format!("Invalid delta value at iteration {}", parts[0]))?;
         if !matches!(parts[4], "pass" | "fail" | "-") {
-            bail!("Invalid guard value at iteration {iteration}");
+            bail!("Invalid guard value at iteration {}", parts[0]);
         }
         if !is_valid_status(parts[5]) {
-            bail!("Invalid status at iteration {iteration}");
+            bail!("Invalid status at iteration {}", parts[0]);
         }
         let status = parts[5].to_string();
         let description = parts[6].to_string();
 
-        rows.push(ParsedRow {
-            iteration,
-            commit,
-            metric,
-            delta,
-            status,
-            description,
-        });
+        if let Some(iteration) = iteration {
+            rows.push(ParsedRow {
+                iteration,
+                commit,
+                metric,
+                delta,
+                status,
+                description,
+            });
+        }
     }
 
     Ok(rows)
@@ -379,6 +384,16 @@ mod tests {
         let err = parse_results_tsv(tsv).unwrap_err().to_string();
 
         assert!(err.contains("Invalid status at iteration 1"));
+    }
+
+    #[test]
+    fn test_parse_results_tsv_rejects_invalid_iteration_label() {
+        let tsv = "# metric_direction: higher\niteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n\
+                   one\tabc1234\t85\t+2\tpass\tkeep\tadd tests\n";
+
+        let err = parse_results_tsv(tsv).unwrap_err().to_string();
+
+        assert!(err.contains("Invalid iteration label one"));
     }
 
     #[test]

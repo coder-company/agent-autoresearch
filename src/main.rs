@@ -13,7 +13,7 @@ use autoresearch::core::criteria;
 use autoresearch::core::git::{GitRepo, WorktreeStatus};
 use autoresearch::core::health;
 use autoresearch::core::results::{
-    ensure_results_dir_protected, GuardResult, ResultRow, ResultsLog,
+    ensure_results_dir_protected, worker_iteration_prefix, GuardResult, ResultRow, ResultsLog,
 };
 use autoresearch::core::runtime;
 use autoresearch::core::state::{IterationStatus, RunPhase, RunState};
@@ -1186,11 +1186,6 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
     let rows: Vec<&str> = content
         .lines()
         .filter(|l| !l.starts_with('#') && !l.starts_with("iteration\t") && !l.is_empty())
-        .filter(|l| {
-            l.split('\t')
-                .next()
-                .is_some_and(|iteration| iteration.parse::<u32>().is_ok())
-        })
         .collect();
 
     if rows.is_empty() {
@@ -1199,6 +1194,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
 
     // Parse metrics from each row
     let mut metrics: Vec<(u32, &str, Decimal, &str)> = Vec::new(); // (iter, status, metric, desc)
+    let mut main_rows: Vec<&str> = Vec::new();
     for row in &rows {
         let cols: Vec<&str> = row.split('\t').collect();
         if cols.len() != 7 {
@@ -1208,7 +1204,11 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 cols.len()
             );
         }
-        let iter: u32 = cols[0].parse().unwrap_or(0);
+        let iter = match cols[0].parse::<u32>() {
+            Ok(iter) => Some(iter),
+            Err(_) if worker_iteration_prefix(cols[0]).is_some() => None,
+            Err(_) => anyhow::bail!("Invalid iteration label {}", cols[0]),
+        };
         let metric = Decimal::from_str(cols[2])
             .with_context(|| format!("Invalid metric value at iteration {}", cols[0]))?;
         Decimal::from_str(cols[3].trim_start_matches('+'))
@@ -1220,7 +1220,14 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
             .with_context(|| format!("Invalid status at iteration {}", cols[0]))?;
         let status = cols[5];
         let desc = cols[6];
-        metrics.push((iter, status, metric, desc));
+        if let Some(iter) = iter {
+            main_rows.push(row);
+            metrics.push((iter, status, metric, desc));
+        }
+    }
+
+    if metrics.is_empty() {
+        anyhow::bail!("No main data rows in results TSV.");
     }
 
     let total = metrics.len();
@@ -1252,7 +1259,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
     }
 
     // Top improvements (keeps sorted by absolute delta)
-    let keep_rows: Vec<&str> = rows
+    let keep_rows: Vec<&str> = main_rows
         .iter()
         .filter(|r| r.contains("\tkeep\t"))
         .copied()
