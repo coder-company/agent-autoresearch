@@ -213,6 +213,7 @@ No. Every change is committed before verification. If it makes things worse, it 
 |-----|---------------|
 | [Installation](docs/INSTALL.md) | Claude Code, Codex, OpenCode, source install |
 | [Guide](docs/GUIDE.md) | Command map, binary operations, artifact contract |
+| [Examples](docs/EXAMPLES.md) | Copy-paste configs for common goals and parallel closeout |
 | [Getting Started](guide/getting-started.md) | Install, first run, what to expect |
 | [Examples by Domain](guide/examples-by-domain.md) | Ready configs: coverage, types, bundle, latency, security |
 | [Chains & Combinations](guide/chains-and-combinations.md) | Piping commands together |
