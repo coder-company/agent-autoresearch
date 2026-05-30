@@ -1,4 +1,6 @@
 use super::{HookInput, HookResponse};
+use std::path::PathBuf;
+use std::process::Command;
 
 /// Dangerous command patterns to block during autoresearch runs.
 const DANGEROUS: &[&str] = &[
@@ -74,7 +76,12 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
     // Check context-sensitive (block during active runs)
     let has_active_run = std::env::current_dir()
         .ok()
-        .map(|d| d.join("autoresearch-results/state.json").exists())
+        .map(|cwd| {
+            let project_root = git_output(&cwd, &["rev-parse", "--show-toplevel"]).unwrap_or(cwd);
+            project_root
+                .join("autoresearch-results/state.json")
+                .exists()
+        })
         .unwrap_or(false);
 
     if has_active_run {
@@ -88,4 +95,19 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
     }
 
     HookResponse::allow()
+}
+
+fn git_output(cwd: &std::path::Path, args: &[&str]) -> Option<PathBuf> {
+    let output = Command::new("git")
+        .args(args)
+        .current_dir(cwd)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    String::from_utf8(output.stdout)
+        .ok()
+        .map(|value| PathBuf::from(value.trim()))
+        .filter(|value| !value.as_os_str().is_empty())
 }
