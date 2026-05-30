@@ -2204,7 +2204,22 @@ fn build_trial_metrics(
     verify_format: VerifyFormat,
 ) -> Result<BTreeMap<String, Decimal>> {
     match metrics_json {
-        Some(raw) => autoresearch::core::metrics::parse_json_metrics_map(raw),
+        Some(raw) => {
+            let metrics = autoresearch::core::metrics::parse_json_metrics_map(raw)?;
+            if verify_format == VerifyFormat::MetricsJson {
+                let actual = metrics.get(primary_metric_key).with_context(|| {
+                    format!(
+                        "verify_format=metrics_json requires metrics key {primary_metric_key:?}"
+                    )
+                })?;
+                if *actual != primary_metric {
+                    anyhow::bail!(
+                        "Primary metric mismatch: --metric {primary_metric} but metrics_json[{primary_metric_key:?}] is {actual}"
+                    );
+                }
+            }
+            Ok(metrics)
+        }
         None if verify_format == VerifyFormat::MetricsJson => {
             anyhow::bail!("verify_format=metrics_json requires --metrics-json")
         }

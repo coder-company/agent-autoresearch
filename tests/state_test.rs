@@ -702,6 +702,23 @@ fn test_decide_discards_when_required_keep_criteria_fail() {
             "verify_format=metrics_json requires --metrics-json",
         ));
 
+    Command::cargo_bin("autoresearch")
+        .unwrap()
+        .args([
+            "decide",
+            "--metric",
+            "60",
+            "--metrics-json",
+            r#"{"score":61,"failures":0}"#,
+            "--description",
+            "mismatched primary metric",
+            "--cwd",
+            dir_path.to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Primary metric mismatch"));
+
     std::fs::write(
         dir_path.join("metrics.json"),
         r#"{"score":60,"failures":2}"#,
