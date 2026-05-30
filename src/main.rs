@@ -2719,6 +2719,9 @@ fn cmd_handoff(
     if !config_val.is_object() {
         anyhow::bail!("handoff config must be a JSON object");
     }
+    if !is_valid_handoff_status(status) {
+        anyhow::bail!("invalid handoff status {status:?}");
+    }
     let goal = config_val
         .get("goal")
         .cloned()
@@ -2937,6 +2940,22 @@ fn discover_results_tsv(root: &Path) -> Option<PathBuf> {
             .cmp(&results_tsv_modified(right))
             .then_with(|| left.cmp(right))
     })
+}
+
+fn is_valid_handoff_status(value: &str) -> bool {
+    matches!(
+        value,
+        "COMPLETE"
+            | "GOAL_MET"
+            | "BOUNDED"
+            | "BLOCKED"
+            | "ERROR"
+            | "USER_INTERRUPT"
+            | "CONVERGED"
+            | "SATURATED"
+            | "DRY_RUN"
+            | "ROLLBACK"
+    )
 }
 
 fn collect_results_tsvs_in_dir(dir: &Path, candidates: &mut BTreeSet<PathBuf>) {

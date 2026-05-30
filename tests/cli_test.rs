@@ -1502,6 +1502,28 @@ fn test_handoff_rejects_wrong_json_shapes() {
 }
 
 #[test]
+fn test_handoff_rejects_invalid_status() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+
+    cmd()
+        .args([
+            "handoff",
+            "--source",
+            "debug",
+            "--status",
+            "DONEISH",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "invalid handoff status \"DONEISH\"",
+        ));
+}
+
+#[test]
 fn test_exec_defaults_to_repo_root_from_subdir() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
