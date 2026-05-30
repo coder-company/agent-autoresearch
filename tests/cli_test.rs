@@ -527,6 +527,51 @@ fn test_runtime_start_requires_context() {
 }
 
 #[test]
+fn test_runtime_start_records_spawn_failure() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--run-mode",
+            "background",
+            "--workspace-root",
+            root,
+            "--primary-repo",
+            root,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "runtime",
+            "start",
+            "--codex-bin",
+            "definitely-missing-codex-for-autoresearch-test",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("failed to launch"));
+
+    let runtime =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/runtime.json")).unwrap();
+    assert!(runtime.contains("\"status\": \"needs_human\""));
+    assert!(runtime.contains("\"reason\": \"spawn_failed\""));
+    assert!(runtime.contains("definitely-missing-codex-for-autoresearch-test"));
+}
+
+#[test]
 fn test_runtime_supervise_relaunches_after_non_terminal_run() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

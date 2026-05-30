@@ -186,15 +186,45 @@ pub fn start_runtime(
         .try_clone()
         .context("failed to clone runtime log handle")?;
 
-    let mut child = Command::new(codex_bin)
+    let child_result = Command::new(codex_bin)
         .arg("exec")
         .args(&manifest.codex_args)
         .current_dir(workspace)
         .stdin(Stdio::piped())
         .stdout(Stdio::from(log))
         .stderr(Stdio::from(err_log))
-        .spawn()
-        .with_context(|| format!("failed to launch {codex_bin} exec"))?;
+        .spawn();
+
+    let mut child = match child_result {
+        Ok(child) => child,
+        Err(err) => {
+            let message = format!("failed to launch {codex_bin} exec: {err}");
+            let snapshot = RuntimeSnapshot {
+                version: 1,
+                status: "needs_human".to_string(),
+                pid: None,
+                started_at: None,
+                stopped_at: Some(Utc::now().to_rfc3339()),
+                launch_path: paths.launch_path.display().to_string(),
+                runtime_path: paths.runtime_path.display().to_string(),
+                log_path: paths.log_path.display().to_string(),
+                last_error: Some(message.clone()),
+                supervisor: Some(SupervisorStatus {
+                    decision: "needs_human".to_string(),
+                    reason: "spawn_failed".to_string(),
+                    terminal_reason: "spawn_failed".to_string(),
+                    should_continue: false,
+                    restart_count: 0,
+                    stagnation_count: 0,
+                    last_signature: String::new(),
+                    checked_at: Utc::now().to_rfc3339(),
+                }),
+            };
+            write_runtime_snapshot(&paths.runtime_path, &snapshot)?;
+            append_log(&paths.log_path, &format!("{} {message}\n", Utc::now().to_rfc3339()))?;
+            anyhow::bail!(message);
+        }
+    };
 
     if let Some(mut stdin) = child.stdin.take() {
         stdin
