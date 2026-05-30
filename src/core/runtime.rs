@@ -145,6 +145,9 @@ pub fn start_runtime(
             .join(", ");
         anyhow::bail!("runtime preflight blocked: {codes}");
     }
+    if !health.has_context {
+        anyhow::bail!("runtime preflight blocked: missing_context");
+    }
 
     let manifest = create_launch_manifest(workspace, execution_policy, codex_bin)?;
     let paths = write_launch_manifest(workspace, &manifest)?;

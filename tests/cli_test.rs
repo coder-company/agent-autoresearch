@@ -491,6 +491,42 @@ fn test_runtime_start_blocks_on_health_preflight() {
 }
 
 #[test]
+fn test_runtime_start_requires_context() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--run-mode",
+            "background",
+            "--workspace-root",
+            root,
+            "--primary-repo",
+            root,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    std::fs::remove_file(dir.path().join("autoresearch-results/context.json")).unwrap();
+
+    cmd()
+        .args(["runtime", "start", "--dry-run", "--cwd", root])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("missing_context"));
+
+    assert!(!dir.path().join("autoresearch-results/launch.json").exists());
+}
+
+#[test]
 fn test_runtime_supervise_relaunches_after_non_terminal_run() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
