@@ -199,6 +199,99 @@ fn test_evals_text_format() {
         .success();
 }
 
+#[test]
+fn test_evals_lower_direction_trend_improves_on_decrease() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: lower").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t10\t0\t-\tbaseline\tinitial state").unwrap();
+    writeln!(file, "1\tbcd2345\t8\t-2\tpass\tkeep\treduce failures").unwrap();
+    writeln!(file, "2\tcde3456\t6\t-2\tpass\tkeep\treduce more failures").unwrap();
+
+    cmd()
+        .args(["evals", tsv_path.to_str().unwrap(), "--format", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"trend\": \"improving\""));
+}
+
+#[test]
+fn test_progress_lower_direction_trend_improves_on_decrease() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+    write_metric_and_commit(&dir, "10\n");
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "lower",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "log",
+            "--iteration",
+            "1",
+            "--commit",
+            "abc1234",
+            "--metric",
+            "8",
+            "--delta=-2",
+            "--guard",
+            "pass",
+            "--status",
+            "keep",
+            "--description",
+            "reduce failures",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+    cmd()
+        .args([
+            "log",
+            "--iteration",
+            "2",
+            "--commit",
+            "bcd2345",
+            "--metric",
+            "6",
+            "--delta=-2",
+            "--guard",
+            "pass",
+            "--status",
+            "keep",
+            "--description",
+            "reduce more failures",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["progress", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Trend: improving"));
+}
+
 // ── Health Command ───────────────────────────────────────────────────
 
 #[test]

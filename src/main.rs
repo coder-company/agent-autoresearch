@@ -1098,12 +1098,14 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
         .collect();
     let trend = if recent_keeps.len() < 2 {
         "insufficient data"
-    } else if recent_keeps.windows(2).all(|w| w[0] >= w[1]) {
-        "improving"
-    } else if recent_keeps.windows(2).all(|w| w[0] <= w[1]) {
-        "declining"
     } else {
-        "flat"
+        match direction {
+            "lower" if recent_keeps.windows(2).all(|w| w[0] <= w[1]) => "improving",
+            "lower" if recent_keeps.windows(2).all(|w| w[0] >= w[1]) => "declining",
+            _ if recent_keeps.windows(2).all(|w| w[0] >= w[1]) => "improving",
+            _ if recent_keeps.windows(2).all(|w| w[0] <= w[1]) => "declining",
+            _ => "flat",
+        }
     };
 
     match format {
@@ -1903,12 +1905,14 @@ fn cmd_progress(cwd: Option<PathBuf>) -> Result<()> {
         let last5: Vec<&Decimal> = keep_metrics.iter().rev().take(5).collect();
         if last5.len() < 2 {
             "insufficient_data"
-        } else if last5.windows(2).all(|w| w[0] >= w[1]) {
-            "improving"
-        } else if last5.windows(2).all(|w| w[0] <= w[1]) {
-            "declining"
         } else {
-            "flat"
+            match state.direction {
+                Direction::Lower if last5.windows(2).all(|w| w[0] <= w[1]) => "improving",
+                Direction::Lower if last5.windows(2).all(|w| w[0] >= w[1]) => "declining",
+                _ if last5.windows(2).all(|w| w[0] >= w[1]) => "improving",
+                _ if last5.windows(2).all(|w| w[0] <= w[1]) => "declining",
+                _ => "flat",
+            }
         }
     } else {
         "insufficient_data"
