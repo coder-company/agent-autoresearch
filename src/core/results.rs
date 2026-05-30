@@ -53,6 +53,7 @@ impl ResultRow {
 
     pub fn to_tsv_with_iteration_label(&self, iteration: &str) -> String {
         let commit = self.commit.as_deref().unwrap_or("-");
+        let description = sanitize_tsv_field(&self.description);
         let delta_str = if self.delta.is_zero() {
             "0".to_string()
         } else if self.delta.is_sign_positive() {
@@ -69,9 +70,19 @@ impl ResultRow {
             delta_str,
             self.guard.as_str(),
             self.status.as_str(),
-            self.description,
+            description,
         )
     }
+}
+
+fn sanitize_tsv_field(value: &str) -> String {
+    value
+        .chars()
+        .map(|ch| match ch {
+            '\t' | '\n' | '\r' => ' ',
+            _ => ch,
+        })
+        .collect()
 }
 
 /// Results log manager.
@@ -299,6 +310,23 @@ mod tests {
         assert_eq!(
             row.to_tsv_with_iteration_label("5a"),
             "5a\tabc1234\t38\t-3\tpass\tkeep\t[PARALLEL worker-a] narrowed auth types"
+        );
+    }
+
+    #[test]
+    fn test_result_row_sanitizes_multiline_description() {
+        let row = ResultRow {
+            iteration: 3,
+            commit: Some("abc1234".to_string()),
+            metric: Decimal::from(10),
+            delta: Decimal::from(1),
+            guard: GuardResult::Pass,
+            status: IterationStatus::Keep,
+            description: "line one\tline two\nline three\rline four".to_string(),
+        };
+        assert_eq!(
+            row.to_tsv(),
+            "3\tabc1234\t10\t+1\tpass\tkeep\tline one line two line three line four"
         );
     }
 
