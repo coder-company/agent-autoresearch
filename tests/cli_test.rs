@@ -1438,6 +1438,9 @@ fn test_handoff_defaults_to_repo_root_results_from_subdir() {
             r#"{"goal":"fix login","scope":["src/auth/**"],"hypothesis_queue":["check auth"],"summary":{"risk":"low"}}"#,
             "--chain",
             "scenario,fix",
+            "--evals",
+            "--evals-interval",
+            "3",
             "--cwd",
             subdir.to_str().unwrap(),
         ])
@@ -1469,6 +1472,8 @@ fn test_handoff_defaults_to_repo_root_results_from_subdir() {
     assert!(handoff.contains("\"fix\""));
     assert!(handoff.contains("\"next_target\": \"scenario\""));
     assert!(handoff.contains("\"chain_continue\": true"));
+    assert!(handoff.contains("\"propagate_evals\": true"));
+    assert!(handoff.contains("\"evals_interval\": 3"));
     assert!(!subdir.join("autoresearch-results").exists());
 }
 

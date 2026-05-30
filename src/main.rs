@@ -284,6 +284,12 @@ enum Commands {
         /// Comma-separated downstream command targets
         #[arg(long)]
         chain: Option<String>,
+        /// Propagate eval checkpoints to downstream chain targets
+        #[arg(long)]
+        evals: bool,
+        /// Propagated eval checkpoint interval
+        #[arg(long)]
+        evals_interval: Option<u32>,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -503,6 +509,8 @@ fn main() -> Result<()> {
             findings,
             config,
             chain,
+            evals,
+            evals_interval,
             cwd,
         } => cmd_handoff(
             &source,
@@ -510,6 +518,8 @@ fn main() -> Result<()> {
             findings.as_deref(),
             config.as_deref(),
             chain.as_deref(),
+            evals,
+            evals_interval,
             cwd,
         ),
 
@@ -2709,6 +2719,8 @@ fn cmd_handoff(
     findings: Option<&str>,
     config: Option<&str>,
     chain: Option<&str>,
+    evals: bool,
+    evals_interval: Option<u32>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let workspace = resolve_results_workspace(cwd);
@@ -2779,6 +2791,8 @@ fn cmd_handoff(
         "chain": chain_targets,
         "next_target": next_target,
         "chain_continue": should_continue_handoff_chain(status),
+        "propagate_evals": evals,
+        "evals_interval": evals_interval,
     });
 
     std::fs::write(&handoff_path, serde_json::to_string_pretty(&handoff)?)?;
