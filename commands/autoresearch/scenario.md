@@ -110,5 +110,5 @@ If --evals present:
 
 ## Chain Handoff
 
-After completion, write handoff.json: version "2.1.0", source "scenario", timestamp, status, results_tsv path, findings = scenarios by severity, config{scenario, domain, scope}.
+After completion, write handoff.json: version "0.1.0", source "scenario", timestamp, status, results_tsv path, findings = scenarios by severity, config{scenario, domain, scope}.
 Invoke next target in --chain order. Propagate --evals flag.

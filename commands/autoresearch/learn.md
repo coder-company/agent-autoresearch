@@ -102,5 +102,5 @@ If --evals present:
 
 ## Chain Handoff
 
-After completion, write handoff.json: version "2.1.0", source "learn", timestamp, status, results_tsv path, findings = documentation gaps remaining, config{mode, scope, depth}.
+After completion, write handoff.json: version "0.1.0", source "learn", timestamp, status, results_tsv path, findings = documentation gaps remaining, config{mode, scope, depth}.
 Invoke next target in --chain order. Propagate --evals flag.

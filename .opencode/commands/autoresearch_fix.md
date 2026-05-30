@@ -106,5 +106,5 @@ If --evals present:
 
 ## Chain Handoff
 
-After completion, write `autoresearch-results/handoff.json`: version "2.1.0", source "fix", timestamp, status (COMPLETE|USER_INTERRUPT|BOUNDED|ERROR), results_tsv path, findings = unfixed errors, config{target, scope, guard}.
+After completion, write `autoresearch-results/handoff.json`: version "0.1.0", source "fix", timestamp, status (COMPLETE|USER_INTERRUPT|BOUNDED|ERROR), results_tsv path, findings = unfixed errors, config{target, scope, guard}.
 Invoke next target in --chain order. Propagate --evals flag.

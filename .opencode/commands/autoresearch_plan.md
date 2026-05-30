@@ -91,5 +91,5 @@ Ask user: "Run this config now, or adjust?"
 ## Chain Handoff
 
 If --chain set:
-- Write handoff.json: version "2.1.0", source "plan", timestamp, status COMPLETE, config = derived config block
+- Write handoff.json: version "0.1.0", source "plan", timestamp, status COMPLETE, config = derived config block
 - Invoke next target with the derived config

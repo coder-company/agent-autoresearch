@@ -124,5 +124,5 @@ If `--rollback`:
 
 ## Chain Handoff
 
-Write handoff.json: version "2.1.0", source "ship", timestamp, status (COMPLETE|DRY_RUN|ROLLBACK|ERROR), findings = blockers/warnings found during prep.
+Write handoff.json: version "0.1.0", source "ship", timestamp, status (COMPLETE|DRY_RUN|ROLLBACK|ERROR), findings = blockers/warnings found during prep.
 Invoke next target in --chain order.
