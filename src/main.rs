@@ -153,9 +153,9 @@ enum Commands {
         /// Decision: auto, keep, discard, crash, no-op, blocked
         #[arg(long, default_value = "auto")]
         decision: String,
-        /// Trial metric value
+        /// Trial metric value. Required for auto, keep, and discard decisions.
         #[arg(long, allow_hyphen_values = true)]
-        metric: String,
+        metric: Option<String>,
         /// Full metrics JSON object for criteria checks
         #[arg(long)]
         metrics_json: Option<String>,
@@ -445,7 +445,7 @@ fn main() -> Result<()> {
             cwd,
         } => cmd_decide(
             &decision,
-            &metric,
+            metric.as_deref(),
             metrics_json.as_deref(),
             commit.as_deref(),
             &description,
@@ -806,7 +806,7 @@ fn cmd_log(
 
 fn cmd_decide(
     decision: &str,
-    metric_str: &str,
+    metric_str: Option<&str>,
     metrics_json: Option<&str>,
     commit: Option<&str>,
     description: &str,
@@ -817,9 +817,6 @@ fn cmd_decide(
     let workspace = resolve_cwd(cwd);
     let results_dir = workspace.join("autoresearch-results");
     let state_path = results_dir.join("state.json");
-
-    let metric =
-        Decimal::from_str(metric_str).with_context(|| format!("Invalid metric: {metric_str}"))?;
 
     // Parse guard result
     let guard = match guard_str {
@@ -832,6 +829,7 @@ fn cmd_decide(
     let content = std::fs::read_to_string(&state_path)
         .context("No state.json found — run `autoresearch init` first")?;
     let mut state: RunState = serde_json::from_str(&content)?;
+    let metric = parse_decide_metric(metric_str, decision, state.current_metric)?;
     let (primary_metric_key, verify_format, acceptance_criteria, required_keep_criteria) =
         match state.config.as_ref() {
             Some(config) => (
@@ -2256,6 +2254,20 @@ fn cmd_exec(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
 
 fn resolve_cwd(cwd: Option<PathBuf>) -> PathBuf {
     cwd.unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+}
+
+fn parse_decide_metric(
+    metric_str: Option<&str>,
+    decision: &str,
+    retained_metric: Decimal,
+) -> Result<Decimal> {
+    match metric_str {
+        Some(value) => Decimal::from_str(value).with_context(|| format!("Invalid metric: {value}")),
+        None if matches!(decision, "auto" | "discard" | "keep") => {
+            anyhow::bail!("--metric is required for {decision} decisions")
+        }
+        None => Ok(retained_metric),
+    }
 }
 
 fn retained_trial_metrics(

@@ -1088,8 +1088,6 @@ fn test_decide_metrics_json_blocked_does_not_require_trial_metrics() {
             "decide",
             "--decision",
             "blocked",
-            "--metric",
-            "50",
             "--description",
             "external dependency unavailable",
             "--cwd",
@@ -1104,6 +1102,42 @@ fn test_decide_metrics_json_blocked_does_not_require_trial_metrics() {
         std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap();
     assert!(state.contains("\"phase\": \"blocked\""));
     assert!(state.contains("external dependency unavailable"));
+}
+
+#[test]
+fn test_decide_keep_requires_metric() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "decide",
+            "--decision",
+            "keep",
+            "--description",
+            "missing measured metric",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "--metric is required for keep decisions",
+        ));
 }
 
 #[test]
