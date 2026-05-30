@@ -21,7 +21,7 @@ Here `<skill-root>` means the directory containing the loaded `SKILL.md`.
 
 ### Every Managed-Runtime Cycle Boundary (Lightweight)
 
-Run before each detached Codex session. `autoresearch runtime start` performs this native preflight before writing launch/runtime artifacts, treats missing `context.json` as a launch blocker, and a runtime-managed loop should repeat the same check before every relaunch:
+Run before each detached Codex session. `autoresearch runtime run` repeats this native preflight before every launch/relaunch. `autoresearch runtime start` performs the same preflight for a single manual launch. Both treat missing `context.json` as a launch blocker before writing launch/runtime artifacts:
 
 | Check | How | Failure Action |
 |-------|-----|----------------|

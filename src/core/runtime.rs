@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::str::FromStr;
 
 use super::config::RunConfig;
@@ -135,6 +135,109 @@ pub fn start_runtime(
     codex_bin: &str,
     dry_run: bool,
 ) -> Result<(LaunchManifest, RuntimeSnapshot)> {
+    let (manifest, paths) =
+        prepare_runtime_launch(workspace, execution_policy, codex_bin, dry_run)?;
+
+    if dry_run {
+        let snapshot = RuntimeSnapshot {
+            version: 1,
+            status: "ready".to_string(),
+            pid: None,
+            started_at: None,
+            stopped_at: None,
+            launch_path: paths.launch_path.display().to_string(),
+            runtime_path: paths.runtime_path.display().to_string(),
+            log_path: paths.log_path.display().to_string(),
+            last_error: None,
+            supervisor: None,
+        };
+        write_runtime_snapshot(&paths.runtime_path, &snapshot)?;
+        return Ok((manifest, snapshot));
+    }
+
+    let mut child = spawn_runtime_child(workspace, &paths, &manifest, codex_bin)?;
+    write_runtime_prompt(&mut child, &manifest)?;
+
+    let snapshot = running_snapshot(&paths, child.id());
+    write_runtime_snapshot(&paths.runtime_path, &snapshot)?;
+    Ok((manifest, snapshot))
+}
+
+pub fn run_runtime_loop(
+    workspace: &Path,
+    execution_policy: &str,
+    codex_bin: &str,
+    max_restarts: u32,
+    max_stagnation: u32,
+) -> Result<(RuntimeSnapshot, SupervisorStatus)> {
+    loop {
+        run_runtime_turn(workspace, execution_policy, codex_bin)?;
+        let (snapshot, supervisor) = supervise_runtime(workspace, true, max_stagnation)?;
+
+        if supervisor.should_continue && supervisor.restart_count > max_restarts {
+            return mark_restart_cap(workspace, supervisor);
+        }
+
+        if !supervisor.should_continue {
+            return Ok((snapshot, supervisor));
+        }
+    }
+}
+
+fn run_runtime_turn(
+    workspace: &Path,
+    execution_policy: &str,
+    codex_bin: &str,
+) -> Result<RuntimeSnapshot> {
+    let (manifest, paths) = prepare_runtime_launch(workspace, execution_policy, codex_bin, false)?;
+    let mut child = spawn_runtime_child(workspace, &paths, &manifest, codex_bin)?;
+    write_runtime_prompt(&mut child, &manifest)?;
+
+    let mut snapshot = running_snapshot(&paths, child.id());
+    write_runtime_snapshot(&paths.runtime_path, &snapshot)?;
+
+    let exit = child.wait().context("failed to wait for codex exec")?;
+    snapshot.stopped_at = Some(Utc::now().to_rfc3339());
+
+    if exit.success() {
+        snapshot.status = "stopped".to_string();
+        append_log(
+            &paths.log_path,
+            &format!(
+                "{} codex exec exited successfully\n",
+                Utc::now().to_rfc3339()
+            ),
+        )?;
+    } else {
+        let message = format!("codex exec exited with status {exit}");
+        snapshot.status = "needs_human".to_string();
+        snapshot.last_error = Some(message.clone());
+        snapshot.supervisor = Some(SupervisorStatus {
+            decision: "needs_human".to_string(),
+            reason: "codex_exit_failed".to_string(),
+            terminal_reason: "codex_exit_failed".to_string(),
+            should_continue: false,
+            restart_count: 0,
+            stagnation_count: 0,
+            last_signature: String::new(),
+            checked_at: Utc::now().to_rfc3339(),
+        });
+        append_log(
+            &paths.log_path,
+            &format!("{} {message}\n", Utc::now().to_rfc3339()),
+        )?;
+    }
+
+    write_runtime_snapshot(&paths.runtime_path, &snapshot)?;
+    Ok(snapshot)
+}
+
+fn prepare_runtime_launch(
+    workspace: &Path,
+    execution_policy: &str,
+    codex_bin: &str,
+    dry_run: bool,
+) -> Result<(LaunchManifest, RuntimePaths)> {
     let health = health::run_health_check(workspace, None, 500)?;
     if health.has_blockers() {
         let codes = health
@@ -160,23 +263,15 @@ pub fn start_runtime(
         ),
     )?;
 
-    if dry_run {
-        let snapshot = RuntimeSnapshot {
-            version: 1,
-            status: "ready".to_string(),
-            pid: None,
-            started_at: None,
-            stopped_at: None,
-            launch_path: paths.launch_path.display().to_string(),
-            runtime_path: paths.runtime_path.display().to_string(),
-            log_path: paths.log_path.display().to_string(),
-            last_error: None,
-            supervisor: None,
-        };
-        write_runtime_snapshot(&paths.runtime_path, &snapshot)?;
-        return Ok((manifest, snapshot));
-    }
+    Ok((manifest, paths))
+}
 
+fn spawn_runtime_child(
+    workspace: &Path,
+    paths: &RuntimePaths,
+    manifest: &LaunchManifest,
+    codex_bin: &str,
+) -> Result<Child> {
     let log = OpenOptions::new()
         .create(true)
         .append(true)
@@ -195,7 +290,7 @@ pub fn start_runtime(
         .stderr(Stdio::from(err_log))
         .spawn();
 
-    let mut child = match child_result {
+    let child = match child_result {
         Ok(child) => child,
         Err(err) => {
             let message = format!("failed to launch {codex_bin} exec: {err}");
@@ -229,26 +324,37 @@ pub fn start_runtime(
         }
     };
 
+    Ok(child)
+}
+
+fn write_runtime_prompt(child: &mut Child, manifest: &LaunchManifest) -> Result<()> {
     if let Some(mut stdin) = child.stdin.take() {
         stdin
             .write_all(manifest.prompt.as_bytes())
             .context("failed to write runtime prompt to codex stdin")?;
     }
+    Ok(())
+}
 
-    let snapshot = RuntimeSnapshot {
+fn running_snapshot(paths: &RuntimePaths, pid: u32) -> RuntimeSnapshot {
+    RuntimeSnapshot {
         version: 1,
         status: "running".to_string(),
-        pid: Some(child.id()),
+        pid: Some(pid),
         started_at: Some(Utc::now().to_rfc3339()),
         stopped_at: None,
         launch_path: paths.launch_path.display().to_string(),
         runtime_path: paths.runtime_path.display().to_string(),
         log_path: paths.log_path.display().to_string(),
         last_error: None,
-        supervisor: None,
-    };
-    write_runtime_snapshot(&paths.runtime_path, &snapshot)?;
-    Ok((manifest, snapshot))
+        supervisor: previous_supervisor(paths),
+    }
+}
+
+fn previous_supervisor(paths: &RuntimePaths) -> Option<SupervisorStatus> {
+    let snapshot: RuntimeSnapshot =
+        serde_json::from_str(&fs::read_to_string(&paths.runtime_path).ok()?).ok()?;
+    snapshot.supervisor
 }
 
 pub fn runtime_status(workspace: &Path) -> Result<RuntimeSnapshot> {
@@ -363,6 +469,34 @@ pub fn stop_runtime(workspace: &Path) -> Result<RuntimeSnapshot> {
         &format!("{} runtime stop requested\n", Utc::now().to_rfc3339()),
     )?;
     Ok(snapshot)
+}
+
+fn mark_restart_cap(
+    workspace: &Path,
+    previous: SupervisorStatus,
+) -> Result<(RuntimeSnapshot, SupervisorStatus)> {
+    let paths = paths(workspace);
+    let mut snapshot = runtime_status(workspace)?;
+    let status = SupervisorStatus {
+        decision: "needs_human".to_string(),
+        reason: "restart_cap".to_string(),
+        terminal_reason: "restart_cap".to_string(),
+        should_continue: false,
+        restart_count: previous.restart_count,
+        stagnation_count: previous.stagnation_count,
+        last_signature: previous.last_signature,
+        checked_at: Utc::now().to_rfc3339(),
+    };
+
+    snapshot.status = "needs_human".to_string();
+    snapshot.last_error = Some("restart_cap".to_string());
+    snapshot.supervisor = Some(status.clone());
+    write_runtime_snapshot(&paths.runtime_path, &snapshot)?;
+    append_log(
+        &paths.log_path,
+        &format!("{} runtime restart cap reached\n", Utc::now().to_rfc3339()),
+    )?;
+    Ok((snapshot, status))
 }
 
 fn read_state(path: &Path) -> Result<RunState> {

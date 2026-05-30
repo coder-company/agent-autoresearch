@@ -22,7 +22,7 @@ Verify you can still recall:
 - log every completed experiment before the next one starts,
 - the `autoresearch` binary owns authoritative TSV/JSON updates and keep/stop gating,
 - artifact paths come from `workspace_root` + `autoresearch-results/` and the repo-local pointer, never from repo-root artifact guessing,
-- background relaunch/stop/needs_human decisions come from `autoresearch runtime supervise`,
+- background relaunch/stop/needs_human decisions come from `autoresearch runtime run` or the same supervisor path exposed as `autoresearch runtime supervise`,
 - the current stop conditions for this run,
 - the current rollback strategy in use,
 - the active pivot/refine escalation thresholds when they matter,

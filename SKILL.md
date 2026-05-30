@@ -65,7 +65,7 @@ When model-visible goal tools are available:
 
 - For new interactive runs, require an explicit choice: **foreground** or **background**
 - **Foreground**: loop runs in current session, goal tools used when available
-- **Background**: `autoresearch runtime start` writes the launch manifest and starts detached continuation
+- **Background**: `autoresearch runtime run` owns the supervised Codex exec loop; `runtime start` is the lower-level detached launch primitive
 - They are mutually exclusive — never both active against same artifacts
 
 ## Hard Rules
@@ -112,6 +112,7 @@ Optional:
 | `autoresearch status` | Show full state JSON |
 | `autoresearch progress` | Formatted progress summary |
 | `autoresearch resume` | Detect resumable prior run |
+| `autoresearch runtime run` | Launch Codex exec turns, supervise after each exit, and relaunch until stop or needs_human |
 | `autoresearch runtime start --dry-run` | Persist background launch/runtime artifacts; omit `--dry-run` to spawn detached Codex |
 | `autoresearch runtime status` | Show saved runtime state |
 | `autoresearch runtime supervise --after-run` | Recommend `relaunch`, `stop`, or `needs_human` after a detached turn |

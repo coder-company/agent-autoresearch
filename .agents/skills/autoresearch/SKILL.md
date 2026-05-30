@@ -34,7 +34,7 @@ The `autoresearch` binary handles mechanical operations:
 - `autoresearch health` — preflight git/artifact/disk/verify/context state
 - `autoresearch verify` — run verify command, parse metric or metrics JSON
 - `autoresearch decide` — evaluate keep/discard logic, criteria gates, rollback, and escalation
-- `autoresearch runtime start/status/supervise/stop` — control detached background runs and supervisor decisions
+- `autoresearch runtime run` — execute the supervised background loop; `start/status/supervise/stop` remain available for manual control
 - `autoresearch status|resume|progress|lessons|evals` — inspect/resume/analyze runs
 - `autoresearch hook <name>` — execute lifecycle hooks
 

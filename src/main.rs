@@ -314,6 +314,24 @@ enum RuntimeCommands {
         #[arg(long)]
         cwd: Option<PathBuf>,
     },
+    /// Run supervised Codex exec turns until stop, needs_human, or restart cap
+    Run {
+        /// Execution policy for nested Codex sessions
+        #[arg(long, default_value = "danger_full_access")]
+        execution_policy: String,
+        /// Codex binary to launch
+        #[arg(long, default_value = "codex")]
+        codex_bin: String,
+        /// Relaunches allowed after the first Codex turn
+        #[arg(long, default_value_t = 25)]
+        max_restarts: u32,
+        /// Consecutive no-progress exits tolerated before needs_human
+        #[arg(long, default_value_t = 3)]
+        max_stagnation: u32,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
     /// Stop the recorded runtime process when one is running
     Stop {
         /// Working directory
@@ -1242,6 +1260,33 @@ fn cmd_runtime(command: RuntimeCommands) -> Result<()> {
             let (snapshot, supervisor) =
                 runtime::supervise_runtime(&workspace, after_run, max_stagnation)?;
             let out = serde_json::json!({
+                "decision": supervisor.decision,
+                "reason": supervisor.reason,
+                "terminal_reason": supervisor.terminal_reason,
+                "should_continue": supervisor.should_continue,
+                "restart_count": supervisor.restart_count,
+                "stagnation_count": supervisor.stagnation_count,
+                "runtime": snapshot,
+            });
+            println!("{}", serde_json::to_string_pretty(&out)?);
+        }
+        RuntimeCommands::Run {
+            execution_policy,
+            codex_bin,
+            max_restarts,
+            max_stagnation,
+            cwd,
+        } => {
+            let workspace = resolve_cwd(cwd);
+            let (snapshot, supervisor) = runtime::run_runtime_loop(
+                &workspace,
+                &execution_policy,
+                &codex_bin,
+                max_restarts,
+                max_stagnation,
+            )?;
+            let out = serde_json::json!({
+                "status": "ok",
                 "decision": supervisor.decision,
                 "reason": supervisor.reason,
                 "terminal_reason": supervisor.terminal_reason,

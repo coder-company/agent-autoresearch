@@ -17,7 +17,7 @@
 
 - [x] Background runtime artifacts + detached Codex launch control (`autoresearch runtime start/status/supervise/stop`)
 - [x] Background supervisor recommendation (`autoresearch runtime supervise`) with iteration cap, criteria, stop-condition, soft-blocker, and stagnation decisions
-- [ ] Background supervisor relaunch loop that automatically executes recommended relaunches
+- [x] Background supervisor relaunch loop that automatically executes recommended relaunches (`autoresearch runtime run`)
 - [ ] Parallel experiments runtime — run N trials concurrently, keep the best
 - [ ] Experiment branching — each trial on its own git branch
 - [ ] Branch merge strategy selection (fast-forward, squash, rebase)

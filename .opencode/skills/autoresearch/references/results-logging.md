@@ -22,7 +22,8 @@ lessons.md
 context.json
 ```
 
-`autoresearch runtime start` writes `launch.json`, `runtime.json`, and `runtime.log`.
+`autoresearch runtime run` writes `launch.json`, `runtime.json`, and `runtime.log`, waits for each Codex exec turn to exit, supervises the result, and relaunches while the supervisor returns `relaunch`.
+`autoresearch runtime start` writes the same launch/runtime files for one manual detached launch.
 It first runs the native health preflight and blocks without writing launch artifacts when blockers are present or canonical `context.json` is missing.
 If the nested `codex exec` process cannot spawn, it writes `runtime.json` with `status=needs_human` and a `spawn_failed` supervisor reason.
 `autoresearch runtime status` reads and refreshes `runtime.json`; `autoresearch runtime stop`
@@ -229,6 +230,8 @@ Use the `autoresearch` binary for stateful artifact updates. Do not hand-edit TS
   Prints the current run state and persisted config from `state.json`.
 - `autoresearch runtime supervise ...`
   Persists the background supervisor recommendation in `runtime.json`. It stops on completion, iteration cap, acceptance criteria, or simple stop conditions; returns `needs_human` for blocked, soft-blocked, or stagnant runs; otherwise recommends `relaunch`.
+- `autoresearch runtime run ...`
+  Executes the managed background loop by running Codex exec turns, calling the supervisor after each turn, preserving restart/stagnation counters across relaunches, and stopping on `stop`, `needs_human`, or restart cap.
 
 In exec mode, the runtime keeps JSON state in scratch storage by default and must clean that scratch state before exiting.
 

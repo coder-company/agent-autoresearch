@@ -8,6 +8,18 @@ fn cmd() -> Command {
     Command::cargo_bin("autoresearch").unwrap()
 }
 
+#[cfg(unix)]
+fn write_fake_codex(dir: &TempDir, body: &str) -> std::path::PathBuf {
+    use std::os::unix::fs::PermissionsExt;
+
+    let path = dir.path().join("fake-codex");
+    std::fs::write(&path, format!("#!/bin/sh\nset -eu\n{body}\n")).unwrap();
+    let mut perms = std::fs::metadata(&path).unwrap().permissions();
+    perms.set_mode(0o755);
+    std::fs::set_permissions(&path, perms).unwrap();
+    path
+}
+
 // ── Help & Version ───────────────────────────────────────────────────
 
 #[test]
@@ -622,6 +634,125 @@ fn test_runtime_supervise_relaunches_after_non_terminal_run() {
         .success()
         .stdout(predicate::str::contains("\"supervisor\""))
         .stdout(predicate::str::contains("\"decision\": \"relaunch\""));
+}
+
+#[cfg(unix)]
+#[test]
+fn test_runtime_run_relaunches_until_iteration_cap() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+    let fake_codex = write_fake_codex(
+        &dir,
+        r#"
+count_file="autoresearch-results/fake-count"
+count=0
+if [ -f "$count_file" ]; then
+  count="$(cat "$count_file")"
+fi
+count=$((count + 1))
+printf '%s\n' "$count" > "$count_file"
+if [ "$count" -ge 2 ]; then
+  sed -i 's/"iteration": 0/"iteration": 1/' autoresearch-results/state.json
+fi
+exit 0
+"#,
+    );
+    let fake_codex = fake_codex.to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--iterations",
+            "1",
+            "--run-mode",
+            "background",
+            "--workspace-root",
+            root,
+            "--primary-repo",
+            root,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "runtime",
+            "run",
+            "--execution-policy",
+            "workspace_write",
+            "--codex-bin",
+            fake_codex,
+            "--max-restarts",
+            "3",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"stop\""))
+        .stdout(predicate::str::contains("\"restart_count\": 1"))
+        .stdout(predicate::str::contains(
+            "\"terminal_reason\": \"iteration_cap\"",
+        ));
+
+    let count =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/fake-count")).unwrap();
+    assert_eq!(count.trim(), "2");
+}
+
+#[cfg(unix)]
+#[test]
+fn test_runtime_run_stops_at_restart_cap() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+    let fake_codex = write_fake_codex(&dir, "exit 0");
+    let fake_codex = fake_codex.to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--run-mode",
+            "background",
+            "--workspace-root",
+            root,
+            "--primary-repo",
+            root,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "runtime",
+            "run",
+            "--execution-policy",
+            "workspace_write",
+            "--codex-bin",
+            fake_codex,
+            "--max-restarts",
+            "0",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"needs_human\""))
+        .stdout(predicate::str::contains("\"reason\": \"restart_cap\""))
+        .stdout(predicate::str::contains("\"status\": \"needs_human\""));
 }
 
 #[test]
