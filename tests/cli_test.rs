@@ -650,6 +650,48 @@ fn test_runtime_supervise_detects_stagnation() {
         .stdout(predicate::str::contains("\"status\": \"needs_human\""));
 }
 
+#[test]
+fn test_runtime_supervise_stop_condition_prefers_explicit_operator() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+    std::fs::write(dir.path().join("metric.txt"), "97\n").unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "lower",
+            "--stop-condition",
+            "p95 latency <= 100",
+            "--run-mode",
+            "background",
+            "--workspace-root",
+            root,
+            "--primary-repo",
+            root,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["runtime", "start", "--dry-run", "--cwd", root])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["runtime", "supervise", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"stop\""))
+        .stdout(predicate::str::contains("\"reason\": \"stop_condition\""))
+        .stdout(predicate::str::contains("\"terminal_reason\": \"goal_reached\""));
+}
+
 fn init_git_fixture(dir: &TempDir) {
     let path = dir.path();
     std::process::Command::new("git")

@@ -416,30 +416,43 @@ fn simple_stop_condition_satisfied(state: &RunState) -> bool {
     let Some(stop_condition) = &config.stop_condition else {
         return false;
     };
-    let Ok(pattern) = Regex::new(r"(<=|>=|==|<|>)?\s*(-?(?:\d+(?:\.\d+)?|\.\d+))") else {
+    let Ok(operator_pattern) = Regex::new(r"(<=|>=|==|<|>)\s*(-?(?:\d+(?:\.\d+)?|\.\d+))")
+    else {
         return false;
     };
-    let Some(captures) = pattern.captures(stop_condition) else {
+    if let Some(captures) = operator_pattern.captures(stop_condition) {
+        let operator = captures.get(1).map(|m| m.as_str());
+        let Some(target) = captures
+            .get(2)
+            .and_then(|m| Decimal::from_str(m.as_str()).ok())
+        else {
+            return false;
+        };
+
+        return match operator {
+            Some("<") => state.current_metric < target,
+            Some("<=") => state.current_metric <= target,
+            Some(">") => state.current_metric > target,
+            Some(">=") => state.current_metric >= target,
+            Some("==") => state.current_metric == target,
+            _ => false,
+        };
+    }
+
+    let Ok(number_pattern) = Regex::new(r"-?(?:\d+(?:\.\d+)?|\.\d+)") else {
         return false;
     };
-    let operator = captures.get(1).map(|m| m.as_str());
-    let Some(target) = captures
-        .get(2)
+    let Some(target) = number_pattern
+        .find_iter(stop_condition)
+        .last()
         .and_then(|m| Decimal::from_str(m.as_str()).ok())
     else {
         return false;
     };
 
-    match operator {
-        Some("<") => state.current_metric < target,
-        Some("<=") => state.current_metric <= target,
-        Some(">") => state.current_metric > target,
-        Some(">=") => state.current_metric >= target,
-        Some("==") => state.current_metric == target,
-        _ => match config.direction {
-            super::config::Direction::Lower => state.current_metric <= target,
-            super::config::Direction::Higher => state.current_metric >= target,
-        },
+    match config.direction {
+        super::config::Direction::Lower => state.current_metric <= target,
+        super::config::Direction::Higher => state.current_metric >= target,
     }
 }
 
