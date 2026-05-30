@@ -153,12 +153,11 @@ impl Mode {
             Mode::Fix => Some(20),
             Mode::Security => Some(15),
             Mode::Scenario => Some(20),
+            Mode::Improve => Some(20),
             Mode::Learn => Some(10),
             Mode::Reason => Some(8),
             Mode::Probe => Some(15),
-            Mode::Plan | Mode::Ship | Mode::Predict | Mode::Improve | Mode::Evals | Mode::Exec => {
-                None
-            }
+            Mode::Plan | Mode::Ship | Mode::Predict | Mode::Evals | Mode::Exec => None,
         }
     }
 
@@ -193,6 +192,7 @@ mod tests {
         assert_eq!(Mode::Fix.default_iterations(), Some(20));
         assert_eq!(Mode::Security.default_iterations(), Some(15));
         assert_eq!(Mode::Scenario.default_iterations(), Some(20));
+        assert_eq!(Mode::Improve.default_iterations(), Some(20));
         assert_eq!(Mode::Learn.default_iterations(), Some(10));
         assert_eq!(Mode::Reason.default_iterations(), Some(8));
         assert_eq!(Mode::Probe.default_iterations(), Some(15));
@@ -200,7 +200,6 @@ mod tests {
         assert_eq!(Mode::Plan.default_iterations(), None);
         assert_eq!(Mode::Ship.default_iterations(), None);
         assert_eq!(Mode::Predict.default_iterations(), None);
-        assert_eq!(Mode::Improve.default_iterations(), None);
         assert_eq!(Mode::Evals.default_iterations(), None);
         assert_eq!(Mode::Exec.default_iterations(), None);
     }

@@ -155,7 +155,7 @@ impl ModeRunner for ImproveMode {
         ModeDescription {
             name: "improve",
             purpose: "Product improvement: research ICP challenges, score and rank improvements",
-            default_iterations: None,
+            default_iterations: Some(20),
             required_fields: &["goal"],
             optional_fields: &["scope", "iterations"],
         }
@@ -204,6 +204,12 @@ mod tests {
         let mut config = make_config();
         config.goal = String::new();
         assert!(mode.validate_config(&config).is_err());
+    }
+
+    #[test]
+    fn test_describe_default_iterations_matches_protocol() {
+        let mode = ImproveMode;
+        assert_eq!(mode.describe().default_iterations, Some(20));
     }
 
     #[test]
