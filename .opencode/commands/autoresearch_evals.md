@@ -11,7 +11,6 @@ EXECUTE IMMEDIATELY.
 Extract from $ARGUMENTS:
 - Positional path to a specific TSV file
 - `--format` — output format: text (default console), json, md (markdown file)
-- `--compare <path>` — (v2.2.0 placeholder, not yet implemented)
 
 ## Input Discovery
 
