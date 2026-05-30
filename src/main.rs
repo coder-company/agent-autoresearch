@@ -9,6 +9,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::str::FromStr;
+use std::time::{Duration, Instant};
 
 use autoresearch::core::config::{Direction, RollbackStrategy, RunConfig, RunMode, VerifyFormat};
 use autoresearch::core::context;
@@ -433,6 +434,9 @@ enum ParallelCommands {
         /// Codex binary to launch
         #[arg(long, default_value = "codex")]
         codex_bin: String,
+        /// Kill workers that run longer than this many seconds
+        #[arg(long, value_parser = clap::value_parser!(u64).range(1..))]
+        timeout_seconds: Option<u64>,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -2064,10 +2068,17 @@ fn cmd_parallel(command: ParallelCommands) -> Result<()> {
             manifest,
             execution_policy,
             codex_bin,
+            timeout_seconds,
             cwd,
         } => {
             let workspace = resolve_results_workspace(cwd);
-            let out = cmd_parallel_run(&workspace, manifest, &execution_policy, &codex_bin)?;
+            let out = cmd_parallel_run(
+                &workspace,
+                manifest,
+                &execution_policy,
+                &codex_bin,
+                timeout_seconds,
+            )?;
             println!("{}", serde_json::to_string_pretty(&out)?);
         }
         ParallelCommands::Template {
@@ -2305,6 +2316,7 @@ fn cmd_parallel_run(
     manifest: PathBuf,
     execution_policy: &str,
     codex_bin: &str,
+    timeout_seconds: Option<u64>,
 ) -> Result<serde_json::Value> {
     let manifest_path = resolve_workspace_path(workspace, manifest);
     let manifest_text = std::fs::read_to_string(&manifest_path)
@@ -2372,14 +2384,12 @@ fn cmd_parallel_run(
 
     let mut results = Vec::new();
     for mut worker in running {
-        let status = worker
-            .child
-            .wait()
+        let wait_result = wait_parallel_worker(&mut worker.child, timeout_seconds)
             .with_context(|| format!("failed to wait for worker-{}", worker.worker_id))?;
-        let exit_code = status.code();
+        let exit_code = wait_result.exit_code;
         results.push(serde_json::json!({
             "worker_id": worker.worker_id,
-            "status": if status.success() { "completed" } else { "crash" },
+            "status": wait_result.status,
             "exit_code": exit_code,
             "log_file": worker.log_file.display().to_string(),
             "started_at": worker.started_at,
@@ -2406,6 +2416,50 @@ fn cmd_parallel_run(
         "manifest": manifest_path.display().to_string(),
         "workers": results,
     }))
+}
+
+struct ParallelWaitResult {
+    status: &'static str,
+    exit_code: Option<i32>,
+}
+
+fn wait_parallel_worker(
+    child: &mut Child,
+    timeout_seconds: Option<u64>,
+) -> Result<ParallelWaitResult> {
+    let Some(seconds) = timeout_seconds else {
+        let status = child.wait()?;
+        return Ok(ParallelWaitResult {
+            status: if status.success() {
+                "completed"
+            } else {
+                "crash"
+            },
+            exit_code: status.code(),
+        });
+    };
+    let deadline = Instant::now() + Duration::from_secs(seconds);
+    loop {
+        if let Some(status) = child.try_wait()? {
+            return Ok(ParallelWaitResult {
+                status: if status.success() {
+                    "completed"
+                } else {
+                    "crash"
+                },
+                exit_code: status.code(),
+            });
+        }
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            let status = child.wait()?;
+            return Ok(ParallelWaitResult {
+                status: "timeout",
+                exit_code: status.code(),
+            });
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
 }
 
 fn parallel_batch_template(workers: u8) -> serde_json::Value {
