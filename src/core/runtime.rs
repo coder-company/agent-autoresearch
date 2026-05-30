@@ -999,6 +999,7 @@ fn process_is_alive(pid: u32) -> bool {
     Command::new("kill")
         .arg("-0")
         .arg(pid.to_string())
+        .stderr(Stdio::null())
         .status()
         .map(|status| status.success())
         .unwrap_or(false)
@@ -1059,6 +1060,7 @@ fn send_signal(pid: u32, signal: &str) -> Result<()> {
     let status = Command::new("kill")
         .arg(signal)
         .arg(pid.to_string())
+        .stderr(Stdio::null())
         .status()
         .context("failed to invoke kill")?;
     if !status.success() {
