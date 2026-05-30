@@ -88,11 +88,11 @@ Run the guard if configured. A command that fails at baseline belongs in the tar
 - worse -> discard immediately
 - crash -> recover or discard
 
-For discarded or crashed trials, roll back first, then record the current clean HEAD through the helper.
+For discarded or crashed trials, roll back first, then record the current clean HEAD through binary closeout.
 
 ### Phase 8: Log
 
-Record the completed experiment through the bundled helper using the generic schema defined in `references/results-logging.md`:
+Record the completed experiment through `autoresearch decide` using the generic schema defined in `references/results-logging.md`:
 
 ```tsv
 iteration	commit	metric	delta	guard	status	description

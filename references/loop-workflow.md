@@ -29,7 +29,7 @@ Iterate toward a measurable outcome by making one focused change, verifying mech
 ## Escalation And Recovery
 
 - Use `pivot-protocol.md` when repeated discards show the current line of attack is stale.
-- Use `results-logging.md` only when you need the detailed TSV/state contract or helper behavior.
+- Use `results-logging.md` only when you need the detailed TSV/state contract or binary closeout behavior.
 - Use `lessons-protocol.md` only when you need to reason about lessons behavior directly.
 - Use `health-check-protocol.md` when runtime integrity looks suspect.
 - Use `parallel-experiments-protocol.md`, `web-search-protocol.md`, or `hypothesis-perspectives.md` only when those behaviors are actively in play.

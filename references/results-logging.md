@@ -28,7 +28,7 @@ marks the runtime stopped and terminates the recorded process when one is runnin
 
 ### `context.json` Schema
 
-`context.json` is the canonical run context written by `autoresearch init`. It replaces the former `autoresearch-hook-context.json` and serves as the single source of truth for resume and control-plane helpers to locate the active run's artifacts.
+`context.json` is the canonical run context written by `autoresearch init`. It replaces the former `autoresearch-hook-context.json` and serves as the single source of truth for resume and control-plane commands to locate the active run's artifacts.
 
 ```json
 {
@@ -137,7 +137,7 @@ Do not use legacy `metric` / `op` / `value` fields, an `all` wrapper, or the `!=
 
 When `verify_format=scalar`, the verify command must emit a single numeric metric as its final non-empty output line. Do not heuristically scrape banner text, earlier lines, or arbitrary regex matches during the loop. If the command is noisy, tighten the verify command during setup so the final line is mechanically parseable.
 
-When `verify_format=metrics_json`, the verify command must print a JSON object as its final non-empty output line. That JSON object is the metrics map used by the helpers. It must include `primary_metric_key` plus every metric referenced by `acceptance_criteria` and `required_keep_criteria`. Helpers must not synthesize missing metrics from the scalar primary metric in this mode.
+When `verify_format=metrics_json`, the verify command must print a JSON object as its final non-empty output line. That JSON object is the metrics map used by binary closeout. It must include `primary_metric_key` plus every metric referenced by `acceptance_criteria` and `required_keep_criteria`. The binary must not synthesize missing metrics from the scalar primary metric in this mode.
 
 `results.tsv` records only the primary metric. `autoresearch verify` returns the full metrics map for agent/runtime use. `autoresearch decide --metrics-json '<json>'` evaluates configured criteria during closeout and reports `acceptance` / `required_keep` in its JSON output.
 
@@ -205,18 +205,14 @@ When parallel experiments are active (see `references/parallel-experiments-proto
 
 Only integer rows (`0`, `1`, `2`, `5`) define the retained state. Worker rows are audit detail and never increment `state.iteration` by themselves.
 
-## Helper Scripts
+## Native Binary Subcommands
 
-Prefer the bundled helper scripts for stateful artifact updates:
-
-These helper scripts live in the skill bundle. Do not confuse them with the target repo's own `scripts/` directory.
-
-The `autoresearch` binary handles all mechanical operations.
+Use the `autoresearch` binary for stateful artifact updates. Do not hand-edit TSV/JSON artifacts during normal loop execution.
 
 - `autoresearch init ...`
   Initializes `autoresearch-results/results.tsv` and `autoresearch-results/state.json` together from the baseline measurement, writes canonical `context.json`, and writes repo-local pointers for every managed repo. Interactive runs record `config.session_mode` explicitly; foreground is the default, while background initialization should pass `--session-mode background`. `execution_policy` is only persisted for paths that actually spawn nested Codex sessions: background managed runs and exec. Multi-repo runs may add repeated `--repo-commit PATH=COMMIT` flags to persist companion-repo baseline provenance in JSON state. Runs with structural success criteria may add repeated `--required-keep-label LABEL` flags to protect retained state and repeated `--required-stop-label LABEL` flags so the supervisor only stops when the retained keep also carries those labels.
 - `autoresearch resume ... (session mode is handled during resume)`
-  Internal/scripted helper that synchronizes an existing interactive run's shared JSON state to `foreground` or `background` before the next iteration. Use it only for scripted recovery flows; the skill flow and background `start` already perform the same sync when they resume existing results/state.
+  Internal maintenance path that synchronizes an existing interactive run's shared JSON state to `foreground` or `background` before the next iteration. Use it only for scripted recovery flows; the skill flow and background `start` already perform the same sync when they resume existing results/state.
 - `autoresearch decide ...`
   Appends one authoritative main iteration row and updates JSON state atomically. Multi-repo runs may add repeated `--repo-commit PATH=COMMIT` flags to update companion-repo commit provenance while the TSV `commit` column continues to track the primary repo. Repeated `--label LABEL` flags record structured keep/stop-gating labels on the attempted row and retained state.
 - `autoresearch resume ...`
@@ -228,18 +224,18 @@ The `autoresearch` binary handles all mechanical operations.
 - `autoresearch status ...`
   Computes whether the runtime control plane should relaunch, stop, or ask for human help after a finished turn.
 
-In exec mode, the helper scripts keep JSON state in scratch storage by default and must clean that scratch state before exiting.
+In exec mode, the runtime keeps JSON state in scratch storage by default and must clean that scratch state before exiting.
 
 ## Rules
 
 - Create the log only after the baseline metric is known.
 - Record every completed experiment before starting the next one.
-- In normal loop execution, do that closeout through the bundled helper scripts rather than by hand.
+- In normal loop execution, do that closeout through the native binary rather than by hand.
 - Append after every iteration, including crashes, no-ops, refines, pivots, and searches.
 - Never commit the Results directory.
 - Treat `autoresearch-results/` and repo-local pointers as autoresearch-owned artifacts: leave them unstaged and ignore them when checking experiment scope.
 - Re-read the latest entries before choosing the next idea.
-- The standalone health-check helper reports warnings/blockers as JSON. Append a TSV row only when the runtime explicitly decides to log a blocker or recovery event.
+- `autoresearch health` reports warnings/blockers as JSON. Append a TSV row only when the runtime explicitly decides to log a blocker or recovery event.
 
 ## Cross-Validation with JSON State
 

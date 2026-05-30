@@ -8,7 +8,7 @@ Use this file as the primary execution checklist during active runs. Keep it sho
 2. Initialize artifacts immediately after the baseline is known.
 3. Treat every completed experiment as unfinished until it is logged before the next one starts.
 4. Do not emit placeholder progress/status messages when there is no new experiment, no new verification result, and no new blocker.
-5. Use bundled helper scripts for authoritative TSV/JSON updates, keep/stop gating, and row/state semantics.
+5. Use the native `autoresearch` binary for authoritative TSV/JSON updates, keep/stop gating, and row/state semantics.
 6. All normal run artifacts are workspace-owned under `autoresearch-results/`: `results.tsv`, `state.json`, `context.json`, and `lessons.md`; background also uses `launch.json`, `runtime.json`, and `runtime.log`.
 7. Stop only on goal reached, manual stop, configured iteration cap, a true blocker, or the documented soft-blocker handoff after strategy exhaustion.
 8. After any context compaction event, re-read `core-principles.md`, this file, and the selected mode workflow before the next iteration.
@@ -20,7 +20,7 @@ Verify you can still recall:
 
 - baseline before init,
 - log every completed experiment before the next one starts,
-- helper scripts own authoritative TSV/JSON updates and keep/stop gating,
+- the `autoresearch` binary owns authoritative TSV/JSON updates and keep/stop gating,
 - artifact paths come from `workspace_root` + `autoresearch-results/` and the repo-local pointer, never from repo-root artifact guessing,
 - the current stop conditions for this run,
 - the current rollback strategy in use,
@@ -36,7 +36,7 @@ For normal loop execution, the closeout order is:
 3. run verify and guard,
 4. remove generated verify/guard byproducts such as cache files,
 5. decide keep/discard/crash and apply approved rollback for non-kept trials,
-6. record the current clean HEAD commit(s) through the helper,
+6. record the current clean HEAD commit(s) through binary closeout,
 7. only then choose the next idea.
 
 Do not treat logging as optional bookkeeping.

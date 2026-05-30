@@ -13,7 +13,7 @@ The executable companions are:
 - surface recoverable JSON/TSV divergence as warnings,
 - report git state, disk headroom, verify-command availability, and result/state row consistency as structured JSON.
 
-The extended checks below remain protocol-level review items. They may be orchestrated by the runtime or contributor gate, but the standalone helper must not claim to perform them unless the script actually does.
+The extended checks below remain protocol-level review items. They may be orchestrated by the runtime or contributor gate, but `autoresearch health` must not claim to perform them unless the command actually does.
 
 ## Check Frequency
 
@@ -29,7 +29,7 @@ Run before each detached Codex session. In a runtime-managed loop, this means th
 | Git state | For single-repo runs, `git status --porcelain` shows only expected files and autoresearch-owned artifacts. For multi-repo runs, apply the same check to the primary repo and every companion repo declared in the launch manifest. | Warning if unexpected files; hard blocker if repo is corrupt |
 | Verify command | Confirm the configured verify command still resolves to an executable | Hard blocker if the verify command is missing |
 | Log integrity | `autoresearch resume ...` can reconstruct TSV state | Hard blocker if the TSV is corrupt |
-| JSON state integrity | Resume helper reports `full_resume` or a recoverable fallback | Warning on divergence; optionally rewrite state from TSV. Hard blocker if both TSV and JSON are unusable |
+| JSON state integrity | `autoresearch resume` reports `full_resume` or a recoverable fallback | Warning on divergence; optionally rewrite state from TSV. Hard blocker if both TSV and JSON are unusable |
 
 ### Every 10 Iterations (Extended Review)
 
@@ -47,7 +47,7 @@ Run at iterations 10, 20, 30, etc. only when the workflow or runtime explicitly 
 
 ## Helper Output Contract
 
-`autoresearch health` does not mutate `autoresearch-results/results.tsv`, retry verify commands, or escalate warnings over time. The standalone helper returns structured JSON:
+`autoresearch health` does not mutate `autoresearch-results/results.tsv`, retry verify commands, or escalate warnings over time. It returns structured JSON:
 
 ```json
 {
@@ -80,7 +80,7 @@ These issues stop the loop immediately:
 | Verify command no longer exists | Cannot measure progress |
 | All scope files deleted | Nothing to modify |
 
-The helper itself only reports the blocker. Runtime-specific revert/log/summary behavior must be implemented by the caller if desired.
+The command itself only reports the blocker. Runtime-specific revert/log/summary behavior must be implemented by the caller if desired.
 
 ## Wall-Clock Tracking
 
@@ -102,7 +102,7 @@ Thresholds:
 - **autonomous-loop-protocol.md:** Runs as the detailed reference for Phase 8.5 (Health Check) and Phase 8.7 (Re-Anchoring). Context health feeds into the Protocol Fingerprint Check defined in `runtime-hard-invariants.md`.
 - **environment-awareness.md:** Initial probes establish baselines for drift detection.
 - **parallel-experiments-protocol.md:** native parallel batch closeout should reuse the lightweight health/worktree preflight before it accepts a completed batch into the authoritative run state.
-- **multi-repo runs:** the helper remains anchored in the primary repo for results/state/log integrity, but companion repos participate in worktree-scope checks through the launch-manifest repo list.
-- **results-logging.md:** The health helper returns structured findings; append TSV rows only when the runtime explicitly chooses to log a blocker or recovery event.
+- **multi-repo runs:** the command remains anchored in the primary repo for results/state/log integrity, but companion repos participate in worktree-scope checks through the launch-manifest repo list.
+- **results-logging.md:** `autoresearch health` returns structured findings; append TSV rows only when the runtime explicitly chooses to log a blocker or recovery event.
 - **session-resume-protocol.md:** JSON/TSV integrity checks should reuse `autoresearch resume` decisions and launch/runtime control files instead of maintaining a second row-count heuristic.
 - **SKILL.md:** Listed in the load order for iterating modes.

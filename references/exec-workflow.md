@@ -54,7 +54,7 @@ Before using `codex exec` in CI, configure Codex CLI authentication outside the 
 
 ## Mandatory Run Order
 
-Exec mode is still a managed autoresearch run. The machine-readable JSON is a report of the helper-backed audit trail, not a replacement for it.
+Exec mode is still a managed autoresearch run. The machine-readable JSON is a report of the binary-backed audit trail, not a replacement for it.
 
 1. Measure the baseline with the configured `Verify` command.
 2. Call `autoresearch init ...` before the first edit. Let it archive any prior results/state.
@@ -62,11 +62,11 @@ Exec mode is still a managed autoresearch run. The machine-readable JSON is a re
 4. Create the scoped trial commit.
 5. Run `Verify`, then `Guard` if configured.
 6. Decide keep/discard/crash, apply approved rollback for non-kept trials, then call `autoresearch decide ...` with the current clean HEAD commit.
-7. Emit the JSON iteration line only after the helper records that row.
+7. Emit the JSON iteration line only after the binary records that row.
 8. Repeat until the iteration cap or target is reached.
-9. Run `# exec state handled internally` as the final helper step, then emit the completion JSON.
+9. Let exec cleanup remove scratch state before emitting the completion JSON.
 
-This order is mandatory. Do not hand-write iteration JSON from memory. A kept exec iteration with `commit: null`, an uncommitted worktree, or no helper-recorded row is invalid even if the metric improved.
+This order is mandatory. Do not hand-write iteration JSON from memory. A kept exec iteration with `commit: null`, an uncommitted worktree, or no binary-recorded row is invalid even if the metric improved.
 
 ## JSON Output Format
 
@@ -183,4 +183,4 @@ When using the native binary in exec mode:
 - **modes.md:** Added to the mode index.
 - **structured-output-spec.md:** JSON output templates for exec mode.
 - **environment-awareness.md:** Probes still run to filter infeasible hypotheses.
-- **health-check-protocol.md:** The standalone helper remains available, but exec mode does not automatically invoke the detached-runtime health preflight. CI wrappers may call `autoresearch health --cwd <primary_repo>` explicitly if they want the same structured integrity report before running.
+- **health-check-protocol.md:** `autoresearch health` remains available, but exec mode does not automatically invoke the detached-runtime health preflight. CI wrappers may call `autoresearch health --cwd <primary_repo>` explicitly if they want the same structured integrity report before running.

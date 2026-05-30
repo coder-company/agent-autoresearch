@@ -81,10 +81,10 @@ This writes the baseline TSV row (`iteration = 0`) and the matching JSON snapsho
 
 The `autoresearch` binary handles all mechanical operations. Helper scripts are replaced by binary subcommands.
 
-Bundled helpers expose `--force` only as an internal maintenance override for tests or deliberate manual recovery. Normal skill flow should prefer explicit fresh-start archival instead of using `--force` to bypass legacy-layout or existing-artifact protection.
+Binary subcommands expose `--force` only as an internal maintenance override for tests or deliberate manual recovery. Normal skill flow should prefer explicit fresh-start archival instead of using `--force` to bypass legacy-layout or existing-artifact protection.
 
 Exec-mode exception:
-- Let the helper scripts use their scratch JSON state under `/tmp/codex-autoresearch-exec/...`.
+- Let exec mode use its scratch JSON state under `/tmp/codex-autoresearch-exec/...`.
 - Clean that scratch state before exit with `# exec state handled internally`.
 
 ### Environment Probe
@@ -110,7 +110,7 @@ Do not silently infer every field and start iterating. The user should approve t
 **Two-phase boundary:** Ask questions before launch. After launch, keep working until a stop condition, blocker, or user interrupt.
 
 - Before the user says "go", require an explicit run-mode choice: **foreground** or **background**.
-- Foreground stays in the same Codex session, uses the official Codex goal as the thread-level continuation anchor when goal tools are available, and calls the shared helper scripts directly.
+- Foreground stays in the same Codex session, uses the official Codex goal as the thread-level continuation anchor when goal tools are available, and calls native binary subcommands directly.
 - Background calls `autoresearch runtime start --cwd <workspace_root>` so the confirmed launch manifest and detached runtime files are created in one binary-level handoff. Use `--dry-run` only for tests or operator preflight. Do not create or update official Codex goals for background runs.
 - The launch manifest may describe either a single primary repo or a primary repo plus companion repos with separate scopes.
 - Background runtime cycles launch non-interactive `codex exec` sessions with the generated runtime prompt supplied on stdin. Launch manifests default to `danger_full_access`, so detached sessions normally run with `--dangerously-bypass-approvals-and-sandbox` unless the caller explicitly opts into sandboxed `workspace_write`.
@@ -394,7 +394,7 @@ Do not hand-edit `autoresearch-results/results.tsv` or `autoresearch-results/sta
   ```
 - Parallel batch native closeout is not implemented yet. Until it is, use serial `autoresearch decide` closeout. Do not hand-edit worker/main rows.
 
-These helpers keep two key semantics consistent:
+Binary closeout keeps these semantics consistent:
 
 1. `state.current_metric` is the retained metric after the keep/discard decision.
 2. `state.last_trial_metric` is the metric from the latest attempted main iteration.
@@ -441,7 +441,7 @@ Run health checks per `references/health-check-protocol.md`:
 - **Every managed-runtime cycle boundary:** before each detached `codex exec` session (and therefore before every relaunch), run `autoresearch health` for disk space, git state, verify command existence, and TSV/JSON integrity.
 - **Commit safety at the same boundary:** when the managed repos are git-backed, run `autoresearch health` plus a scope-aware worktree review before each detached session. Relaunch is blocked if staged autoresearch artifacts or out-of-scope worktree changes are present in any managed repo.
 - **Extended review:** scope integrity, environment drift, verify/guard consistency, and context health when the workflow explicitly schedules the protocol-level extended checks.
-- Log integrity should use the helper-script reconstruction of main rows and retained state, not raw TSV row counts.
+- Log integrity should use binary reconstruction of main rows and retained state, not raw TSV row counts.
 - `autoresearch health` only returns structured `ok / warn / block` findings. Any retries, repairs, or blocker logging must be implemented by the caller.
 - Within a live Codex session, the model must still honor the same scope-aware commit rule before creating a trial commit; the runtime controller can only enforce these checks between detached sessions.
 

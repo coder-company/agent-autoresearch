@@ -111,7 +111,7 @@ Lessons older than 14 days receive reduced weight during hypothesis selection. L
 - The file format on disk must exactly match the lesson structure above; `autoresearch lessons` is the canonical reader for that format.
 - Never commit the lessons file.
 - Use the same run tag as the results log for cross-referencing when one is available.
-- If the lessons file is corrupted or unparseable, the canonical helper must rename it with a `.bak` suffix and start fresh.
+- If the lessons file is corrupted or unparseable, the canonical binary path must rename it with a `.bak` suffix and start fresh.
 
 ## Integration Points
 
