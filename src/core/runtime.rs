@@ -8,6 +8,10 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::str::FromStr;
+#[cfg(unix)]
+use std::thread;
+#[cfg(unix)]
+use std::time::Duration;
 
 use super::config::RunConfig;
 use super::criteria::evaluate_criteria;
@@ -480,9 +484,39 @@ pub fn stop_runtime(workspace: &Path) -> Result<RuntimeSnapshot> {
     if snapshot.status == "needs_human" {
         return Ok(snapshot);
     }
+    let mut stop_method = "not_running";
     if snapshot.status == "running" {
         if let Some(pid) = snapshot.pid {
-            terminate_process(pid)?;
+            match stop_process(pid) {
+                Ok(method) => {
+                    stop_method = method.as_str();
+                }
+                Err(err) => {
+                    let message = err.to_string();
+                    snapshot.status = "needs_human".to_string();
+                    snapshot.stopped_at = Some(Utc::now().to_rfc3339());
+                    snapshot.last_error = Some(message.clone());
+                    snapshot.supervisor = Some(SupervisorStatus {
+                        decision: "needs_human".to_string(),
+                        reason: "stop_failed".to_string(),
+                        terminal_reason: "stop_failed".to_string(),
+                        should_continue: false,
+                        restart_count: 0,
+                        stagnation_count: 0,
+                        last_signature: String::new(),
+                        checked_at: Utc::now().to_rfc3339(),
+                    });
+                    write_runtime_snapshot(&paths.runtime_path, &snapshot)?;
+                    append_log(
+                        &paths.log_path,
+                        &format!(
+                            "{} runtime stop failed: {message}\n",
+                            Utc::now().to_rfc3339()
+                        ),
+                    )?;
+                    return Ok(snapshot);
+                }
+            }
         }
     }
     snapshot.status = "stopped".to_string();
@@ -490,7 +524,10 @@ pub fn stop_runtime(workspace: &Path) -> Result<RuntimeSnapshot> {
     write_runtime_snapshot(&paths.runtime_path, &snapshot)?;
     append_log(
         &paths.log_path,
-        &format!("{} runtime stop requested\n", Utc::now().to_rfc3339()),
+        &format!(
+            "{} runtime stop requested method={stop_method}\n",
+            Utc::now().to_rfc3339()
+        ),
     )?;
     Ok(snapshot)
 }
@@ -771,19 +808,75 @@ fn process_is_alive(_pid: u32) -> bool {
 }
 
 #[cfg(unix)]
-fn terminate_process(pid: u32) -> Result<()> {
+#[derive(Debug, Clone, Copy)]
+enum StopMethod {
+    Terminated,
+    Killed,
+}
+
+#[cfg(unix)]
+impl StopMethod {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Terminated => "terminated",
+            Self::Killed => "killed",
+        }
+    }
+}
+
+#[cfg(not(unix))]
+#[derive(Debug, Clone, Copy)]
+enum StopMethod {
+    Unsupported,
+}
+
+#[cfg(not(unix))]
+impl StopMethod {
+    fn as_str(self) -> &'static str {
+        "unsupported"
+    }
+}
+
+#[cfg(unix)]
+fn stop_process(pid: u32) -> Result<StopMethod> {
+    send_signal(pid, "-TERM")?;
+    if wait_for_process_exit(pid) {
+        return Ok(StopMethod::Terminated);
+    }
+
+    send_signal(pid, "-KILL")?;
+    if wait_for_process_exit(pid) {
+        return Ok(StopMethod::Killed);
+    }
+
+    anyhow::bail!("process {pid} remained alive after SIGKILL")
+}
+
+#[cfg(unix)]
+fn send_signal(pid: u32, signal: &str) -> Result<()> {
     let status = Command::new("kill")
-        .arg("-TERM")
+        .arg(signal)
         .arg(pid.to_string())
         .status()
         .context("failed to invoke kill")?;
     if !status.success() {
-        anyhow::bail!("failed to terminate process {pid}");
+        anyhow::bail!("failed to send {signal} to process {pid}");
     }
     Ok(())
 }
 
+#[cfg(unix)]
+fn wait_for_process_exit(pid: u32) -> bool {
+    for _ in 0..20 {
+        if !process_is_alive(pid) {
+            return true;
+        }
+        thread::sleep(Duration::from_millis(25));
+    }
+    !process_is_alive(pid)
+}
+
 #[cfg(not(unix))]
-fn terminate_process(_pid: u32) -> Result<()> {
+fn stop_process(_pid: u32) -> Result<StopMethod> {
     anyhow::bail!("runtime stop is not supported on this platform")
 }

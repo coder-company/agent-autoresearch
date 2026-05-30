@@ -1189,6 +1189,68 @@ fn test_runtime_start_status_stop_dry_run() {
         .stdout(predicate::str::contains("\"status\": \"stopped\""));
 }
 
+#[cfg(unix)]
+#[test]
+fn test_runtime_stop_kills_term_ignoring_process() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+    let fake_codex = write_fake_codex(
+        &dir,
+        r#"
+trap '' TERM
+printf ready > autoresearch-results/term-ready
+while :; do
+  sleep 1
+done
+"#,
+    );
+    let fake_codex = fake_codex.to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--run-mode",
+            "background",
+            "--workspace-root",
+            root,
+            "--primary-repo",
+            root,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["runtime", "start", "--codex-bin", fake_codex, "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\": \"running\""));
+
+    let ready_path = dir.path().join("autoresearch-results/term-ready");
+    for _ in 0..50 {
+        if ready_path.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    assert!(ready_path.exists());
+
+    cmd()
+        .args(["runtime", "stop", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\": \"stopped\""));
+
+    let log = std::fs::read_to_string(dir.path().join("autoresearch-results/runtime.log")).unwrap();
+    assert!(log.contains("method=killed"));
+}
+
 #[test]
 fn test_runtime_start_blocks_on_health_preflight() {
     let dir = TempDir::new().unwrap();
