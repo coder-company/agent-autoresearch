@@ -42,6 +42,17 @@ cd agent-autoresearch
 
 The installer copies `.agents/skills/autoresearch/` and validates the target path before replacing the installed skill directory.
 
+Local plugin package:
+
+```bash
+git clone https://github.com/coder-company/agent-autoresearch.git
+cd agent-autoresearch
+codex plugin marketplace add .agents/plugins/marketplace.json
+codex plugin install autoresearch@autoresearch-local
+```
+
+The marketplace entry points at `plugins/autoresearch/`, which packages the same maintained Codex skill plus plugin metadata.
+
 ## OpenCode
 
 ```bash

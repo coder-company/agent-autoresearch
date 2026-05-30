@@ -33,6 +33,15 @@ Recommended skill install:
 $skill-installer install https://github.com/coder-company/agent-autoresearch
 ```
 
+Local plugin package:
+
+```bash
+git clone https://github.com/coder-company/agent-autoresearch.git
+cd agent-autoresearch
+codex plugin marketplace add .agents/plugins/marketplace.json
+codex plugin install autoresearch@autoresearch-local
+```
+
 From a local clone:
 
 ```bash
@@ -42,6 +51,7 @@ cd agent-autoresearch
 ```
 
 The installer copies the maintained Codex skill package from `.agents/skills/autoresearch/` and refuses unsafe install targets before replacing the skill directory.
+The plugin marketplace path installs `plugins/autoresearch/`, which is generated from the same `.agents` skill package and includes Codex plugin metadata.
 
 ## First Run
 

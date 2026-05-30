@@ -9,6 +9,9 @@
 | `src/main.rs` | CLI entry — Clap-based command dispatch (init, verify, guard, log, decide, evals, status, screen, hook, resume, progress, lessons, handoff, exec) |
 | `hooks/hooks.json` | Claude Code plugin hook definitions — maps lifecycle events to binary invocations |
 | `skills/autoresearch/SKILL.md` | Agent skill file — iteration protocol, subcommand table, references |
+| `.agents/skills/autoresearch/` | Maintained Codex skill package used by direct Codex installs |
+| `plugins/autoresearch/` | Codex plugin package generated from the `.agents` skill package |
+| `.agents/plugins/marketplace.json` | Local Codex marketplace entry pointing at `plugins/autoresearch/` |
 | `commands/autoresearch.md` | Root command protocol (core iteration loop) |
 | `commands/autoresearch/*.md` | Subcommand protocols (debug, fix, security, scenario, etc.) |
 

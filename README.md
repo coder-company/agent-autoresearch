@@ -62,7 +62,7 @@ Agent: Baseline: 47. Iterating.
 
 Each improvement stacks. Each failure reverts. Everything is logged.
 
-> **Codex users:** `$skill-installer install https://github.com/coder-company/agent-autoresearch`, then `$autoresearch`.
+> **Codex users:** `$skill-installer install https://github.com/coder-company/agent-autoresearch`, then `$autoresearch`. Local plugin package users can also add `.agents/plugins/marketplace.json` and install `autoresearch` from that marketplace.
 >
 > **OpenCode users:** clone the repo and run `./install.sh --yes --opencode`. Commands install as `/autoresearch` and `/autoresearch_debug`, `/autoresearch_fix`, etc.
 >
@@ -221,6 +221,7 @@ No. Every change is committed before verification. If it makes things worse, it 
 | [Examples by Domain](guide/examples-by-domain.md) | Ready configs: coverage, types, bundle, latency, security |
 | [Chains & Combinations](guide/chains-and-combinations.md) | Piping commands together |
 | [Hooks](guide/hooks.md) | Safety system reference |
+| [Codex](guide/autoresearch-codex.md) | Skill install, local plugin package, foreground/background runtime |
 | [Full Guide Index](guide/) | Per-command deep dives |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
 
