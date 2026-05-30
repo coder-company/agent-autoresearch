@@ -138,6 +138,8 @@ require_grep '\-\-codex-plugin' install.sh
 require_grep 'dangerously-bypass-approvals-and-sandbox' guide/autoresearch-codex.md
 require_grep 'danger_full_access' guide/autoresearch-codex.md
 require_grep 'plugins/autoresearch' docs/codebase-summary.md
+require_grep 'local Codex plugin marketplace' COMPARISON.md
+require_grep 'Structured metrics' COMPARISON.md
 
 check_synced_reference_package "$ROOT/.agents/skills/autoresearch"
 check_synced_reference_package "$ROOT/plugins/autoresearch/skills/autoresearch"
