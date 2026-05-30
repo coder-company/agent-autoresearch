@@ -2813,6 +2813,10 @@ fn cmd_handoff(
         .get("run_mode")
         .cloned()
         .unwrap_or(serde_json::Value::Null);
+    let run_tag = config_val
+        .get("run_tag")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
     let hypothesis_queue = config_val
         .get("hypothesis_queue")
         .cloned()
@@ -2860,6 +2864,7 @@ fn cmd_handoff(
         "required_stop_labels": required_stop_labels,
         "rollback_strategy": rollback_strategy,
         "run_mode": run_mode,
+        "run_tag": run_tag,
         "hypothesis_queue": hypothesis_queue,
         "summary": summary,
         "findings": findings_val,
