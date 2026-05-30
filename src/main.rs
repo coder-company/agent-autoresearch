@@ -2789,6 +2789,10 @@ fn cmd_handoff(
         .get("stop_condition")
         .cloned()
         .unwrap_or(serde_json::Value::Null);
+    let acceptance_criteria = config_val
+        .get("acceptance_criteria")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
     let hypothesis_queue = config_val
         .get("hypothesis_queue")
         .cloned()
@@ -2830,6 +2834,7 @@ fn cmd_handoff(
         "primary_metric_key": primary_metric_key,
         "iterations": iterations,
         "stop_condition": stop_condition,
+        "acceptance_criteria": acceptance_criteria,
         "hypothesis_queue": hypothesis_queue,
         "summary": summary,
         "findings": findings_val,
