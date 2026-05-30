@@ -92,6 +92,30 @@ fn test_verify_scalar_multiline_takes_last() {
 }
 
 #[test]
+fn test_verify_metrics_json_returns_full_metric_map() {
+    let dir = TempDir::new().unwrap();
+
+    cmd()
+        .args([
+            "verify",
+            "--command",
+            "echo '{\"coverage\":85.2,\"failing\":3}'",
+            "--format",
+            "metrics_json",
+            "--key",
+            "coverage",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"metric\":\"85.2\""))
+        .stdout(predicate::str::contains(
+            "\"metrics\":{\"coverage\":\"85.2\",\"failing\":\"3\"}",
+        ));
+}
+
+#[test]
 fn test_verify_fails_on_nonzero_exit_even_with_metric() {
     let dir = TempDir::new().unwrap();
 

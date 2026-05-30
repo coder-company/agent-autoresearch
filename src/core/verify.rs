@@ -1,15 +1,17 @@
 use anyhow::{Context, Result};
 use rust_decimal::Decimal;
+use std::collections::BTreeMap;
 use std::process::Command;
 use std::time::{Duration, Instant};
 
 use super::config::VerifyFormat;
-use super::metrics::{parse_json_metrics, parse_scalar_metric};
+use super::metrics::{parse_json_metrics_map, parse_scalar_metric};
 
 /// Result of running a verify command.
 #[derive(Debug, Clone)]
 pub struct VerifyResult {
     pub metric: Decimal,
+    pub metrics: Option<BTreeMap<String, Decimal>>,
     pub stdout: String,
     pub stderr: String,
     pub duration: Duration,
@@ -53,16 +55,22 @@ pub fn run_verify(
         );
     }
 
-    let metric = match format {
-        VerifyFormat::Scalar => parse_scalar_metric(&stdout)?,
+    let (metric, metrics) = match format {
+        VerifyFormat::Scalar => (parse_scalar_metric(&stdout)?, None),
         VerifyFormat::MetricsJson => {
             let key = primary_key.unwrap_or("metric");
-            parse_json_metrics(&stdout, key)?
+            let metrics = parse_json_metrics_map(&stdout)?;
+            let metric = metrics
+                .get(key)
+                .copied()
+                .with_context(|| format!("Key {key:?} not found in metrics JSON"))?;
+            (metric, Some(metrics))
         }
     };
 
     Ok(VerifyResult {
         metric,
+        metrics,
         stdout,
         stderr,
         duration,

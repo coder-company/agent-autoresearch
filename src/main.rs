@@ -450,6 +450,12 @@ fn cmd_verify(
 
     let out = serde_json::json!({
         "metric": result.metric.to_string(),
+        "metrics": result.metrics.as_ref().map(|metrics| {
+            metrics
+                .iter()
+                .map(|(key, value)| (key.clone(), value.to_string()))
+                .collect::<std::collections::BTreeMap<_, _>>()
+        }),
         "exit_code": result.exit_code,
         "duration_ms": result.duration.as_millis(),
         "stdout_tail": result.stdout.lines().rev().take(5).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>(),
