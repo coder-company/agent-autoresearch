@@ -66,3 +66,24 @@ fn binary_skill_e2e_harness_passes() {
     );
     assert!(String::from_utf8_lossy(&smoke.stdout).contains("binary smoke: OK"));
 }
+
+#[test]
+fn multi_repo_skill_e2e_harness_passes() {
+    let root = repo_root();
+    let script = root.join("scripts/run_skill_e2e.sh");
+    let bin = assert_cmd::cargo::cargo_bin("autoresearch");
+
+    let smoke = Command::new(&script)
+        .args(["multi-repo-smoke", "--clean"])
+        .env("AUTORESEARCH_BIN", bin)
+        .current_dir(&root)
+        .output()
+        .unwrap();
+    assert!(
+        smoke.status.success(),
+        "multi-repo smoke failed:\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&smoke.stdout),
+        String::from_utf8_lossy(&smoke.stderr)
+    );
+    assert!(String::from_utf8_lossy(&smoke.stdout).contains("multi-repo smoke: OK"));
+}

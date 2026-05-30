@@ -10,10 +10,14 @@ usage() {
     cat <<'EOF'
 Usage:
   ./scripts/run_skill_e2e.sh binary-smoke [--clean]
+  ./scripts/run_skill_e2e.sh multi-repo-smoke [--clean]
 
 Modes:
   binary-smoke  Create a disposable git repo and exercise init, decide, status,
                 watch, and evals through the autoresearch binary.
+  multi-repo-smoke
+                Create primary + companion repos and exercise companion init,
+                health, handoff, and runtime launch metadata.
 
 Flags:
   --clean       Delete the temp repo after a successful run.
@@ -120,9 +124,67 @@ run_binary_smoke() {
     cleanup_if_requested "$tmpdir"
 }
 
+run_multi_repo_smoke() {
+    require_tool git
+
+    local bin tmpdir primary companion
+    bin="$(autoresearch_bin)"
+    tmpdir="$(mktemp -d)"
+    primary="$tmpdir/primary"
+    companion="$tmpdir/frontend"
+
+    init_fixture_repo "$primary"
+    init_fixture_repo "$companion"
+    mkdir -p "$companion/pkg"
+    printf 'pub fn helper() {}\n' > "$companion/pkg/helper.rs"
+    git -C "$companion" add pkg/helper.rs
+    git -C "$companion" commit -m "add helper" >/dev/null
+
+    "$bin" init \
+        --verify "cat metric.txt" \
+        --direction higher \
+        --goal "Exercise multi-repo metadata" \
+        --scope "src/**/*.rs" \
+        --run-mode background \
+        --workspace-root "$primary" \
+        --primary-repo "$primary" \
+        --companion-repo-scope "$companion=pkg/**/*.rs" \
+        --cwd "$primary" >/dev/null
+
+    grep -q '"repo_targets"' "$primary/autoresearch-results/context.json"
+    grep -Fq "$companion" "$primary/autoresearch-results/context.json"
+    test -f "$companion/.codex-autoresearch/pointer.json"
+
+    "$bin" health --verify "cat metric.txt" --min-free-mb 1 --cwd "$primary" \
+        | grep -q '"decision": "ok"'
+
+    "$bin" handoff \
+        --source loop \
+        --status COMPLETE \
+        --config '{"goal":"multi","scope":["src/**/*.rs"],"metric":"score","direction":"higher","verify":"cat metric.txt"}' \
+        --cwd "$primary" >/dev/null
+    grep -q '"repo_targets"' "$primary/autoresearch-results/handoff.json"
+    grep -Fq "$companion" "$primary/autoresearch-results/handoff.json"
+
+    "$bin" runtime start \
+        --dry-run \
+        --execution-policy workspace_write \
+        --codex-bin codex \
+        --cwd "$primary" >/dev/null
+    grep -q '"repo_targets"' "$primary/autoresearch-results/launch.json"
+    grep -Fq "$companion" "$primary/autoresearch-results/launch.json"
+    grep -Fq 'scope=pkg/**/*.rs' "$primary/autoresearch-results/launch.json"
+
+    echo "multi-repo smoke: OK"
+    cleanup_if_requested "$tmpdir"
+}
+
 case "$MODE" in
     binary-smoke)
         run_binary_smoke
+        ;;
+    multi-repo-smoke)
+        run_multi_repo_smoke
         ;;
     *)
         echo "Unknown mode: $MODE" >&2
