@@ -590,6 +590,13 @@ fn cmd_init(
             files.join(", ")
         );
     }
+    let existing_artifacts = existing_core_run_artifacts(&workspace);
+    if !existing_artifacts.is_empty() {
+        anyhow::bail!(
+            "init preflight blocked: existing autoresearch run artifacts found: {}",
+            existing_artifacts.join(", ")
+        );
+    }
     let head = git.head_short()?;
 
     // Measure baseline
@@ -687,6 +694,21 @@ fn cmd_init(
     });
     println!("{}", serde_json::to_string_pretty(&out)?);
     Ok(())
+}
+
+fn existing_core_run_artifacts(workspace: &Path) -> Vec<String> {
+    ["results.tsv", "state.json"]
+        .into_iter()
+        .map(|name| workspace.join("autoresearch-results").join(name))
+        .filter(|path| path.exists())
+        .map(|path| display_workspace_path(workspace, &path))
+        .collect()
+}
+
+fn display_workspace_path(workspace: &Path, path: &Path) -> String {
+    path.strip_prefix(workspace)
+        .map(|relative| relative.display().to_string())
+        .unwrap_or_else(|_| path.display().to_string())
 }
 
 // ── Verify ────────────────────────────────────────────────────────────
