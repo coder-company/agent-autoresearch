@@ -214,6 +214,30 @@ fn test_dangerous_cmd_blocks_force_push() {
 }
 
 #[test]
+fn test_dangerous_cmd_blocks_destructive_git_cleanup() {
+    for command in [
+        "git push -f origin main",
+        "push --force origin",
+        "git clean -f",
+        "git clean -fd",
+        "git branch -D feature",
+        "git checkout .",
+        "git restore .",
+    ] {
+        let input = serde_json::json!({
+            "tool_name": "Bash",
+            "tool_input": {
+                "command": command
+            }
+        });
+
+        run_hook("dangerous-cmd-block", &input.to_string())
+            .success()
+            .stdout(predicate::str::contains("\"decision\":\"block\""));
+    }
+}
+
+#[test]
 fn test_dangerous_cmd_blocks_drop_table() {
     let input = serde_json::json!({
         "tool_name": "Bash",
