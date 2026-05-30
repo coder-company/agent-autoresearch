@@ -721,16 +721,18 @@ fn test_dangerous_cmd_uses_repo_root_state_from_subdir() {
     let results = dir.path().join("autoresearch-results");
     std::fs::create_dir_all(&results).unwrap();
     std::fs::write(results.join("state.json"), "{}").unwrap();
-    let input = serde_json::json!({
-        "tool_name": "Bash",
-        "tool_input": {
-            "command": "terraform apply"
-        }
-    });
+    for command in ["terraform apply", "twine upload dist/*"] {
+        let input = serde_json::json!({
+            "tool_name": "Bash",
+            "tool_input": {
+                "command": command
+            }
+        });
 
-    run_hook_in(&subdir, "dangerous-cmd-block", &input.to_string())
-        .success()
-        .stdout(predicate::str::contains("\"decision\":\"block\""));
+        run_hook_in(&subdir, "dangerous-cmd-block", &input.to_string())
+            .success()
+            .stdout(predicate::str::contains("\"decision\":\"block\""));
+    }
 }
 
 #[test]

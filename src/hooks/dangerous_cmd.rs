@@ -34,6 +34,7 @@ const CONTEXT_SENSITIVE: &[&str] = &[
     "npm publish",
     "cargo publish",
     "pip upload",
+    "twine upload",
     "docker push",
     "helm install",
     "terraform apply",
