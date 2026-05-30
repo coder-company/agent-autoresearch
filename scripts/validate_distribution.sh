@@ -159,6 +159,8 @@ require_grep 'runtime, parallel, screen, and hooks' docs/codebase-summary.md
 require_grep 'dev_rules_reminder\.rs' docs/codebase-summary.md
 require_grep 'out-of-scope writes' docs/architecture.md
 require_grep 'plugins/autoresearch/skills/autoresearch' CONTRIBUTING.md
+require_grep '\.opencode/' CONTRIBUTING.md
+require_grep '\./scripts/release\.sh <version>' CONTRIBUTING.md
 require_grep 'Codex plugin package' docs/system-architecture.md
 require_grep 'runtime run/start/status/supervise/stop' docs/project-overview-pdr.md
 require_grep 'parallel prepare/run/closeout/cleanup' docs/project-overview-pdr.md

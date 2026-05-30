@@ -84,6 +84,7 @@ Run the lightweight end-to-end binary smoke:
 ```
 
 This creates a disposable git repo and exercises `init`, `decide`, `status`, `watch`, and `evals` through the built `autoresearch` binary.
+Use `./scripts/run_skill_e2e.sh multi-repo-smoke --clean` after changing workspace, companion repo, health, handoff, or runtime launch behavior.
 
 ---
 
@@ -101,6 +102,9 @@ agent-autoresearch/
 │   │   ├── metrics.rs           # Metric parsing (scalar + JSON)
 │   │   ├── results.rs           # TSV results logging
 │   │   ├── git.rs               # Git operations via git2
+│   │   ├── context.rs           # context.json + repo pointer writing
+│   │   ├── health.rs            # Native git/artifact/disk/verify preflight
+│   │   ├── runtime.rs           # Background runtime manifests + supervisor
 │   │   └── mod.rs
 │   ├── hooks/                   # Claude Code plugin hooks
 │   │   ├── scout_block.rs       # Scope enforcement
@@ -123,6 +127,9 @@ agent-autoresearch/
 │       ├── claude.rs            # Claude Code specifics
 │       ├── codex.rs             # Codex CLI specifics
 │       └── mod.rs
+├── .agents/                     # Maintained Codex skill + local marketplace root
+├── .opencode/                   # Generated OpenCode command/skill package
+├── plugins/autoresearch/        # Generated Codex plugin package
 ├── commands/                    # Slash command definitions
 │   ├── autoresearch.md          # Root command
 │   └── autoresearch/            # Subcommands (debug, fix, security, etc.)
@@ -196,7 +203,7 @@ Hooks intercept tool calls and prompt submissions in the Claude Code plugin syst
    }
    ```
 
-Hooks must respond in under 3 seconds (5 seconds for `Stop` hooks). Use `HookResponse::allow()`, `HookResponse::block(reason)`, or `HookResponse::inject(context)`.
+Hooks must finish within the timeout configured in `hooks/hooks.json` (currently 5 seconds). Keep handlers small and fast because several run on every tool call. Use `HookResponse::allow()`, `HookResponse::block(reason)`, or `HookResponse::inject(context)`.
 
 ---
 
@@ -228,11 +235,11 @@ Hooks must respond in under 3 seconds (5 seconds for `Stop` hooks). Use `HookRes
 
 ## Release Process
 
-1. Bump version in `Cargo.toml`.
-2. Update `docs/changelog.md` with the new version's changes.
+1. Run `./scripts/release.sh <version>` from a clean worktree.
+2. Review the generated `docs/changelog.md` entry and amend the release commit if needed.
 3. Ensure CI passes on `main`.
-4. Tag the release: `git tag v0.x.y && git push --tags`.
-5. GitHub Actions builds the release binary. Verify binary size stays under 5MB.
+4. Push the release commit and tag: `git push origin main --tags`.
+5. Create the GitHub release and upload `target/release/autoresearch`; the release script and CI gate both enforce the 5MB binary ceiling.
 
 ---
 
