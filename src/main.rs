@@ -3599,7 +3599,6 @@ fn cmd_exec_inner(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
         serde_json::to_string_pretty(&state)?,
     )?;
     context::write_context(&workspace, state.config.as_ref())?;
-    LessonsLog::open_or_create(&results_dir)?;
 
     // Emit JSON line
     let out = serde_json::json!({

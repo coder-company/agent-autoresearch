@@ -1913,6 +1913,57 @@ fn test_exec_archives_existing_artifacts_before_fresh_start() {
 }
 
 #[test]
+fn test_exec_does_not_create_or_mutate_lessons() {
+    let no_lessons = TempDir::new().unwrap();
+    init_git_fixture(&no_lessons);
+    let config = serde_json::json!({
+        "goal": "fresh exec",
+        "scope": ["metric.txt"],
+        "metric": "score",
+        "direction": "higher",
+        "verify": "cat metric.txt"
+    });
+
+    cmd()
+        .args([
+            "exec",
+            "--iterations",
+            "1",
+            "--cwd",
+            no_lessons.path().to_str().unwrap(),
+        ])
+        .write_stdin(config.to_string())
+        .assert()
+        .success();
+    assert!(!no_lessons
+        .path()
+        .join("autoresearch-results/lessons.md")
+        .exists());
+
+    let existing_lessons = TempDir::new().unwrap();
+    init_git_fixture(&existing_lessons);
+    let results = existing_lessons.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    std::fs::write(results.join("lessons.md"), "do not change\n").unwrap();
+
+    cmd()
+        .args([
+            "exec",
+            "--iterations",
+            "1",
+            "--cwd",
+            existing_lessons.path().to_str().unwrap(),
+        ])
+        .write_stdin(config.to_string())
+        .assert()
+        .success();
+    assert_eq!(
+        std::fs::read_to_string(results.join("lessons.md")).unwrap(),
+        "do not change\n"
+    );
+}
+
+#[test]
 fn test_decide_accepts_negative_metric_value() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
