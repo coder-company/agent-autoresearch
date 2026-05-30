@@ -1435,7 +1435,7 @@ fn test_handoff_defaults_to_repo_root_results_from_subdir() {
             "--findings",
             r#"[{"title":"fixed"}]"#,
             "--config",
-            r#"{"goal":"fix login","scope":["src/auth/**"],"metric":"bug count","direction":"lower","verify":"cargo test","hypothesis_queue":["check auth"],"summary":{"risk":"low"}}"#,
+            r#"{"goal":"fix login","scope":["src/auth/**"],"metric":"bug count","direction":"lower","verify":"cargo test","guard":"cargo fmt -- --check","hypothesis_queue":["check auth"],"summary":{"risk":"low"}}"#,
             "--chain",
             "scenario,fix",
             "--evals",
@@ -1463,6 +1463,7 @@ fn test_handoff_defaults_to_repo_root_results_from_subdir() {
     assert!(handoff.contains("\"metric\": \"bug count\""));
     assert!(handoff.contains("\"direction\": \"lower\""));
     assert!(handoff.contains("\"verify\": \"cargo test\""));
+    assert!(handoff.contains("\"guard\": \"cargo fmt -- --check\""));
     assert!(handoff.contains("\"hypothesis_queue\": ["));
     assert!(handoff.contains("\"summary\": {"));
     assert!(handoff.contains("\"workspace_root\":"));
