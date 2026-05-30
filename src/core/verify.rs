@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use rust_decimal::Decimal;
 use std::collections::BTreeMap;
+use std::path::Path;
 use std::process::Command;
 use std::time::{Duration, Instant};
 
@@ -141,17 +142,96 @@ pub fn screen_command(command: &str) -> Result<()> {
 
 /// Check if a command exists and is executable.
 pub fn command_exists(command: &str) -> bool {
-    // Extract the first word (the binary)
-    let binary = command
-        .split_whitespace()
-        .find(|part| !part.contains('='))
-        .unwrap_or(command);
+    let Some(binary) = first_executable_token(command) else {
+        return false;
+    };
+
+    let path = Path::new(&binary);
+    if path.is_absolute() || binary.contains('/') || binary.contains('\\') {
+        return path_is_executable(path);
+    }
 
     Command::new("which")
         .arg(binary)
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false)
+}
+
+fn first_executable_token(command: &str) -> Option<String> {
+    shell_words(command)?
+        .into_iter()
+        .find(|part| !is_env_assignment(part))
+}
+
+fn shell_words(command: &str) -> Option<Vec<String>> {
+    let mut words = Vec::new();
+    let mut current = String::new();
+    let mut quote = None;
+    let mut escaped = false;
+
+    for ch in command.chars() {
+        if escaped {
+            current.push(ch);
+            escaped = false;
+            continue;
+        }
+
+        match quote {
+            Some('\'') if ch == '\'' => quote = None,
+            Some('"') if ch == '"' => quote = None,
+            Some('\'') => current.push(ch),
+            Some(_) if ch == '\\' => escaped = true,
+            Some(_) => current.push(ch),
+            None if ch.is_whitespace() => {
+                if !current.is_empty() {
+                    words.push(std::mem::take(&mut current));
+                }
+            }
+            None if ch == '\'' || ch == '"' => quote = Some(ch),
+            None if ch == '\\' => escaped = true,
+            None => current.push(ch),
+        }
+    }
+
+    if quote.is_some() || escaped {
+        return None;
+    }
+    if !current.is_empty() {
+        words.push(current);
+    }
+    Some(words)
+}
+
+fn is_env_assignment(token: &str) -> bool {
+    let Some((name, _value)) = token.split_once('=') else {
+        return false;
+    };
+    let mut chars = name.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    (first == '_' || first.is_ascii_alphabetic())
+        && chars.all(|ch| ch == '_' || ch.is_ascii_alphanumeric())
+}
+
+fn path_is_executable(path: &Path) -> bool {
+    if !path.is_file() {
+        return false;
+    }
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::metadata(path)
+            .map(|metadata| metadata.permissions().mode() & 0o111 != 0)
+            .unwrap_or(false)
+    }
+
+    #[cfg(not(unix))]
+    {
+        true
+    }
 }
 
 #[cfg(test)]
@@ -174,5 +254,24 @@ mod tests {
     #[test]
     fn test_screen_command_credentials() {
         assert!(screen_command("curl -H 'token=abc123' http://api.com").is_err());
+    }
+
+    #[test]
+    fn test_command_exists_accepts_env_prefix_and_quoted_executable() {
+        let exe = std::env::current_exe().unwrap();
+        let command = format!("FOO=1 \"{}\" --help", exe.display());
+        assert!(command_exists(&command));
+    }
+
+    #[test]
+    fn test_command_exists_rejects_missing_command_after_env_prefix() {
+        assert!(!command_exists(
+            "FOO=1 definitely_missing_autoresearch_cmd --version"
+        ));
+    }
+
+    #[test]
+    fn test_command_exists_rejects_only_env_assignments() {
+        assert!(!command_exists("FOO=1 BAR=baz"));
     }
 }
