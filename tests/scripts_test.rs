@@ -89,6 +89,23 @@ fn multi_repo_skill_e2e_harness_passes() {
 }
 
 #[test]
+fn skill_e2e_builds_current_binary_without_override() {
+    let root = repo_root();
+    let script = std::fs::read_to_string(root.join("scripts/run_skill_e2e.sh")).unwrap();
+    let helper = script
+        .split_once("autoresearch_bin()")
+        .unwrap()
+        .1
+        .split_once("init_fixture_repo()")
+        .unwrap()
+        .0;
+
+    assert!(helper.contains("AUTORESEARCH_BIN"));
+    assert!(helper.contains("cargo build --manifest-path \"$ROOT/Cargo.toml\" >/dev/null"));
+    assert!(!helper.contains("if [[ ! -x \"$bin\" ]]"));
+}
+
+#[test]
 fn runtime_skill_e2e_harness_passes() {
     let root = repo_root();
     let script = root.join("scripts/run_skill_e2e.sh");

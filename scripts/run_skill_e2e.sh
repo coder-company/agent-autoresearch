@@ -62,9 +62,7 @@ autoresearch_bin() {
     fi
 
     local bin="$ROOT/target/debug/autoresearch"
-    if [[ ! -x "$bin" ]]; then
-        cargo build --manifest-path "$ROOT/Cargo.toml" >/dev/null
-    fi
+    cargo build --manifest-path "$ROOT/Cargo.toml" >/dev/null
     printf '%s\n' "$bin"
 }
 
