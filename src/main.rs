@@ -2746,6 +2746,8 @@ fn cmd_handoff(
 
     let handoff = serde_json::json!({
         "version": "0.1.0",
+        "protocol_version": "2.1.0",
+        "binary_version": env!("CARGO_PKG_VERSION"),
         "source": source,
         "source_command": source,
         "timestamp": timestamp,
