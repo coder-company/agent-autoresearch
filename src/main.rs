@@ -1385,7 +1385,7 @@ fn render_evals_markdown(report: EvalsReport<'_>) -> String {
 // ── Status ────────────────────────────────────────────────────────────
 
 fn cmd_status(cwd: Option<PathBuf>) -> Result<()> {
-    let workspace = resolve_cwd(cwd);
+    let workspace = resolve_results_workspace(cwd);
     let results_dir = workspace.join("autoresearch-results");
     let state_path = results_dir.join("state.json");
 
@@ -2333,6 +2333,18 @@ fn cmd_exec(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
 
 fn resolve_cwd(cwd: Option<PathBuf>) -> PathBuf {
     cwd.unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+}
+
+fn resolve_results_workspace(cwd: Option<PathBuf>) -> PathBuf {
+    let workspace = resolve_cwd(cwd);
+    if workspace.join("autoresearch-results").exists() {
+        return workspace;
+    }
+    GitRepo::open(&workspace)
+        .ok()
+        .and_then(|repo| repo.workdir())
+        .filter(|root| root.join("autoresearch-results").exists())
+        .unwrap_or(workspace)
 }
 
 fn default_results_tsv(cwd: &Path) -> Option<PathBuf> {
