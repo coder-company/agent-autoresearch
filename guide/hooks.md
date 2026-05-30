@@ -26,7 +26,7 @@ Three categories:
 | 6 | `dev-rules-reminder` | UserPromptSubmit | Re-injects protocol rules after compaction |
 | 7 | `simplify-gate` | UserPromptSubmit | Warns when last 3+ keeps were marginal (<1%) |
 | 8 | `session-init` | SessionStart | Detects resumable runs, sets up project context |
-| 9 | `session-end` | SessionEnd | Persists session stats (future: webhook notification) |
+| 9 | `session-end` | SessionEnd | Emits terminal notification and optional webhook summary |
 | 10 | `stop-check` | Stop | Reminds agent to continue loop if iteration incomplete |
 | 11 | `compaction-reanchor` | PostCompact | Re-injects full protocol after context window compaction |
 

@@ -19,6 +19,23 @@ fn run_hook_in(dir: &std::path::Path, hook_name: &str, input: &str) -> assert_cm
         .assert()
 }
 
+fn run_hook_in_with_env(
+    dir: &std::path::Path,
+    hook_name: &str,
+    input: &str,
+    envs: &[(&str, &str)],
+) -> assert_cmd::assert::Assert {
+    let mut command = Command::cargo_bin("autoresearch").unwrap();
+    command
+        .current_dir(dir)
+        .args(["hook", hook_name])
+        .write_stdin(input);
+    for (key, value) in envs {
+        command.env(key, value);
+    }
+    command.assert()
+}
+
 fn run_hook_disabled(hook_name: &str, env_name: &str, input: &str) -> assert_cmd::assert::Assert {
     Command::cargo_bin("autoresearch")
         .unwrap()
@@ -77,6 +94,35 @@ fn write_changed_lines(dir: &std::path::Path, count: usize) {
         .map(|index| format!("line {index}\n"))
         .collect::<String>();
     std::fs::write(dir.join("README.md"), content).unwrap();
+}
+
+#[cfg(unix)]
+fn write_fake_curl(dir: &std::path::Path) -> std::path::PathBuf {
+    use std::os::unix::fs::PermissionsExt;
+
+    let bin_dir = dir.join("fake-bin");
+    std::fs::create_dir_all(&bin_dir).unwrap();
+    let curl = bin_dir.join("curl");
+    std::fs::write(
+        &curl,
+        r#"#!/bin/sh
+set -eu
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "-d" ]; then
+    shift
+    printf '%s' "$1" > "$AR_WEBHOOK_PAYLOAD"
+    exit 0
+  fi
+  shift
+done
+exit 0
+"#,
+    )
+    .unwrap();
+    let mut permissions = std::fs::metadata(&curl).unwrap().permissions();
+    permissions.set_mode(0o755);
+    std::fs::set_permissions(&curl, permissions).unwrap();
+    bin_dir
 }
 
 // ── Scout Block ──────────────────────────────────────────────────────
@@ -993,6 +1039,49 @@ fn test_session_end_emits_terminal_notification() {
             dir.path().file_name().unwrap().to_str().unwrap(),
         ))
         .stdout(predicate::str::contains("1 iterations, metric: 10"));
+}
+
+#[cfg(unix)]
+#[test]
+fn test_session_end_posts_webhook_summary() {
+    let dir = tempfile::tempdir().unwrap();
+    init_git_repo(dir.path());
+    let fake_bin = write_fake_curl(dir.path());
+    let payload_path = dir.path().join("webhook-payload.json");
+    let results = dir.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    std::fs::write(
+        results.join("results.tsv"),
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n0\tabc\t10\t0\t-\tbaseline\tinitial\n",
+    )
+    .unwrap();
+    let path = format!(
+        "{}:{}",
+        fake_bin.display(),
+        std::env::var("PATH").unwrap_or_default()
+    );
+
+    run_hook_in_with_env(
+        dir.path(),
+        "session-end",
+        "{}",
+        &[
+            ("AR_NOTIFY_WEBHOOK", "https://example.invalid/hook"),
+            ("AR_WEBHOOK_PAYLOAD", payload_path.to_str().unwrap()),
+            ("PATH", &path),
+        ],
+    )
+    .success()
+    .stdout(predicate::str::contains("\"terminalSequence\""));
+
+    let payload: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(payload_path).unwrap()).unwrap();
+    assert_eq!(payload["text"], "autoresearch session completed");
+    assert_eq!(
+        payload["project"],
+        dir.path().file_name().unwrap().to_str().unwrap()
+    );
+    assert_eq!(payload["tsv_summary"], "1 iterations, metric: 10");
 }
 
 // ── Simplify Gate ────────────────────────────────────────────────────
