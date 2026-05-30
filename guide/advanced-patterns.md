@@ -31,6 +31,18 @@ When the loop detects a plateau (3+ consecutive discards with different strategi
 - When 3+ plausible hypotheses exist but none are clearly best
 - Not in the first 5 iterations (need baseline exploration first)
 
+### Native Batch Closeout
+
+Use the binary to create the worker result file and close out the batch:
+
+```bash
+autoresearch parallel template --workers 3 --output autoresearch-results/parallel-workers.json
+# Run worker branches/worktrees, then fill in metric, guard, commit, description.
+autoresearch parallel closeout --batch-file autoresearch-results/parallel-workers.json
+```
+
+Closeout records worker audit rows such as `5a`, `5b`, `5c`, then appends one authoritative main row for iteration `5`.
+
 ### Limitations
 
 - Requires clean working tree

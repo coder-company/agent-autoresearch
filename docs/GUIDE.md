@@ -24,6 +24,8 @@ autoresearch verify --command "cat metric.txt"
 autoresearch decide --decision auto --metric 4 --commit abc1234 --description "improved"
 autoresearch progress
 autoresearch watch --lines 20
+autoresearch parallel template --workers 3 --output autoresearch-results/parallel-workers.json
+autoresearch parallel closeout --batch-file autoresearch-results/parallel-workers.json
 autoresearch evals --format json
 ```
 
