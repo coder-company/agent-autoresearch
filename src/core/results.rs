@@ -178,6 +178,20 @@ impl ResultsLog {
                 .trim_start_matches('+')
                 .parse::<Decimal>()
                 .with_context(|| format!("results.tsv line {} has invalid delta", index + 1))?;
+            if !is_valid_guard(columns[4]) {
+                anyhow::bail!(
+                    "results.tsv line {} has invalid guard {:?}",
+                    index + 1,
+                    columns[4]
+                );
+            }
+            if !is_valid_status(columns[5]) {
+                anyhow::bail!(
+                    "results.tsv line {} has invalid status {:?}",
+                    index + 1,
+                    columns[5]
+                );
+            }
         }
 
         if !saw_header {
@@ -189,6 +203,25 @@ impl ResultsLog {
     pub fn path(&self) -> &Path {
         &self.path
     }
+}
+
+fn is_valid_guard(value: &str) -> bool {
+    matches!(value, "pass" | "fail" | "-")
+}
+
+fn is_valid_status(value: &str) -> bool {
+    matches!(
+        value,
+        "baseline"
+            | "keep"
+            | "discard"
+            | "crash"
+            | "no-op"
+            | "blocked"
+            | "pivot"
+            | "refine"
+            | "search"
+    )
 }
 
 /// Generate a completion summary.

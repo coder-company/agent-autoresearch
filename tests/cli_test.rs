@@ -654,6 +654,48 @@ fn test_health_blocks_corrupt_results_row() {
 }
 
 #[test]
+fn test_health_blocks_unknown_results_status() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    std::fs::write(
+        dir.path().join("autoresearch-results/results.tsv"),
+        "# metric_direction: higher\niteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n0\tabc1234\t50\t0\t-\tbanana\tbad status\n",
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "health",
+            "--verify",
+            "cat metric.txt",
+            "--min-free-mb",
+            "1",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .code(2)
+        .stdout(predicate::str::contains("\"decision\": \"block\""))
+        .stdout(predicate::str::contains("results_corrupt"))
+        .stdout(predicate::str::contains("invalid status"));
+}
+
+#[test]
 fn test_init_persists_runtime_config() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
