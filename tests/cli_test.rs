@@ -1043,6 +1043,70 @@ fn test_decide_metrics_json_no_op_does_not_require_trial_metrics() {
 }
 
 #[test]
+fn test_decide_metrics_json_blocked_does_not_require_trial_metrics() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    std::fs::write(
+        dir.path().join("metrics.json"),
+        r#"{"score":50,"accuracy":0.8}"#,
+    )
+    .unwrap();
+    std::process::Command::new("git")
+        .args(["add", "metrics.json"])
+        .current_dir(dir.path())
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["commit", "-m", "add metrics"])
+        .current_dir(dir.path())
+        .output()
+        .unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metrics.json",
+            "--format",
+            "metrics_json",
+            "--key",
+            "score",
+            "--direction",
+            "higher",
+            "--acceptance-criteria",
+            r#"[{"metric_key":"accuracy","operator":">=","target":"0.9"}]"#,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "decide",
+            "--decision",
+            "blocked",
+            "--metric",
+            "50",
+            "--description",
+            "external dependency unavailable",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"blocked\""))
+        .stdout(predicate::str::contains("\"rollback_applied\": false"));
+
+    let state =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap();
+    assert!(state.contains("\"phase\": \"blocked\""));
+    assert!(state.contains("external dependency unavailable"));
+}
+
+#[test]
 fn test_init_metrics_json_persists_state_metric_maps() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

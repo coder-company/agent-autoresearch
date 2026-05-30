@@ -150,7 +150,7 @@ enum Commands {
 
     /// Apply keep/discard decision: update state, revert if needed, track escalation
     Decide {
-        /// Decision: auto, keep, discard, crash, no-op
+        /// Decision: auto, keep, discard, crash, no-op, blocked
         #[arg(long, default_value = "auto")]
         decision: String,
         /// Trial metric value
@@ -859,7 +859,7 @@ fn cmd_decide(
         };
 
     let delta = metric - state.current_metric;
-    let requires_trial_metrics = !matches!(decision, "crash" | "no-op");
+    let requires_trial_metrics = !matches!(decision, "blocked" | "crash" | "no-op");
     let trial_metrics = if requires_trial_metrics {
         build_trial_metrics(metric, metrics_json, &primary_metric_key, verify_format)?
     } else {
@@ -953,7 +953,13 @@ fn cmd_decide(
             let action = escalation.record_no_op();
             (IterationStatus::NoOp, false, Some(action))
         }
-        other => anyhow::bail!("Unknown decision: {other}. Use keep, discard, crash, or no-op."),
+        "blocked" => {
+            state.record_blocked(description.to_string());
+            (IterationStatus::Blocked, false, None)
+        }
+        other => {
+            anyhow::bail!("Unknown decision: {other}. Use keep, discard, crash, no-op, or blocked.")
+        }
     };
     if escalation_action == Some(EscalationAction::Pivot) {
         let lesson = lessons::extract_pivot_lesson(description, EscalationAction::Pivot.guidance());
