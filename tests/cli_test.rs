@@ -311,6 +311,60 @@ fn test_evals_defaults_to_workspace_from_repo_pointer() {
 }
 
 #[test]
+fn test_evals_discovers_legacy_results_tsv_in_cwd() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("fix-results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: higher").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t50\t0\t-\tbaseline\tinitial state").unwrap();
+    writeln!(file, "1\tbcd2345\t55\t+5\tpass\tkeep\timprovement").unwrap();
+
+    cmd()
+        .current_dir(dir.path())
+        .args(["evals", "--format", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"keeps\": 1"));
+
+    let summary = std::fs::read_to_string(dir.path().join("evals-summary.json")).unwrap();
+    assert!(summary.contains("\"keeps\": 1"));
+}
+
+#[test]
+fn test_evals_discovers_legacy_results_tsv_in_autoresearch_run() {
+    let dir = TempDir::new().unwrap();
+    let run_dir = dir.path().join("autoresearch/fix");
+    std::fs::create_dir_all(&run_dir).unwrap();
+    let tsv_path = run_dir.join("fix-results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: higher").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t50\t0\t-\tbaseline\tinitial state").unwrap();
+    writeln!(file, "1\tbcd2345\t55\t+5\tpass\tkeep\timprovement").unwrap();
+
+    cmd()
+        .current_dir(dir.path())
+        .args(["evals", "--format", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"keeps\": 1"));
+
+    let summary = std::fs::read_to_string(run_dir.join("evals-summary.json")).unwrap();
+    assert!(summary.contains("\"keeps\": 1"));
+}
+
+#[test]
 fn test_evals_text_format() {
     let dir = TempDir::new().unwrap();
     let tsv_path = dir.path().join("results.tsv");

@@ -2674,7 +2674,66 @@ fn pointer_results_workspace(repo: &Path) -> Option<PathBuf> {
 
 fn default_results_tsv(cwd: &Path) -> Option<PathBuf> {
     let workspace = resolve_results_workspace(Some(cwd.to_path_buf()));
-    Some(workspace.join("autoresearch-results/results.tsv")).filter(|path| path.exists())
+    let canonical = workspace.join("autoresearch-results/results.tsv");
+    if canonical.exists() {
+        return Some(canonical);
+    }
+
+    discover_results_tsv(cwd).or_else(|| {
+        if workspace != cwd {
+            discover_results_tsv(&workspace)
+        } else {
+            None
+        }
+    })
+}
+
+fn discover_results_tsv(root: &Path) -> Option<PathBuf> {
+    let mut candidates = BTreeSet::new();
+    collect_results_tsvs_in_dir(root, &mut candidates);
+    collect_results_tsvs_in_dir(&root.join("autoresearch-results"), &mut candidates);
+
+    if let Ok(entries) = std::fs::read_dir(root.join("autoresearch")) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if entry.file_type().is_ok_and(|file_type| file_type.is_dir()) {
+                collect_results_tsvs_in_dir(&path, &mut candidates);
+            }
+        }
+    }
+
+    candidates.into_iter().max_by(|left, right| {
+        results_tsv_modified(left)
+            .cmp(&results_tsv_modified(right))
+            .then_with(|| left.cmp(right))
+    })
+}
+
+fn collect_results_tsvs_in_dir(dir: &Path, candidates: &mut BTreeSet<PathBuf>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if entry.file_type().is_ok_and(|file_type| file_type.is_file())
+            && is_results_tsv_name(&path)
+        {
+            candidates.insert(path);
+        }
+    }
+}
+
+fn is_results_tsv_name(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name == "results.tsv" || name.ends_with("-results.tsv"))
+}
+
+fn results_tsv_modified(path: &Path) -> std::time::SystemTime {
+    std::fs::metadata(path)
+        .and_then(|metadata| metadata.modified())
+        .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
 }
 
 fn parse_decide_metric(
