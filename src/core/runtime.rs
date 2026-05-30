@@ -12,6 +12,7 @@ use std::str::FromStr;
 
 use super::config::RunConfig;
 use super::criteria::evaluate_criteria;
+use super::git::{GitRepo, WorktreeStatus};
 use super::health;
 use super::results::{ensure_results_dir_protected, results_dir};
 use super::state::{RunPhase, RunState, StopReason};
@@ -251,6 +252,7 @@ fn prepare_runtime_launch(
     if !health.has_context {
         anyhow::bail!("runtime preflight blocked: missing_context");
     }
+    ensure_clean_launch_worktree(workspace)?;
 
     let manifest = create_launch_manifest(workspace, execution_policy, codex_bin)?;
     let paths = write_launch_manifest(workspace, &manifest)?;
@@ -264,6 +266,17 @@ fn prepare_runtime_launch(
     )?;
 
     Ok((manifest, paths))
+}
+
+fn ensure_clean_launch_worktree(workspace: &Path) -> Result<()> {
+    let git = GitRepo::open(workspace)?;
+    if let WorktreeStatus::Dirty(files) = git.worktree_status()? {
+        anyhow::bail!(
+            "runtime preflight blocked: unexpected worktree changes before launch: {}",
+            files.join(", ")
+        );
+    }
+    Ok(())
 }
 
 fn spawn_runtime_child(

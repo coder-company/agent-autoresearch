@@ -12,7 +12,9 @@ fn cmd() -> Command {
 fn write_fake_codex(dir: &TempDir, body: &str) -> std::path::PathBuf {
     use std::os::unix::fs::PermissionsExt;
 
-    let path = dir.path().join("fake-codex");
+    let bin_dir = dir.path().join("autoresearch-results/test-bin");
+    std::fs::create_dir_all(&bin_dir).unwrap();
+    let path = bin_dir.join("fake-codex");
     std::fs::write(&path, format!("#!/bin/sh\nset -eu\n{body}\n")).unwrap();
     let mut perms = std::fs::metadata(&path).unwrap().permissions();
     perms.set_mode(0o755);
@@ -687,6 +689,49 @@ fn test_runtime_start_blocks_on_health_preflight() {
 }
 
 #[test]
+fn test_runtime_start_blocks_unexpected_dirty_worktree() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--run-mode",
+            "background",
+            "--workspace-root",
+            root,
+            "--primary-repo",
+            root,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    std::fs::write(dir.path().join("notes.txt"), "user drift\n").unwrap();
+
+    cmd()
+        .args(["runtime", "start", "--dry-run", "--cwd", root])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("runtime preflight blocked"))
+        .stderr(predicate::str::contains(
+            "unexpected worktree changes before launch: notes.txt",
+        ));
+
+    assert!(!dir.path().join("autoresearch-results/launch.json").exists());
+    assert!(!dir
+        .path()
+        .join("autoresearch-results/runtime.json")
+        .exists());
+}
+
+#[test]
 fn test_runtime_start_requires_context() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
@@ -1101,7 +1146,7 @@ fn test_runtime_supervise_stop_condition_prefers_explicit_operator() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
     let root = dir.path().to_str().unwrap();
-    std::fs::write(dir.path().join("metric.txt"), "97\n").unwrap();
+    write_metric_and_commit(&dir, "97\n");
 
     cmd()
         .args([
