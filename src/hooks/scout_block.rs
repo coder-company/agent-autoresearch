@@ -1,5 +1,5 @@
 use super::{HookInput, HookResponse};
-use glob::Pattern;
+use glob::{MatchOptions, Pattern};
 use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 
@@ -173,7 +173,6 @@ fn normalize_ignore_pattern(line: &str) -> Option<String> {
     while let Some(stripped) = pattern.strip_prefix("./") {
         pattern = stripped.to_string();
     }
-    pattern = pattern.trim_start_matches('/').to_string();
     if pattern.ends_with('/') {
         pattern.push_str("**");
     }
@@ -266,6 +265,9 @@ fn pattern_matches_path(pattern: &str, path: &str) -> bool {
     if matches!(pattern, "." | "**" | "**/*") {
         return true;
     }
+    if let Some(anchored) = pattern.strip_prefix('/') {
+        return anchored_pattern_matches(anchored, path);
+    }
 
     if let Some(prefix) = pattern.strip_suffix("/**") {
         if path_segments_match(prefix, path) {
@@ -299,6 +301,32 @@ fn pattern_matches_path(pattern: &str, path: &str) -> bool {
         .then(|| pattern.replace("**/", ""))
         .and_then(|fallback| Pattern::new(&fallback).ok())
         .is_some_and(|compiled| compiled.matches(path))
+}
+
+fn anchored_pattern_matches(pattern: &str, path: &str) -> bool {
+    if pattern.is_empty() {
+        return false;
+    }
+
+    if let Some(prefix) = pattern.strip_suffix("/**") {
+        return path == prefix || path.starts_with(&format!("{prefix}/"));
+    }
+    if let Some(prefix) = pattern.strip_suffix("/**/*") {
+        return path == prefix || path.starts_with(&format!("{prefix}/"));
+    }
+    if !pattern_contains_glob(pattern) {
+        return path == pattern || path.starts_with(&format!("{pattern}/"));
+    }
+    Pattern::new(pattern).ok().is_some_and(|compiled| {
+        compiled.matches_with(
+            path,
+            MatchOptions {
+                case_sensitive: true,
+                require_literal_separator: true,
+                require_literal_leading_dot: false,
+            },
+        )
+    })
 }
 
 fn path_segments_match(pattern: &str, path: &str) -> bool {

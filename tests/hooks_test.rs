@@ -238,11 +238,16 @@ fn test_scout_block_honors_ckignore_patterns_from_repo_root() {
     std::fs::create_dir_all(&subdir).unwrap();
     std::fs::write(
         dir.path().join(".ckignore"),
-        "# local project ignores\nsnapshots/\n*.trace\n!snapshots/keep.trace\n",
+        "# local project ignores\nsnapshots/\n*.trace\n/root-only.cache\n/*.roottrace\n!snapshots/keep.trace\n",
     )
     .unwrap();
 
-    for path in ["snapshots/run/output.txt", "logs/session.trace"] {
+    for path in [
+        "snapshots/run/output.txt".to_string(),
+        "logs/session.trace".to_string(),
+        dir.path().join("root-only.cache").display().to_string(),
+        dir.path().join("root.roottrace").display().to_string(),
+    ] {
         let input = serde_json::json!({
             "tool_name": "Read",
             "tool_input": {
@@ -262,6 +267,26 @@ fn test_scout_block_honors_ckignore_patterns_from_repo_root() {
         }
     });
     run_hook_in(&subdir, "scout-block", &allowed.to_string())
+        .success()
+        .stdout(predicate::str::contains("\"decision\":\"block\"").not());
+
+    let nested_root_name = serde_json::json!({
+        "tool_name": "Read",
+        "tool_input": {
+            "path": dir.path().join("src/root-only.cache").to_str().unwrap()
+        }
+    });
+    run_hook_in(&subdir, "scout-block", &nested_root_name.to_string())
+        .success()
+        .stdout(predicate::str::contains("\"decision\":\"block\"").not());
+
+    let nested_root_glob = serde_json::json!({
+        "tool_name": "Read",
+        "tool_input": {
+            "path": dir.path().join("src/nested.roottrace").to_str().unwrap()
+        }
+    });
+    run_hook_in(&subdir, "scout-block", &nested_root_glob.to_string())
         .success()
         .stdout(predicate::str::contains("\"decision\":\"block\"").not());
 
