@@ -1,12 +1,30 @@
 use anyhow::{Context, Result};
+use regex::Regex;
 use rust_decimal::Decimal;
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::process::Command;
+use std::sync::LazyLock;
 use std::time::{Duration, Instant};
 
 use super::config::VerifyFormat;
 use super::metrics::{parse_json_metrics_map, parse_scalar_metric};
+
+static VERIFY_CREDENTIAL_PATTERNS: LazyLock<Vec<(&'static str, Regex)>> = LazyLock::new(|| {
+    vec![
+        (
+            "credential assignment",
+            Regex::new(r"(?i)\b(password|passwd|api[_-]?key|secret|token|credential)\s*=").unwrap(),
+        ),
+        (
+            "cloud credential assignment",
+            Regex::new(r"(?i)\b(aws|gcp|azure)[\w-]*[_-]?(secret|key|token)\s*=").unwrap(),
+        ),
+        ("OpenAI key", Regex::new(r"sk-[A-Za-z0-9_-]{20,}").unwrap()),
+        ("GitHub token", Regex::new(r"ghp_[A-Za-z0-9]{36}").unwrap()),
+        ("AWS access key", Regex::new(r"AKIA[A-Z0-9]{16}").unwrap()),
+    ]
+});
 
 /// Result of running a verify command.
 #[derive(Debug, Clone)]
@@ -144,11 +162,9 @@ pub fn screen_command(command: &str) -> Result<()> {
         }
     }
 
-    // Check for credential leaks
-    let credential_patterns = ["password=", "api_key=", "secret=", "token=", "AWS_SECRET"];
-    for pattern in &credential_patterns {
-        if command.contains(pattern) {
-            anyhow::bail!("Verify command may contain embedded credentials: {pattern}");
+    for (label, pattern) in VERIFY_CREDENTIAL_PATTERNS.iter() {
+        if pattern.is_match(command) {
+            anyhow::bail!("Verify command may contain embedded credentials: {label}");
         }
     }
 
@@ -282,6 +298,11 @@ mod tests {
     #[test]
     fn test_screen_command_credentials() {
         assert!(screen_command("curl -H 'token=abc123' http://api.com").is_err());
+        assert!(screen_command("curl -H 'aws_secret=abc123' http://api.com").is_err());
+        assert!(screen_command(
+            "curl -H 'Authorization: Bearer sk-proj-abc123def456ghi789jkl012mno345'"
+        )
+        .is_err());
     }
 
     #[test]
