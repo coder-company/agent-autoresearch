@@ -15,7 +15,7 @@
 
 ## v0.2.0 — Background Mode + Parallel Experiments
 
-- [x] Background runtime artifacts + detached Codex launch control (`autoresearch runtime start/status/stop`)
+- [x] Background runtime artifacts + detached Codex launch control (`autoresearch runtime start/status/supervise/stop`)
 - [x] Background supervisor recommendation (`autoresearch runtime supervise`) with iteration cap, criteria, stop-condition, soft-blocker, and stagnation decisions
 - [ ] Background supervisor relaunch loop that automatically executes recommended relaunches
 - [ ] Parallel experiments runtime — run N trials concurrently, keep the best
