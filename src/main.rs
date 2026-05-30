@@ -536,7 +536,7 @@ fn cmd_init(
     rollback: &str,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
-    let workspace = resolve_cwd(cwd);
+    let workspace = resolve_workspace_root(cwd);
     let direction = parse_direction(direction_str)?;
     let fmt = parse_format(format_str);
     let run_mode = run_mode
@@ -2333,6 +2333,14 @@ fn cmd_exec(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
 
 fn resolve_cwd(cwd: Option<PathBuf>) -> PathBuf {
     cwd.unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+}
+
+fn resolve_workspace_root(cwd: Option<PathBuf>) -> PathBuf {
+    let workspace = resolve_cwd(cwd);
+    GitRepo::open(&workspace)
+        .ok()
+        .and_then(|repo| repo.workdir())
+        .unwrap_or(workspace)
 }
 
 fn resolve_results_workspace(cwd: Option<PathBuf>) -> PathBuf {

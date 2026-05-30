@@ -886,6 +886,37 @@ fn test_init_persists_runtime_config() {
 }
 
 #[test]
+fn test_init_defaults_to_repo_root_from_subdir() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            subdir.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            dir.path()
+                .join("autoresearch-results")
+                .display()
+                .to_string(),
+        ));
+
+    assert!(dir.path().join("autoresearch-results/state.json").exists());
+    assert!(dir.path().join(".codex-autoresearch/pointer.json").exists());
+    assert!(!subdir.join("autoresearch-results").exists());
+}
+
+#[test]
 fn test_status_defaults_to_repo_root_results_from_subdir() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
