@@ -63,6 +63,10 @@ rm -rf "$ROOT/.opencode/skills/autoresearch"
 mkdir -p "$ROOT/.opencode/skills"
 mkdir -p "$ROOT/.opencode/skills/autoresearch"
 adapt_opencode "$ROOT/skills/autoresearch/SKILL.md" > "$ROOT/.opencode/skills/autoresearch/SKILL.md"
+mkdir -p "$ROOT/.opencode/skills/autoresearch/references"
+for f in "$ROOT/references/"*.md; do
+    adapt_opencode "$f" > "$ROOT/.opencode/skills/autoresearch/references/$(basename "$f")"
+done
 
 opencode_count=$(find "$ROOT/.opencode" -type f | wc -l)
 
