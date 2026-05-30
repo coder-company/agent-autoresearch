@@ -126,6 +126,7 @@ require_grep 'autoresearch parallel run' guide/advanced-patterns.md
 require_grep 'timeout-seconds' references/parallel-experiments-protocol.md
 require_grep 'autoresearch parallel cleanup' references/parallel-experiments-protocol.md
 require_grep '\$autoresearch exec' guide/autoresearch-codex.md
+require_grep 'Claude Code, Codex, and OpenCode' README.md
 require_grep 'companion-repo-scope' references/results-logging.md
 require_grep 'companion-repo-scope' SKILL.md
 require_grep 'companion-repo-scope' skills/autoresearch/SKILL.md

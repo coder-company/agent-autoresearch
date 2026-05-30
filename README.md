@@ -2,9 +2,12 @@
 
 <h2><b>Aim. Iterate. Arrive.</b></h2>
 
-<p><i>Autonomous goal-driven experimentation for Claude Code and Codex.</i></p>
+<p><i>Autonomous goal-driven experimentation for Claude Code, Codex, and OpenCode.</i></p>
 
 <p>
+  <a href="https://docs.anthropic.com/en/docs/claude-code"><img src="https://img.shields.io/badge/Claude_Code-Plugin-blue?logo=anthropic&logoColor=white" alt="Claude Code Plugin"></a>
+  <a href="https://developers.openai.com/codex"><img src="https://img.shields.io/badge/Codex-Skill-green?logo=openai&logoColor=white" alt="Codex Skill"></a>
+  <a href="https://opencode.ai"><img src="https://img.shields.io/badge/OpenCode-Skill-purple" alt="OpenCode Skill"></a>
   <a href="https://github.com/coder-company/agent-autoresearch/actions"><img src="https://github.com/coder-company/agent-autoresearch/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/coder-company/agent-autoresearch"><img src="https://img.shields.io/github/stars/coder-company/agent-autoresearch?style=social" alt="Stars"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="MIT License"></a>
