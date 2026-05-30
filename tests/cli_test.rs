@@ -1460,6 +1460,48 @@ fn test_handoff_defaults_to_repo_root_results_from_subdir() {
 }
 
 #[test]
+fn test_handoff_rejects_wrong_json_shapes() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+
+    cmd()
+        .args([
+            "handoff",
+            "--source",
+            "debug",
+            "--status",
+            "COMPLETE",
+            "--findings",
+            r#"{"title":"not an array"}"#,
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "handoff findings must be a JSON array",
+        ));
+
+    cmd()
+        .args([
+            "handoff",
+            "--source",
+            "debug",
+            "--status",
+            "COMPLETE",
+            "--config",
+            r#"["not an object"]"#,
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "handoff config must be a JSON object",
+        ));
+}
+
+#[test]
 fn test_exec_defaults_to_repo_root_from_subdir() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

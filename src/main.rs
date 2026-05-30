@@ -2713,6 +2713,12 @@ fn cmd_handoff(
         serde_json::from_str(findings.unwrap_or("[]")).context("Invalid findings JSON")?;
     let config_val: serde_json::Value =
         serde_json::from_str(config.unwrap_or("{}")).context("Invalid config JSON")?;
+    if !findings_val.is_array() {
+        anyhow::bail!("handoff findings must be a JSON array");
+    }
+    if !config_val.is_object() {
+        anyhow::bail!("handoff config must be a JSON object");
+    }
     let goal = config_val
         .get("goal")
         .cloned()
