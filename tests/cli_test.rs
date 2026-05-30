@@ -1774,6 +1774,43 @@ fn test_resume_uses_results_tsv_fallback_without_state() {
 }
 
 #[test]
+fn test_resume_uses_results_tsv_fallback_for_corrupt_state() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    std::fs::write(
+        dir.path().join("autoresearch-results/state.json"),
+        "{bad json",
+    )
+    .unwrap();
+
+    cmd()
+        .args(["resume", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"resumable\": true"))
+        .stdout(predicate::str::contains("\"source\": \"results.tsv\""))
+        .stdout(predicate::str::contains("\"state_error\":"))
+        .stdout(predicate::str::contains(
+            "\"recommendation\": \"tsv_fallback\"",
+        ));
+}
+
+#[test]
 fn test_runtime_start_status_stop_dry_run() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

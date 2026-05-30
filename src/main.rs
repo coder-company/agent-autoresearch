@@ -2053,32 +2053,31 @@ fn cmd_resume(cwd: Option<PathBuf>) -> Result<()> {
     let state_path = results_dir.join("state.json");
 
     if !state_path.exists() {
-        let tsv_path = results_dir.join("results.tsv");
-        if tsv_path.exists() {
-            let log = ResultsLog::open(tsv_path.clone())?;
-            if let Err(err) = log.validate() {
-                let out = serde_json::json!({
-                    "resumable": false,
-                    "recommendation": "fresh_start",
-                    "reason": "results_corrupt",
-                    "error": err.to_string(),
-                });
-                println!("{}", serde_json::to_string_pretty(&out)?);
-                return Ok(());
-            }
-
-            let content = std::fs::read_to_string(&tsv_path)?;
-            let rows = parse_results_tsv(&content)?;
-            if let Some(out) = tsv_fallback_resume(&rows, &content, log.tail(5)?) {
-                println!("{}", serde_json::to_string_pretty(&out)?);
-                return Ok(());
-            }
+        if print_tsv_fallback_resume(&results_dir, None)? {
+            return Ok(());
         }
         println!(r#"{{"resumable":false}}"#);
         return Ok(());
     }
 
-    let state: RunState = serde_json::from_str(&std::fs::read_to_string(&state_path)?)?;
+    let state_content = match std::fs::read_to_string(&state_path) {
+        Ok(content) => content,
+        Err(err) => {
+            if print_tsv_fallback_resume(&results_dir, Some(err.to_string()))? {
+                return Ok(());
+            }
+            return Err(err.into());
+        }
+    };
+    let state: RunState = match serde_json::from_str(&state_content) {
+        Ok(state) => state,
+        Err(err) => {
+            if print_tsv_fallback_resume(&results_dir, Some(err.to_string()))? {
+                return Ok(());
+            }
+            return Err(err.into());
+        }
+    };
 
     let is_resumable = matches!(
         state.phase,
@@ -2134,6 +2133,38 @@ fn cmd_resume(cwd: Option<PathBuf>) -> Result<()> {
     });
     println!("{}", serde_json::to_string_pretty(&out)?);
     Ok(())
+}
+
+fn print_tsv_fallback_resume(results_dir: &Path, state_error: Option<String>) -> Result<bool> {
+    let tsv_path = results_dir.join("results.tsv");
+    if !tsv_path.exists() {
+        return Ok(false);
+    }
+
+    let log = ResultsLog::open(tsv_path.clone())?;
+    if let Err(err) = log.validate() {
+        let out = serde_json::json!({
+            "resumable": false,
+            "recommendation": "fresh_start",
+            "reason": "results_corrupt",
+            "error": err.to_string(),
+        });
+        println!("{}", serde_json::to_string_pretty(&out)?);
+        return Ok(true);
+    }
+
+    let content = std::fs::read_to_string(&tsv_path)?;
+    let rows = parse_results_tsv(&content)?;
+    let Some(mut out) = tsv_fallback_resume(&rows, &content, log.tail(5)?) else {
+        return Ok(false);
+    };
+    if let Some(error) = state_error {
+        if let Some(map) = out.as_object_mut() {
+            map.insert("state_error".to_string(), serde_json::json!(error));
+        }
+    }
+    println!("{}", serde_json::to_string_pretty(&out)?);
+    Ok(true)
 }
 
 fn tsv_fallback_resume(
