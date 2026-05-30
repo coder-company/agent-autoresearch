@@ -66,6 +66,7 @@ required_paths=(
     scripts/run_contributor_gate.sh
     scripts/run_skill_e2e.sh
     scripts/transform.sh
+    tests/test-hooks.sh
     .github/workflows/ci.yml
     docs/README.md
     docs/INSTALL.md
@@ -162,6 +163,8 @@ require_grep 'plugins/autoresearch' docs/codebase-summary.md
 require_grep 'runtime, parallel, screen, and hooks' docs/codebase-summary.md
 require_grep 'dev_rules_reminder\.rs' docs/codebase-summary.md
 require_grep 'out-of-scope writes' docs/architecture.md
+require_grep 'tool_name' tests/test-hooks.sh
+require_grep '\.decision // "allow"' tests/test-hooks.sh
 require_grep 'plugins/autoresearch/skills/autoresearch' CONTRIBUTING.md
 require_grep '\.opencode/' CONTRIBUTING.md
 require_grep '\./scripts/release\.sh <version>' CONTRIBUTING.md
@@ -183,7 +186,9 @@ require_grep 'git -C "\$ROOT" log --format=' scripts/release.sh
 require_grep 'workflow_dispatch:' .github/workflows/ci.yml
 require_grep 'timeout-minutes: 25' .github/workflows/ci.yml
 require_grep 'actions/cache@v4' .github/workflows/ci.yml
+require_grep 'tests/\*\.sh' .github/workflows/ci.yml
 require_grep 'bash -n "\$script"' .github/workflows/ci.yml
+require_grep 'bash -n tests/test-hooks\.sh' scripts/run_contributor_gate.sh
 if grep -R -E '2[,.]5 ?M(B|o|Б)' "$ROOT/AGENTS.md" "$ROOT/CONTRIBUTING.md" "$ROOT/docs" "$ROOT/scripts/release.md" >/dev/null; then
     fail "docs still advertise the old 2.5MB binary size"
 fi

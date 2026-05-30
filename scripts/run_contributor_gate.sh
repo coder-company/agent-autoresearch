@@ -31,6 +31,9 @@ echo "Release binary size: ${RELEASE_BINARY_BYTES} bytes"
 echo "==> bash -n install.sh"
 bash -n install.sh
 
+echo "==> bash -n tests/test-hooks.sh"
+bash -n tests/test-hooks.sh
+
 echo "==> scripts/transform.sh"
 ./scripts/transform.sh
 
