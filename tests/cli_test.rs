@@ -831,7 +831,10 @@ fn test_health_ok_after_init() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"decision\": \"ok\""));
+        .stdout(predicate::str::contains("\"decision\": \"ok\""))
+        .stdout(predicate::str::contains(
+            "\"resume_decision\": \"full_resume\"",
+        ));
 }
 
 #[test]

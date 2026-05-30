@@ -30,6 +30,7 @@ pub struct HealthReport {
     pub git_state: String,
     pub free_mb: Option<u64>,
     pub verify_command: Option<String>,
+    pub resume_decision: &'static str,
     pub warnings: Vec<HealthFinding>,
     pub blockers: Vec<HealthFinding>,
 }
@@ -259,9 +260,19 @@ pub fn run_health_check(
         git_state,
         free_mb,
         verify_command: effective_verify,
+        resume_decision: health_resume_decision(has_results, has_state),
         warnings,
         blockers,
     })
+}
+
+fn health_resume_decision(has_results: bool, has_state: bool) -> &'static str {
+    match (has_results, has_state) {
+        (true, true) => "full_resume",
+        (true, false) => "tsv_fallback",
+        (false, true) => "fresh_start",
+        (false, false) => "fresh_start",
+    }
 }
 
 fn context_path_mismatch(
