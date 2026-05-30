@@ -466,7 +466,11 @@ fn init_git_fixture(dir: &TempDir) {
         .current_dir(path)
         .output()
         .unwrap();
-    std::fs::write(path.join(".gitignore"), "autoresearch-results/\n").unwrap();
+    std::fs::write(
+        path.join(".gitignore"),
+        "autoresearch-results/\n.codex-autoresearch/\n",
+    )
+    .unwrap();
     std::fs::write(path.join("metric.txt"), "50\n").unwrap();
     std::process::Command::new("git")
         .args(["add", "."])

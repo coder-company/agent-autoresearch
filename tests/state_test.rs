@@ -32,7 +32,11 @@ fn test_state_from_baseline() {
         .unwrap();
 
     // Create a metric file and commit
-    std::fs::write(dir_path.join(".gitignore"), "autoresearch-results/\n").unwrap();
+    std::fs::write(
+        dir_path.join(".gitignore"),
+        "autoresearch-results/\n.codex-autoresearch/\n",
+    )
+    .unwrap();
     std::fs::write(dir_path.join("metric.txt"), "50\n").unwrap();
     std::process::Command::new("git")
         .args(["add", "."])
@@ -97,7 +101,11 @@ fn test_state_record_keep_then_discard() {
         .unwrap();
 
     // Add .gitignore for autoresearch-results (just like real projects)
-    std::fs::write(dir_path.join(".gitignore"), "autoresearch-results/\n").unwrap();
+    std::fs::write(
+        dir_path.join(".gitignore"),
+        "autoresearch-results/\n.codex-autoresearch/\n",
+    )
+    .unwrap();
     std::fs::write(dir_path.join("metric.txt"), "50\n").unwrap();
     std::process::Command::new("git")
         .args(["add", "."])
@@ -291,7 +299,11 @@ fn test_escalation_thresholds_via_consecutive_discards() {
         .output()
         .unwrap();
 
-    std::fs::write(dir_path.join(".gitignore"), "autoresearch-results/\n").unwrap();
+    std::fs::write(
+        dir_path.join(".gitignore"),
+        "autoresearch-results/\n.codex-autoresearch/\n",
+    )
+    .unwrap();
     std::fs::write(dir_path.join("metric.txt"), "50\n").unwrap();
     std::process::Command::new("git")
         .args(["add", "."])
@@ -433,7 +445,11 @@ fn test_decide_auto_uses_metric_direction() {
         .output()
         .unwrap();
 
-    std::fs::write(dir_path.join(".gitignore"), "autoresearch-results/\n").unwrap();
+    std::fs::write(
+        dir_path.join(".gitignore"),
+        "autoresearch-results/\n.codex-autoresearch/\n",
+    )
+    .unwrap();
     std::fs::write(dir_path.join("metric.txt"), "50\n").unwrap();
     std::process::Command::new("git")
         .args(["add", "."])
@@ -545,7 +561,11 @@ fn test_decide_refuses_rollback_without_experiment_head() {
         .current_dir(dir_path)
         .output()
         .unwrap();
-    std::fs::write(dir_path.join(".gitignore"), "autoresearch-results/\n").unwrap();
+    std::fs::write(
+        dir_path.join(".gitignore"),
+        "autoresearch-results/\n.codex-autoresearch/\n",
+    )
+    .unwrap();
     std::fs::write(dir_path.join("metric.txt"), "50\n").unwrap();
     std::process::Command::new("git")
         .args(["add", "."])
@@ -614,7 +634,11 @@ fn test_decide_discards_when_required_keep_criteria_fail() {
         .current_dir(dir_path)
         .output()
         .unwrap();
-    std::fs::write(dir_path.join(".gitignore"), "autoresearch-results/\n").unwrap();
+    std::fs::write(
+        dir_path.join(".gitignore"),
+        "autoresearch-results/\n.codex-autoresearch/\n",
+    )
+    .unwrap();
     std::fs::write(
         dir_path.join("metrics.json"),
         r#"{"score":50,"failures":0}"#,
