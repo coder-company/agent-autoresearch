@@ -25,7 +25,7 @@ autoresearch decide --decision auto --metric 4 --commit abc1234 --description "i
 autoresearch progress
 autoresearch watch --lines 20
 autoresearch parallel prepare --workers 3
-autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json
+autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json --timeout-seconds 1200
 autoresearch parallel template --workers 3 --output autoresearch-results/parallel-workers.json
 autoresearch parallel closeout --batch-file autoresearch-results/parallel-workers.json
 autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.json

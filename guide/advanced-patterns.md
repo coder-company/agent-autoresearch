@@ -38,17 +38,18 @@ batch, and clean up:
 
 ```bash
 autoresearch parallel prepare --workers 3
-autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json
+autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json --timeout-seconds 1200
 # Workers fill in metric, guard, commit, and description in the batch file.
 autoresearch parallel closeout --batch-file autoresearch-results/parallel-workers.json
 autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.json
 ```
 
 Prepare creates branch-backed worker worktrees and prompt files. Run launches the
-prepared prompts with `codex exec`. Closeout cherry-picks the best worker,
-re-runs verify and guard in the main worktree, falls back on merge or verification
-failure, records worker audit rows such as `5a`, `5b`, `5c`, then appends one
-authoritative main row for iteration `5`.
+prepared prompts with `codex exec` and records crashed or timed-out workers in
+the manifest. Closeout cherry-picks the best worker, re-runs verify and guard in
+the main worktree, falls back on merge or verification failure, records worker
+audit rows such as `5a`, `5b`, `5c`, then appends one authoritative main row for
+iteration `5`.
 
 ### Limitations
 

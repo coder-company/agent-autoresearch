@@ -75,7 +75,7 @@ and disk for isolated worker worktrees:
 
 ```bash
 autoresearch parallel prepare --workers 3
-autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json
+autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json --timeout-seconds 1200
 # Fill in each worker metric, guard status, commit, and description.
 autoresearch parallel closeout --batch-file autoresearch-results/parallel-workers.json
 autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.json

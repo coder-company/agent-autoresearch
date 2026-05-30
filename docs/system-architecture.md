@@ -44,13 +44,14 @@ Parallel work is recorded as a batch:
 
 ```bash
 autoresearch parallel prepare --workers 3
-autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json
+autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json --timeout-seconds 1200
 autoresearch parallel closeout --batch-file autoresearch-results/parallel-workers.json
 autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.json
 ```
 
 Prepare creates branch-backed worker worktrees, prompt files, a manifest, and the
-editable batch file. Run executes the prepared worker prompts in those worktrees.
+editable batch file. Run executes the prepared worker prompts in those worktrees
+and records crashed or timed-out workers in the manifest.
 Closeout cherry-picks the best worker, re-runs verify and guard in the main
 worktree, falls back to the next worker on merge or verification failure, then
 writes worker audit rows and one authoritative retained batch row. Cleanup

@@ -116,7 +116,7 @@ Optional:
 | `autoresearch guard --command "..."` | Run guard → JSON `{passed, duration_ms}` |
 | `autoresearch decide --decision auto --metric X --metrics-json '{...}' --description "..."` | Evaluate keep/discard, criteria gates, rollback, and escalation |
 | `autoresearch parallel prepare --workers 3` | Create branch-backed worker worktrees, prompts, manifest, and batch file |
-| `autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json` | Launch prepared worker prompts with `codex exec` |
+| `autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json --timeout-seconds 1200` | Launch prepared worker prompts with `codex exec`; record crashes/timeouts |
 | `autoresearch parallel template --workers 3 --output autoresearch-results/parallel-workers.json` | Generate an editable worker batch JSON file |
 | `autoresearch parallel closeout --batch-file workers.json` | Cherry-pick, verify, and retain one worker; log audit rows and update retained state once |
 | `autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.json` | Remove worker worktrees and branches |

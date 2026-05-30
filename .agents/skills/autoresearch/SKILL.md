@@ -35,7 +35,7 @@ The `autoresearch` binary handles mechanical operations:
 - `autoresearch verify` — run verify command, parse metric or metrics JSON
 - `autoresearch decide` — evaluate keep/discard logic, criteria gates, rollback, and escalation
 - `autoresearch parallel prepare` — create branch-backed worker worktrees, prompts, manifest, and batch file
-- `autoresearch parallel run` — launch prepared worker prompts with `codex exec`
+- `autoresearch parallel run` — launch prepared worker prompts with `codex exec`; record crashes/timeouts
 - `autoresearch parallel template` — generate editable worker batch JSON for manual parallel closeout
 - `autoresearch parallel closeout` — cherry-pick, verify, and retain one worker; log audit rows and update retained state once
 - `autoresearch parallel cleanup` — remove worker worktrees and branches
@@ -71,7 +71,7 @@ Run only after metric improvement. Must exit 0.
 
 ### Phase 7: Decide
 - Prefer `autoresearch decide --decision auto --metric <value> --metrics-json '<json>' --commit <sha>`.
-- For parallel worker batches, use `autoresearch parallel prepare` to create worktrees and prompts, `autoresearch parallel run` to launch workers, `autoresearch parallel closeout --batch-file <workers.json>` to cherry-pick, verify, and retain one result, and `autoresearch parallel cleanup` after closeout. Use `autoresearch parallel template` only when worker branches already exist.
+- For parallel worker batches, use `autoresearch parallel prepare` to create worktrees and prompts, `autoresearch parallel run --timeout-seconds <seconds>` to launch workers and record crashes/timeouts, `autoresearch parallel closeout --batch-file <workers.json>` to cherry-pick, verify, and retain one result, and `autoresearch parallel cleanup` after closeout. Use `autoresearch parallel template` only when worker branches already exist.
 - **keep** — improved + guard passed + required keep criteria passed → commit stays
 - **discard** — flat/regressed OR guard/criteria failed → binary reverts the experiment commit
 - **crash** — command errored → binary reverts the experiment commit

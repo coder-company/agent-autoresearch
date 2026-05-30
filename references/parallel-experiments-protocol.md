@@ -137,7 +137,7 @@ Prepare worker worktrees and launch the worker prompts through the binary:
 
 ```bash
 autoresearch parallel prepare --workers 3 --cwd <workspace_root>
-autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json --cwd <workspace_root>
+autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json --timeout-seconds 1200 --cwd <workspace_root>
 ```
 
 `parallel prepare` creates one branch-backed git worktree per worker, writes
@@ -146,7 +146,8 @@ autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json
 `autoresearch-results/parallel-workers.json` closeout file. `parallel run`
 executes each prepared prompt with `codex exec` in the corresponding worktree,
 captures `.codex-autoresearch/parallel-worker.log`, and records per-worker run
-status in the manifest.
+status in the manifest. When `--timeout-seconds` is set, a hung worker is killed
+and recorded as `timeout` so the batch can still close out.
 
 Each worker receives:
 
@@ -183,9 +184,9 @@ Do NOT ask any questions. Do NOT interact with the user.
 
 ### 3. Collect Results
 
-Wait for all workers to complete. If a worker crashes, keep its run status in the
-manifest and record its closeout entry as `crash`. Each worker fills its result
-into `autoresearch-results/parallel-workers.json`:
+Wait for all workers to complete. If a worker crashes or times out, keep its run
+status in the manifest and record its closeout entry as `crash` or `timeout`.
+Each completed worker fills its result into `autoresearch-results/parallel-workers.json`:
 
 ```
 worker_id: a
@@ -244,7 +245,7 @@ iteration	commit	metric	delta	guard	status	description
 - Worker rows (`5a`, `5b`, `5c`) are audit detail.
 - The integer main row (`5`) is the authoritative retained-state update for the whole batch and uses the post-cherry-pick main worktree commit.
 - Prepare isolated worker worktrees with `autoresearch parallel prepare --workers 3 --cwd <workspace_root>`.
-- Launch prepared workers with `autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json --cwd <workspace_root>`.
+- Launch prepared workers with `autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json --timeout-seconds 1200 --cwd <workspace_root>`.
 - Generate the editable worker JSON schema with `autoresearch parallel template --workers 3 --output autoresearch-results/parallel-workers.json --cwd <workspace_root>`.
 - Close out completed batches through `autoresearch parallel closeout --batch-file <workers.json> --cwd <workspace_root>`. Do not write worker/main rows by hand.
 - Clean up worktrees and branches with `autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.json --cwd <workspace_root>`.
