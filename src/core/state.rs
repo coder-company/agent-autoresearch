@@ -342,11 +342,17 @@ fn initial_metric_map(metric: Decimal, config: Option<&RunConfig>) -> BTreeMap<S
 pub enum IterationStatus {
     Baseline,
     Keep,
+    #[serde(rename = "keep (reworked)")]
+    KeepReworked,
     Discard,
     Crash,
     #[serde(rename = "no-op", alias = "noop")]
     NoOp,
     Blocked,
+    #[serde(rename = "hook-blocked")]
+    HookBlocked,
+    #[serde(rename = "metric-error")]
+    MetricError,
     Pivot,
     Refine,
     Search,
@@ -358,10 +364,13 @@ impl IterationStatus {
         match self {
             Self::Baseline => "baseline",
             Self::Keep => "keep",
+            Self::KeepReworked => "keep (reworked)",
             Self::Discard => "discard",
             Self::Crash => "crash",
             Self::NoOp => "no-op",
             Self::Blocked => "blocked",
+            Self::HookBlocked => "hook-blocked",
+            Self::MetricError => "metric-error",
             Self::Pivot => "pivot",
             Self::Refine => "refine",
             Self::Search => "search",
@@ -380,5 +389,21 @@ mod tests {
 
         assert_eq!(status, IterationStatus::NoOp);
         assert_eq!(serde_json::to_string(&status).unwrap(), "\"no-op\"");
+    }
+
+    #[test]
+    fn iteration_status_serializes_legacy_result_statuses() {
+        assert_eq!(
+            serde_json::to_string(&IterationStatus::KeepReworked).unwrap(),
+            "\"keep (reworked)\""
+        );
+        assert_eq!(
+            serde_json::to_string(&IterationStatus::HookBlocked).unwrap(),
+            "\"hook-blocked\""
+        );
+        assert_eq!(
+            serde_json::to_string(&IterationStatus::MetricError).unwrap(),
+            "\"metric-error\""
+        );
     }
 }

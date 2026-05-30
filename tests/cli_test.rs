@@ -448,6 +448,34 @@ fn test_evals_rejects_invalid_status() {
 }
 
 #[test]
+fn test_evals_accepts_legacy_result_statuses() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: higher").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t10\t0\t-\tbaseline\tinitial").unwrap();
+    writeln!(
+        file,
+        "1\tabc1234\t11\t+1\tpass\tkeep (reworked)\tadjusted fix"
+    )
+    .unwrap();
+    writeln!(file, "2\t-\t10\t-1\t-\thook-blocked\tcommit hook blocked").unwrap();
+    writeln!(file, "3\t-\t10\t0\t-\tmetric-error\tbad metric output").unwrap();
+
+    cmd()
+        .args(["evals", tsv_path.to_str().unwrap(), "--format", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"total_iterations\": 3"));
+}
+
+#[test]
 fn test_evals_rejects_invalid_guard() {
     let dir = TempDir::new().unwrap();
     let tsv_path = dir.path().join("results.tsv");

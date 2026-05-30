@@ -324,10 +324,13 @@ fn is_valid_status(value: &str) -> bool {
         value,
         "baseline"
             | "keep"
+            | "keep (reworked)"
             | "discard"
             | "crash"
             | "no-op"
             | "blocked"
+            | "hook-blocked"
+            | "metric-error"
             | "pivot"
             | "refine"
             | "search"
@@ -700,6 +703,22 @@ mod tests {
             log.path(),
             format!(
                 "{}\n0\tbase\t10\t0\t-\tbaseline\tbaseline\n1\t-\t9\t-1\t-\tdrift\trecalibrated\n",
+                tsv_header(Direction::Higher)
+            ),
+        )
+        .unwrap();
+
+        log.validate().unwrap();
+    }
+
+    #[test]
+    fn test_validate_accepts_legacy_result_statuses() {
+        let dir = tempfile::tempdir().unwrap();
+        let log = ResultsLog::create(dir.path(), Direction::Higher).unwrap();
+        fs::write(
+            log.path(),
+            format!(
+                "{}\n0\tbase\t10\t0\t-\tbaseline\tbaseline\n1\tabc1234\t11\t+1\tpass\tkeep (reworked)\tadjusted fix\n2\t-\t10\t0\t-\thook-blocked\tcommit hook blocked\n3\t-\t10\t0\t-\tmetric-error\tverify output invalid\n",
                 tsv_header(Direction::Higher)
             ),
         )

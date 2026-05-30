@@ -141,10 +141,13 @@ fn is_valid_status(value: &str) -> bool {
         value,
         "baseline"
             | "keep"
+            | "keep (reworked)"
             | "discard"
             | "crash"
             | "no-op"
             | "blocked"
+            | "hook-blocked"
+            | "metric-error"
             | "pivot"
             | "refine"
             | "search"
@@ -406,6 +409,21 @@ mod tests {
         let rows = parse_results_tsv(tsv).unwrap();
 
         assert_eq!(rows[1].status, "drift");
+    }
+
+    #[test]
+    fn test_parse_results_tsv_accepts_legacy_result_statuses() {
+        let tsv = "# metric_direction: higher\niteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n\
+                   0\tbase\t85\t0\t-\tbaseline\tinitial\n\
+                   1\tabc1234\t86\t+1\tpass\tkeep (reworked)\tadjusted fix\n\
+                   2\t-\t85\t0\t-\thook-blocked\tcommit hook blocked\n\
+                   3\t-\t85\t0\t-\tmetric-error\tverify output invalid\n";
+
+        let rows = parse_results_tsv(tsv).unwrap();
+
+        assert_eq!(rows[1].status, "keep (reworked)");
+        assert_eq!(rows[2].status, "hook-blocked");
+        assert_eq!(rows[3].status, "metric-error");
     }
 
     #[test]

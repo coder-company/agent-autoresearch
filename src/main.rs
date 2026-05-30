@@ -2815,10 +2815,13 @@ fn parse_status(s: &str) -> Result<IterationStatus> {
     match s {
         "baseline" => Ok(IterationStatus::Baseline),
         "keep" => Ok(IterationStatus::Keep),
+        "keep (reworked)" => Ok(IterationStatus::KeepReworked),
         "discard" => Ok(IterationStatus::Discard),
         "crash" => Ok(IterationStatus::Crash),
         "no-op" => Ok(IterationStatus::NoOp),
         "blocked" => Ok(IterationStatus::Blocked),
+        "hook-blocked" => Ok(IterationStatus::HookBlocked),
+        "metric-error" => Ok(IterationStatus::MetricError),
         "pivot" => Ok(IterationStatus::Pivot),
         "refine" => Ok(IterationStatus::Refine),
         "search" => Ok(IterationStatus::Search),
