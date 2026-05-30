@@ -52,6 +52,7 @@ check_synced_reference_package() {
 required_paths=(
     README.md
     CONTRIBUTING.md
+    CONTEXT.md
     SKILL.md
     agents/openai.yaml
     agents/skill-openai.yaml
@@ -128,6 +129,9 @@ require_grep 'timeout-seconds' references/parallel-experiments-protocol.md
 require_grep 'autoresearch parallel cleanup' references/parallel-experiments-protocol.md
 require_grep '\$autoresearch exec' guide/autoresearch-codex.md
 require_grep 'Claude Code, Codex, and OpenCode' README.md
+require_grep 'Companion Repo' CONTEXT.md
+require_grep 'Structured Metrics' CONTEXT.md
+require_grep 'Runtime Snapshot' CONTEXT.md
 for i18n_readme in "$ROOT"/docs/i18n/README_*.md; do
     grep -q '/autoresearch:improve' "$i18n_readme" \
         || fail "${i18n_readme#"$ROOT"/} is missing /autoresearch:improve"
