@@ -95,7 +95,7 @@ cd agent-autoresearch
 ./install.sh
 ```
 
-Nécessite la chaîne d'outils Rust ([rustup.rs](https://rustup.rs)). Produit un binaire d'environ 2,5 Mo sans aucune dépendance d'exécution.
+Nécessite la chaîne d'outils Rust ([rustup.rs](https://rustup.rs)). Produit un binaire d'environ 3 Mo sans aucune dépendance d'exécution.
 
 ---
 

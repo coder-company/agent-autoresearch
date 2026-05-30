@@ -29,4 +29,4 @@ Initial release.
 - **OpenCode package**: `.opencode/` commands and skill package with underscore command names
 - **Agent commands**: `commands/autoresearch.md` root + 12 subcommand files
 - **Reference docs**: 27 protocol and workflow reference documents
-- **Release profile**: `opt-level = "z"`, LTO, strip, `panic = "abort"` — ~2.5MB binary
+- **Release profile**: `opt-level = "z"`, LTO, strip, `panic = "abort"` — about 3MB binary with a 5MB contributor-gate ceiling

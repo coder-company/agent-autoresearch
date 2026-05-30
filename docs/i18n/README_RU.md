@@ -95,7 +95,7 @@ cd agent-autoresearch
 ./install.sh
 ```
 
-Требуется Rust toolchain ([rustup.rs](https://rustup.rs)). На выходе — бинарник ~2,5 МБ без runtime-зависимостей.
+Требуется Rust toolchain ([rustup.rs](https://rustup.rs)). На выходе — бинарник ~3 МБ без runtime-зависимостей.
 
 ---
 

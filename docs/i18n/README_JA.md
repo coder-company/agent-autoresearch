@@ -95,7 +95,7 @@ cd agent-autoresearch
 ./install.sh
 ```
 
-Rust ツールチェーンが必要です（[rustup.rs](https://rustup.rs)）。ランタイム依存ゼロの約 2.5MB バイナリが生成されます。
+Rust ツールチェーンが必要です（[rustup.rs](https://rustup.rs)）。ランタイム依存ゼロの約 3MB バイナリが生成されます。
 
 ---
 

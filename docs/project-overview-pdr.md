@@ -12,7 +12,7 @@ There is no lightweight, compiled infrastructure that gives agents a tight modif
 
 ## Solution
 
-A single compiled Rust binary (~2.5MB) that provides:
+A single compiled Rust binary (about 3MB) that provides:
 
 - **Hook handler** — sub-5ms responses for Claude Code's plugin hook system (PreToolUse, PostToolUse, UserPromptSubmit, Stop, etc.)
 - **CLI commands** — `init`, `verify`, `guard`, `log`, `decide`, `evals`, `status`, `screen`, `resume`, `progress`, `lessons`, `handoff`, `exec`
@@ -52,7 +52,7 @@ The binary handles the mechanical infrastructure. The agent handles the intellig
 | Metric | Target | Rationale |
 |--------|--------|-----------|
 | Hook response latency | <5ms p99 | Hooks fire on every tool use; must be invisible |
-| Binary size | <3MB | Single-file distribution, no extraction needed |
+| Binary size | <5MB | Single-file distribution, no extraction needed |
 | Runtime dependencies | Zero | No Node, Python, Docker. Just the binary. |
 | Cold start | <10ms | First invocation must feel instant |
 | Memory usage | <5MB RSS | Runs alongside the agent, not competing for resources |

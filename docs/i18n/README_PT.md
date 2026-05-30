@@ -95,7 +95,7 @@ cd agent-autoresearch
 ./install.sh
 ```
 
-Requer a toolchain Rust ([rustup.rs](https://rustup.rs)). Gera um binário de ~2,5 MB sem dependências de execução.
+Requer a toolchain Rust ([rustup.rs](https://rustup.rs)). Gera um binário de ~3 MB sem dependências de execução.
 
 ---
 

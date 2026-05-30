@@ -112,3 +112,13 @@ fn release_script_blocks_untracked_dirty_worktrees() {
     assert!(script.contains("git -C \"$ROOT\" status --porcelain"));
     assert!(!script.contains("git -C \"$ROOT\" diff --quiet HEAD"));
 }
+
+#[test]
+fn contributor_gate_enforces_release_binary_size() {
+    let root = repo_root();
+    let script = std::fs::read_to_string(root.join("scripts/run_contributor_gate.sh")).unwrap();
+
+    assert!(script.contains("MAX_RELEASE_BINARY_BYTES=$((5 * 1024 * 1024))"));
+    assert!(script.contains("wc -c < \"$RELEASE_BINARY\""));
+    assert!(script.contains("Release binary is too large"));
+}

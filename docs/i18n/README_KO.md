@@ -95,7 +95,7 @@ cd agent-autoresearch
 ./install.sh
 ```
 
-Rust 툴체인이 필요합니다([rustup.rs](https://rustup.rs)). 런타임 의존성 없는 약 2.5MB 바이너리가 생성됩니다.
+Rust 툴체인이 필요합니다([rustup.rs](https://rustup.rs)). 런타임 의존성 없는 약 3MB 바이너리가 생성됩니다.
 
 ---
 

@@ -95,7 +95,7 @@ cd agent-autoresearch
 ./install.sh
 ```
 
-Requiere la cadena de herramientas de Rust ([rustup.rs](https://rustup.rs)). Genera un binario de ~2,5 MB sin dependencias en tiempo de ejecución.
+Requiere la cadena de herramientas de Rust ([rustup.rs](https://rustup.rs)). Genera un binario de ~3 MB sin dependencias en tiempo de ejecución.
 
 ---
 

@@ -22,7 +22,7 @@ cd agent-autoresearch
 # Debug build (fast compile, larger binary)
 cargo build
 
-# Release build (optimized, ~2.5MB binary)
+# Release build (optimized, about 3MB binary)
 cargo build --release
 ```
 

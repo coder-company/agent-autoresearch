@@ -95,7 +95,7 @@ cd agent-autoresearch
 ./install.sh
 ```
 
-需要 Rust 工具链（[rustup.rs](https://rustup.rs)）。生成约 2.5MB 的零依赖二进制文件。
+需要 Rust 工具链（[rustup.rs](https://rustup.rs)）。生成约 3MB 的零依赖二进制文件。
 
 ---
 

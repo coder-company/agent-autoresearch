@@ -95,7 +95,7 @@ cd agent-autoresearch
 ./install.sh
 ```
 
-Benötigt die Rust-Toolchain ([rustup.rs](https://rustup.rs)). Erzeugt eine ca. 2,5 MB große Binärdatei ohne Laufzeitabhängigkeiten.
+Benötigt die Rust-Toolchain ([rustup.rs](https://rustup.rs)). Erzeugt eine ca. 3 MB große Binärdatei ohne Laufzeitabhängigkeiten.
 
 ---
 

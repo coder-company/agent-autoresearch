@@ -18,6 +18,16 @@ cargo test
 echo "==> cargo build --release"
 cargo build --release
 
+echo "==> release binary size check"
+MAX_RELEASE_BINARY_BYTES=$((5 * 1024 * 1024))
+RELEASE_BINARY="$ROOT/target/release/autoresearch"
+RELEASE_BINARY_BYTES=$(wc -c < "$RELEASE_BINARY" | tr -d '[:space:]')
+if [[ "$RELEASE_BINARY_BYTES" -gt "$MAX_RELEASE_BINARY_BYTES" ]]; then
+    echo "Release binary is too large: ${RELEASE_BINARY_BYTES} bytes (limit: ${MAX_RELEASE_BINARY_BYTES})" >&2
+    exit 1
+fi
+echo "Release binary size: ${RELEASE_BINARY_BYTES} bytes"
+
 echo "==> bash -n install.sh"
 bash -n install.sh
 

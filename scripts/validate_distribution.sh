@@ -164,6 +164,10 @@ require_grep 'Structured metrics' COMPARISON.md
 require_grep '\.agents/skills/autoresearch/' AGENTS.md
 require_grep '\.opencode/' AGENTS.md
 require_grep '\.agents/skills/autoresearch/' docs/changelog.md
+require_grep 'MAX_RELEASE_BINARY_BYTES=\$\(\(5 \* 1024 \* 1024\)\)' scripts/run_contributor_gate.sh
+if grep -R -E '2[,.]5 ?M(B|o|Б)' "$ROOT/AGENTS.md" "$ROOT/CONTRIBUTING.md" "$ROOT/docs" "$ROOT/scripts/release.md" >/dev/null; then
+    fail "docs still advertise the old 2.5MB binary size"
+fi
 
 check_synced_reference_package "$ROOT/.agents/skills/autoresearch"
 check_synced_reference_package "$ROOT/plugins/autoresearch/skills/autoresearch"

@@ -130,7 +130,7 @@ I want to get rid of all the `any` types in my TypeScript code
 
 ## Architecture
 
-Written in Rust. Single 2.5MB binary. Sub-5ms hook execution. Zero runtime dependencies.
+Written in Rust. Single about-3MB binary. Sub-5ms hook execution. Zero runtime dependencies.
 
 ```
 agent-autoresearch/
