@@ -29,6 +29,12 @@ pub struct HookResponse {
     /// Optional terminal notification sequence for session-end style hooks.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub terminal_sequence: Option<String>,
+    /// Optional Claude permission decision for approved tool rewrites.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub permission_decision: Option<String>,
+    /// Optional rewritten tool input for approved tool calls.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub updated_input: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

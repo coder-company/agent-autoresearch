@@ -482,7 +482,7 @@ fn test_privacy_block_catches_sensitive_paths() {
 
 #[test]
 fn test_privacy_block_allows_documented_exceptions_and_approved_paths() {
-    for path in [".env.example", ".env.sample", "APPROVED:.env"] {
+    for path in [".env.example", ".env.sample"] {
         let input = serde_json::json!({
             "tool_name": "Read",
             "tool_input": {
@@ -493,6 +493,30 @@ fn test_privacy_block_allows_documented_exceptions_and_approved_paths() {
         run_hook("privacy-block", &input.to_string())
             .success()
             .stdout(predicate::str::contains("\"decision\":\"block\"").not());
+    }
+}
+
+#[test]
+fn test_privacy_block_rewrites_approved_paths() {
+    for (path_key, path) in [
+        ("file_path", "APPROVED:.env"),
+        ("path", "APPROVED:.env.local"),
+    ] {
+        let input = serde_json::json!({
+            "tool_name": "Read",
+            "tool_input": {
+                path_key: path
+            }
+        });
+
+        run_hook("privacy-block", &input.to_string())
+            .success()
+            .stdout(predicate::str::contains("\"decision\":\"block\"").not())
+            .stdout(predicate::str::contains("\"permissionDecision\":\"allow\""))
+            .stdout(predicate::str::contains(format!(
+                "\"{path_key}\":\"{}\"",
+                path.trim_start_matches("APPROVED:")
+            )));
     }
 }
 

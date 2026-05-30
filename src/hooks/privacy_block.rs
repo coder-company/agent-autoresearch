@@ -43,9 +43,16 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
         None => return HookResponse::allow(),
     };
 
-    if let Some(path) = tool_path(input) {
+    if let Some((path_key, path)) = tool_path(input) {
         if path.starts_with("APPROVED:") {
-            return HookResponse::allow();
+            let stripped_path = path.trim_start_matches("APPROVED:");
+            let mut updated_input = serde_json::Map::new();
+            updated_input.insert(path_key.to_string(), serde_json::json!(stripped_path));
+            return HookResponse {
+                permission_decision: Some("allow".to_string()),
+                updated_input: Some(serde_json::Value::Object(updated_input)),
+                ..Default::default()
+            };
         }
         if is_sensitive_path(path) {
             let filename = Path::new(path)
@@ -100,12 +107,15 @@ fn sensitive_bash_path(input: &HookInput) -> Option<String> {
         .find(|token| !token.starts_with("APPROVED:") && is_sensitive_path(token))
 }
 
-fn tool_path(input: &HookInput) -> Option<&str> {
-    input
-        .tool_input
-        .as_ref()
-        .and_then(|value| value.get("file_path").or_else(|| value.get("path")))
+fn tool_path(input: &HookInput) -> Option<(&str, &str)> {
+    let tool_input = input.tool_input.as_ref()?;
+    if let Some(path) = tool_input.get("file_path").and_then(|value| value.as_str()) {
+        return Some(("file_path", path));
+    }
+    tool_input
+        .get("path")
         .and_then(|value| value.as_str())
+        .map(|path| ("path", path))
 }
 
 fn is_sensitive_path(path: &str) -> bool {
