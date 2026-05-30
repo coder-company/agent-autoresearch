@@ -2219,6 +2219,61 @@ fn test_health_reports_corrupt_context_as_blocker() {
 }
 
 #[test]
+fn test_health_warns_dirty_companion_repo_target() {
+    let workspace = TempDir::new().unwrap();
+    init_git_fixture(&workspace);
+    let workspace_root = workspace.path().to_str().unwrap();
+
+    let companion = TempDir::new().unwrap();
+    init_git_fixture(&companion);
+    commit_file(
+        &companion,
+        "pkg/helper.rs",
+        "pub fn helper() {}\n",
+        "add helper",
+    );
+    let companion_root = companion.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--workspace-root",
+            workspace_root,
+            "--primary-repo",
+            workspace_root,
+            "--companion-repo-scope",
+            &format!("{companion_root}=pkg/**/*.rs"),
+            "--cwd",
+            workspace_root,
+        ])
+        .assert()
+        .success();
+
+    std::fs::write(companion.path().join("pkg/dirty.rs"), "pub fn dirty() {}\n").unwrap();
+
+    cmd()
+        .args([
+            "health",
+            "--verify",
+            "cat metric.txt",
+            "--min-free-mb",
+            "1",
+            "--cwd",
+            workspace_root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"warn\""))
+        .stdout(predicate::str::contains("repo_target_dirty_worktree"))
+        .stdout(predicate::str::contains("companion repo"))
+        .stdout(predicate::str::contains("pkg/dirty.rs"));
+}
+
+#[test]
 fn test_health_blocks_context_path_mismatch() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

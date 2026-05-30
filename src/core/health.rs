@@ -3,7 +3,7 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use super::context::RunContext;
+use super::context::{RepoTarget, RunContext};
 use super::git::{GitRepo, WorktreeStatus};
 use super::results::{results_dir, ResultsLog};
 use super::state::RunState;
@@ -173,6 +173,7 @@ pub fn run_health_check(
                             message,
                         });
                     }
+                    check_repo_targets(&context, &context_path, &mut warnings, &mut blockers)?;
                 }
                 Err(err) => blockers.push(HealthFinding {
                     code: "context_corrupt",
@@ -280,6 +281,117 @@ fn health_resume_decision(
         (true, true, _) => "full_resume",
         (true, false, _) => "tsv_fallback",
         _ => "fresh_start",
+    }
+}
+
+fn check_repo_targets(
+    context: &RunContext,
+    context_path: &Path,
+    warnings: &mut Vec<HealthFinding>,
+    blockers: &mut Vec<HealthFinding>,
+) -> Result<()> {
+    for target in &context.repo_targets {
+        check_repo_target(target, context_path, warnings, blockers)?;
+    }
+    Ok(())
+}
+
+fn check_repo_target(
+    target: &RepoTarget,
+    context_path: &Path,
+    warnings: &mut Vec<HealthFinding>,
+    blockers: &mut Vec<HealthFinding>,
+) -> Result<()> {
+    let target_path = PathBuf::from(&target.path);
+    let target_label = format!("{} repo {}", target.role, target.path);
+    match GitRepo::open(&target_path) {
+        Ok(repo) => {
+            if repo.head_detached()? {
+                blockers.push(HealthFinding {
+                    code: "repo_target_detached_head",
+                    message: format!("{target_label} has detached HEAD"),
+                });
+            }
+
+            let lock_files = repo.lock_files();
+            if !lock_files.is_empty() {
+                blockers.push(HealthFinding {
+                    code: "repo_target_git_lock_file",
+                    message: format!(
+                        "{target_label} has stale git lock files: {}",
+                        lock_files
+                            .iter()
+                            .map(|path| display_path(path))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                });
+            }
+
+            let staged_artifacts = repo.staged_owned_artifacts()?;
+            if !staged_artifacts.is_empty() {
+                blockers.push(HealthFinding {
+                    code: "repo_target_staged_autoresearch_artifacts",
+                    message: format!(
+                        "{target_label} has autoresearch-owned artifacts staged: {}",
+                        staged_artifacts.join(", ")
+                    ),
+                });
+            }
+
+            if let WorktreeStatus::Dirty(files) = repo.worktree_status()? {
+                warnings.push(HealthFinding {
+                    code: "repo_target_dirty_worktree",
+                    message: format!(
+                        "{target_label} has unexpected worktree changes: {}",
+                        files.join(", ")
+                    ),
+                });
+            }
+        }
+        Err(err) => blockers.push(HealthFinding {
+            code: "repo_target_unavailable",
+            message: format!("{target_label} is not available: {err}"),
+        }),
+    }
+
+    check_repo_target_pointer(&target_path, context_path, &target_label, blockers);
+    Ok(())
+}
+
+fn check_repo_target_pointer(
+    target_path: &Path,
+    context_path: &Path,
+    target_label: &str,
+    blockers: &mut Vec<HealthFinding>,
+) {
+    let pointer_path = target_path.join(".codex-autoresearch/pointer.json");
+    let expected_context = absolute_path(context_path);
+    match std::fs::read_to_string(&pointer_path) {
+        Ok(content) => match serde_json::from_str::<serde_json::Value>(&content) {
+            Ok(pointer) => {
+                let actual_context = pointer
+                    .get("context_path")
+                    .and_then(|value| value.as_str())
+                    .unwrap_or("");
+                if actual_context != expected_context {
+                    blockers.push(HealthFinding {
+                        code: "repo_target_pointer_mismatch",
+                        message: format!(
+                            "{target_label} pointer context_path is {actual_context}; expected {expected_context}"
+                        ),
+                    });
+                }
+            }
+            Err(err) => blockers.push(HealthFinding {
+                code: "repo_target_pointer_corrupt",
+                message: format!("failed to parse {}: {err}", pointer_path.display()),
+            }),
+        },
+        Err(err) => blockers.push(HealthFinding {
+            code: "repo_target_pointer_missing",
+            message: format!("failed to read {}: {err}", pointer_path.display()),
+        }),
     }
 }
 
