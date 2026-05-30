@@ -1869,6 +1869,47 @@ fn test_resume_defaults_to_repo_root_results_from_subdir() {
 }
 
 #[test]
+fn test_resume_resolves_workspace_from_repo_pointer() {
+    let workspace = TempDir::new().unwrap();
+    init_git_fixture(&workspace);
+    let workspace_root = workspace.path().to_str().unwrap();
+
+    let primary = TempDir::new().unwrap();
+    init_git_fixture(&primary);
+    let primary_root = primary.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--workspace-root",
+            workspace_root,
+            "--primary-repo",
+            primary_root,
+            "--cwd",
+            workspace_root,
+        ])
+        .assert()
+        .success();
+
+    assert!(primary
+        .path()
+        .join(".codex-autoresearch/pointer.json")
+        .exists());
+    assert!(!primary.path().join("autoresearch-results").exists());
+
+    cmd()
+        .args(["resume", "--cwd", primary_root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"resumable\": true"))
+        .stdout(predicate::str::contains("\"recommendation\": \"resume\""));
+}
+
+#[test]
 fn test_resume_uses_results_tsv_fallback_without_state() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

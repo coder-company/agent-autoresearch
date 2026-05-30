@@ -2551,11 +2551,49 @@ fn resolve_results_workspace(cwd: Option<PathBuf>) -> PathBuf {
     if workspace.join("autoresearch-results").exists() {
         return workspace;
     }
+    if let Some(pointer_workspace) = pointer_results_workspace(&workspace) {
+        return pointer_workspace;
+    }
     GitRepo::open(&workspace)
         .ok()
         .and_then(|repo| repo.workdir())
-        .filter(|root| root.join("autoresearch-results").exists())
+        .and_then(|root| {
+            if root.join("autoresearch-results").exists() {
+                Some(root)
+            } else {
+                pointer_results_workspace(&root)
+            }
+        })
         .unwrap_or(workspace)
+}
+
+fn pointer_results_workspace(repo: &Path) -> Option<PathBuf> {
+    let pointer_path = repo.join(".codex-autoresearch/pointer.json");
+    let pointer: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(pointer_path).ok()?).ok()?;
+
+    if let Some(workspace_root) = pointer
+        .get("workspace_root")
+        .and_then(|value| value.as_str())
+    {
+        let workspace = PathBuf::from(workspace_root);
+        if workspace.join("autoresearch-results").exists() {
+            return Some(workspace);
+        }
+    }
+
+    let context_path = PathBuf::from(pointer.get("context_path")?.as_str()?);
+    let artifact_root = context_path.parent()?;
+    if artifact_root
+        .file_name()
+        .is_some_and(|name| name == "autoresearch-results")
+    {
+        let workspace = artifact_root.parent()?.to_path_buf();
+        if artifact_root.exists() {
+            return Some(workspace);
+        }
+    }
+    None
 }
 
 fn default_results_tsv(cwd: &Path) -> Option<PathBuf> {
