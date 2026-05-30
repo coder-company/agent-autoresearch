@@ -2189,7 +2189,7 @@ fn cmd_progress(cwd: Option<PathBuf>) -> Result<()> {
 // ── Lessons ──────────────────────────────────────────────────────────
 
 fn cmd_lessons(search: Option<&str>, last: Option<usize>, cwd: Option<PathBuf>) -> Result<()> {
-    let workspace = resolve_cwd(cwd);
+    let workspace = resolve_results_workspace(cwd);
     let results_dir = workspace.join("autoresearch-results");
     let log = LessonsLog::open_or_create(&results_dir)?;
 

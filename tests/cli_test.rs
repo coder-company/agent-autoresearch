@@ -418,6 +418,29 @@ fn test_progress_defaults_to_repo_root_results_from_subdir() {
 }
 
 #[test]
+fn test_lessons_defaults_to_repo_root_results_from_subdir() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let results = dir.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    std::fs::write(
+        results.join("lessons.md"),
+        "# Autoresearch Lessons\n\n- [2026-01-01] **root lesson** — keep it (worked)\n",
+    )
+    .unwrap();
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+
+    cmd()
+        .args(["lessons", "--cwd", subdir.to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("root lesson"));
+
+    assert!(!subdir.join("autoresearch-results").exists());
+}
+
+#[test]
 fn test_decide_accepts_negative_metric_value() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
