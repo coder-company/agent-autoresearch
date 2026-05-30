@@ -4087,6 +4087,59 @@ fn test_runtime_start_blocks_unexpected_dirty_worktree() {
 }
 
 #[test]
+fn test_runtime_start_blocks_dirty_companion_worktree() {
+    let workspace = TempDir::new().unwrap();
+    init_git_fixture(&workspace);
+    let workspace_root = workspace.path().to_str().unwrap();
+
+    let companion = TempDir::new().unwrap();
+    init_git_fixture(&companion);
+    commit_file(
+        &companion,
+        "pkg/helper.rs",
+        "pub fn helper() {}\n",
+        "add helper",
+    );
+    let companion_root = companion.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--run-mode",
+            "background",
+            "--workspace-root",
+            workspace_root,
+            "--primary-repo",
+            workspace_root,
+            "--companion-repo-scope",
+            &format!("{companion_root}=pkg/**/*.rs"),
+            "--cwd",
+            workspace_root,
+        ])
+        .assert()
+        .success();
+
+    std::fs::write(companion.path().join("pkg/dirty.rs"), "pub fn dirty() {}\n").unwrap();
+
+    cmd()
+        .args(["runtime", "start", "--dry-run", "--cwd", workspace_root])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("runtime preflight blocked"))
+        .stderr(predicate::str::contains("companion repo"))
+        .stderr(predicate::str::contains("pkg/dirty.rs"));
+
+    assert!(!workspace
+        .path()
+        .join("autoresearch-results/runtime.json")
+        .exists());
+}
+
+#[test]
 fn test_runtime_start_requires_context() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

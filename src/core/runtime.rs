@@ -16,7 +16,7 @@ use std::thread;
 use std::time::Duration;
 
 use super::config::RunConfig;
-use super::context::RepoTarget;
+use super::context::{RepoTarget, RunContext};
 use super::criteria::evaluate_criteria;
 use super::git::{GitRepo, WorktreeStatus};
 use super::health;
@@ -291,7 +291,7 @@ fn prepare_runtime_launch(
     if !health.has_context {
         anyhow::bail!("runtime preflight blocked: missing_context");
     }
-    ensure_clean_launch_worktree(workspace)?;
+    ensure_clean_launch_worktrees(workspace)?;
 
     let manifest = create_launch_manifest(workspace, execution_policy, codex_bin)?;
     let paths = write_launch_manifest(workspace, &manifest)?;
@@ -307,11 +307,25 @@ fn prepare_runtime_launch(
     Ok((manifest, paths))
 }
 
-fn ensure_clean_launch_worktree(workspace: &Path) -> Result<()> {
-    let git = GitRepo::open(workspace)?;
+fn ensure_clean_launch_worktrees(workspace: &Path) -> Result<()> {
+    let context_path = paths(workspace).results_path.join("context.json");
+    if context_path.exists() {
+        let context: RunContext = serde_json::from_str(&fs::read_to_string(&context_path)?)
+            .with_context(|| format!("failed to parse {}", context_path.display()))?;
+        for target in context.repo_targets {
+            ensure_clean_launch_repo(&target.path, &target.role)?;
+        }
+        return Ok(());
+    }
+
+    ensure_clean_launch_repo(&workspace.display().to_string(), "primary")
+}
+
+fn ensure_clean_launch_repo(repo_path: &str, role: &str) -> Result<()> {
+    let git = GitRepo::open(Path::new(repo_path))?;
     if let WorktreeStatus::Dirty(files) = git.worktree_status()? {
         anyhow::bail!(
-            "runtime preflight blocked: unexpected worktree changes before launch: {}",
+            "runtime preflight blocked: unexpected worktree changes before launch in {role} repo {repo_path}: {}",
             files.join(", ")
         );
     }
