@@ -575,6 +575,9 @@ fn test_iteration_context_throttles_by_session_id() {
 #[test]
 fn test_dev_rules_reminder_throttles_by_session_id() {
     let dir = tempfile::tempdir().unwrap();
+    init_git_repo(dir.path());
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
     std::fs::create_dir_all(dir.path().join("plans")).unwrap();
     std::fs::create_dir_all(dir.path().join("docs")).unwrap();
     let input = serde_json::json!({
@@ -582,15 +585,18 @@ fn test_dev_rules_reminder_throttles_by_session_id() {
     });
 
     for _ in 0..4 {
-        run_hook_in(dir.path(), "dev-rules-reminder", &input.to_string())
+        run_hook_in(&subdir, "dev-rules-reminder", &input.to_string())
             .success()
             .stdout(predicate::str::contains("\"additionalContext\"").not());
     }
 
-    run_hook_in(dir.path(), "dev-rules-reminder", &input.to_string())
+    run_hook_in(&subdir, "dev-rules-reminder", &input.to_string())
         .success()
         .stdout(predicate::str::contains("\"additionalContext\""))
         .stdout(predicate::str::contains("Dev context"))
+        .stdout(predicate::str::contains(
+            dir.path().join("plans").display().to_string(),
+        ))
         .stdout(predicate::str::contains("docs/code-standards.md"));
 }
 

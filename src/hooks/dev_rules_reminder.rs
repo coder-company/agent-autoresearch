@@ -1,6 +1,7 @@
 use super::{HookInput, HookResponse};
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 /// Periodically remind the agent of core autoresearch rules during long runs.
 pub fn run(input: Option<&HookInput>) -> HookResponse {
@@ -8,7 +9,8 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
         return HookResponse::allow();
     };
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    if !should_inject_now(input, &cwd) {
+    let project_root = git_output(&cwd, &["rev-parse", "--show-toplevel"]).unwrap_or(cwd);
+    if !should_inject_now(input, &project_root) {
         return HookResponse::allow();
     }
 
@@ -16,8 +18,8 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
         "## Dev context\n\
          - Plan: {} (check for active plan.md)\n\
          - Standards: {}",
-        cwd.join("plans").display(),
-        cwd.join("docs/code-standards.md").display()
+        project_root.join("plans").display(),
+        project_root.join("docs/code-standards.md").display()
     ))
 }
 
@@ -43,4 +45,19 @@ fn session_counter_path(cwd: &Path, session_id: &str) -> PathBuf {
         "autoresearch-dev-rules-reminder-{}.count",
         hasher.finish()
     ))
+}
+
+fn git_output(cwd: &Path, args: &[&str]) -> Option<PathBuf> {
+    let output = Command::new("git")
+        .args(args)
+        .current_dir(cwd)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    String::from_utf8(output.stdout)
+        .ok()
+        .map(|value| PathBuf::from(value.trim()))
+        .filter(|value| !value.as_os_str().is_empty())
 }
