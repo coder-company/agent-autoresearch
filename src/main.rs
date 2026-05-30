@@ -1334,6 +1334,11 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
     } else {
         0
     };
+    let rework_rate = if total_iterations > 0 {
+        (reworked_keeps as f64 / total_iterations as f64 * 100.0).round() as u32
+    } else {
+        0
+    };
 
     // Determine trend from last 5 keeps
     let recent_keeps: Vec<Decimal> = metrics
@@ -1371,6 +1376,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 "total_iterations": total_iterations,
                 "keeps": keeps,
                 "reworked_keeps": reworked_keeps,
+                "rework_rate_pct": rework_rate,
                 "discards": discards,
                 "crashes": crashes,
                 "guard_failures": guard_failures,
@@ -1404,6 +1410,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 total_iterations,
                 keeps,
                 reworked_keeps,
+                rework_rate,
                 discards,
                 crashes,
                 guard_failures,
@@ -1431,6 +1438,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 total_iterations,
                 keeps,
                 reworked_keeps,
+                rework_rate,
                 discards,
                 crashes,
                 guard_failures,
@@ -1539,6 +1547,7 @@ struct EvalsReport<'a> {
     total_iterations: usize,
     keeps: usize,
     reworked_keeps: usize,
+    rework_rate: u32,
     discards: usize,
     crashes: usize,
     guard_failures: usize,
@@ -1568,6 +1577,7 @@ fn render_evals_markdown(report: EvalsReport<'_>) -> String {
     writeln!(out, "| Iterations | {} |", report.total_iterations).unwrap();
     writeln!(out, "| Kept | {} |", report.keeps).unwrap();
     writeln!(out, "| Reworked keeps | {} |", report.reworked_keeps).unwrap();
+    writeln!(out, "| Rework rate | {}% |", report.rework_rate).unwrap();
     writeln!(out, "| Discarded | {} |", report.discards).unwrap();
     writeln!(out, "| Crashes | {} |", report.crashes).unwrap();
     writeln!(out, "| Guard failures | {} |", report.guard_failures).unwrap();

@@ -641,6 +641,7 @@ fn test_evals_accepts_legacy_result_statuses() {
         .stdout(predicate::str::contains("\"total_iterations\": 3"))
         .stdout(predicate::str::contains("\"keeps\": 1"))
         .stdout(predicate::str::contains("\"reworked_keeps\": 1"))
+        .stdout(predicate::str::contains("\"rework_rate_pct\": 33"))
         .stdout(predicate::str::contains("\"crashes\": 2"))
         .stdout(predicate::str::contains("\"efficiency_pct\": 33"));
 }
