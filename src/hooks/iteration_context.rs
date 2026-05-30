@@ -1,6 +1,7 @@
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::time::SystemTime;
 
 use super::{HookInput, HookResponse};
@@ -16,10 +17,11 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
 
     // Find the active TSV file
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    if !should_inject_now(_input, &cwd) {
+    let project_root = git_output(&cwd, &["rev-parse", "--show-toplevel"]).unwrap_or(cwd);
+    if !should_inject_now(_input, &project_root) {
         return HookResponse::allow();
     }
-    let tsv_path = match find_recent_tsv(&cwd) {
+    let tsv_path = match find_recent_tsv(&project_root) {
         Some(p) => p,
         None => return HookResponse::allow(),
     };
@@ -48,7 +50,7 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
     let tail_n = 3.min(total);
     let tail = &data_lines[total.saturating_sub(tail_n)..];
 
-    let rel_path = pathdiff(&cwd, &tsv_path);
+    let rel_path = pathdiff(&project_root, &tsv_path);
 
     let mut text = format!(
         "## Active iteration state\n**TSV:** {}\n**Rows:** {}\n\n{}",
@@ -158,4 +160,19 @@ fn pathdiff(base: &Path, target: &Path) -> String {
         .strip_prefix(base)
         .map(|p| p.display().to_string())
         .unwrap_or_else(|_| target.display().to_string())
+}
+
+fn git_output(cwd: &Path, args: &[&str]) -> Option<PathBuf> {
+    let output = Command::new("git")
+        .args(args)
+        .current_dir(cwd)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    String::from_utf8(output.stdout)
+        .ok()
+        .map(|value| PathBuf::from(value.trim()))
+        .filter(|value| !value.as_os_str().is_empty())
 }

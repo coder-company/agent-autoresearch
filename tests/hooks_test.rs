@@ -540,6 +540,9 @@ fn test_iteration_context_handles_empty_input() {
 #[test]
 fn test_iteration_context_throttles_by_session_id() {
     let dir = tempfile::tempdir().unwrap();
+    init_git_repo(dir.path());
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
     let results = dir.path().join("autoresearch-results");
     std::fs::create_dir_all(&results).unwrap();
     std::fs::write(
@@ -553,14 +556,17 @@ fn test_iteration_context_throttles_by_session_id() {
     });
 
     for _ in 0..4 {
-        run_hook_in(dir.path(), "iteration-context", &input.to_string())
+        run_hook_in(&subdir, "iteration-context", &input.to_string())
             .success()
             .stdout(predicate::str::contains("\"additionalContext\"").not());
     }
 
-    run_hook_in(dir.path(), "iteration-context", &input.to_string())
+    run_hook_in(&subdir, "iteration-context", &input.to_string())
         .success()
         .stdout(predicate::str::contains("\"additionalContext\""))
+        .stdout(predicate::str::contains(
+            "**TSV:** autoresearch-results/results.tsv",
+        ))
         .stdout(predicate::str::contains("Active iteration state"));
 }
 
