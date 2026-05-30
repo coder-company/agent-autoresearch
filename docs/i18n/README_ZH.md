@@ -61,7 +61,9 @@
 ### Claude Code（插件安装）
 
 ```
-claude plugin add coder-company/agent-autoresearch
+git clone https://github.com/coder-company/agent-autoresearch.git
+cd agent-autoresearch
+./install.sh --yes --claude
 ```
 
 重启会话。全部 12 个命令立即可用。

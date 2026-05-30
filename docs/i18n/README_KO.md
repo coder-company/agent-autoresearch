@@ -61,7 +61,9 @@
 ### Claude Code (플러그인 설치)
 
 ```
-claude plugin add coder-company/agent-autoresearch
+git clone https://github.com/coder-company/agent-autoresearch.git
+cd agent-autoresearch
+./install.sh --yes --claude
 ```
 
 세션을 재시작하세요. 12개 명령어가 모두 사용 가능합니다.

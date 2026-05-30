@@ -61,7 +61,9 @@
 ### Claude Code (установка плагина)
 
 ```
-claude plugin add coder-company/agent-autoresearch
+git clone https://github.com/coder-company/agent-autoresearch.git
+cd agent-autoresearch
+./install.sh --yes --claude
 ```
 
 Перезапустите сессию. Все 12 команд доступны.

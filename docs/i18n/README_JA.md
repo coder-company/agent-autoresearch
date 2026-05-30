@@ -61,7 +61,9 @@
 ### Claude Code（プラグインインストール）
 
 ```
-claude plugin add coder-company/agent-autoresearch
+git clone https://github.com/coder-company/agent-autoresearch.git
+cd agent-autoresearch
+./install.sh --yes --claude
 ```
 
 セッションを再起動。12個すべてのコマンドが利用可能になります。

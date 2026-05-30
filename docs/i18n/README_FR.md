@@ -61,7 +61,9 @@ Chaque amélioration s'empile. Chaque échec est automatiquement annulé. La pro
 ### Claude Code (installation plugin)
 
 ```
-claude plugin add coder-company/agent-autoresearch
+git clone https://github.com/coder-company/agent-autoresearch.git
+cd agent-autoresearch
+./install.sh --yes --claude
 ```
 
 Redémarrez votre session. Les 12 commandes sont disponibles.

@@ -61,7 +61,9 @@ Cada mejora se acumula. Cada fallo se revierte automáticamente. El progreso se 
 ### Claude Code (instalación de plugin)
 
 ```
-claude plugin add coder-company/agent-autoresearch
+git clone https://github.com/coder-company/agent-autoresearch.git
+cd agent-autoresearch
+./install.sh --yes --claude
 ```
 
 Reinicia tu sesión. Los 12 comandos están disponibles.
