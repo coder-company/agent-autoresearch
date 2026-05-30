@@ -154,6 +154,7 @@ impl ResultsLog {
         let content = fs::read_to_string(&self.path).context("Failed to read results TSV")?;
         let mut saw_direction = false;
         let mut saw_header = false;
+        let mut layout = None;
         let mut expected_main_iteration = 0u32;
         let mut pending_worker_iteration = None;
 
@@ -198,6 +199,7 @@ impl ResultsLog {
                         index + 1
                     );
                 }
+                layout = Some(ResultsTsvLayout::parse(line)?);
                 saw_header = true;
                 continue;
             }
@@ -209,16 +211,21 @@ impl ResultsLog {
             }
 
             let columns = line.split('\t').collect::<Vec<_>>();
-            if columns.len() != 7 {
+            let layout = layout
+                .as_ref()
+                .expect("layout is set once saw_header is true");
+            if columns.len() != layout.width {
                 anyhow::bail!(
-                    "results.tsv line {} has {} columns; expected 7",
+                    "results.tsv line {} has {} columns; expected {}",
                     index + 1,
-                    columns.len()
+                    columns.len(),
+                    layout.width
                 );
             }
-            let main_iteration = columns[0].parse::<u32>().ok();
+            let iteration_label = columns[layout.iteration];
+            let main_iteration = iteration_label.parse::<u32>().ok();
             if main_iteration.is_none() {
-                match worker_iteration_prefix(columns[0]) {
+                match worker_iteration_prefix(iteration_label) {
                     Some(worker_iteration) if worker_iteration == expected_main_iteration => {
                         pending_worker_iteration = Some(worker_iteration);
                     }
@@ -231,7 +238,7 @@ impl ResultsLog {
                     None => anyhow::bail!(
                         "results.tsv line {} has invalid iteration label {:?}",
                         index + 1,
-                        columns[0]
+                        iteration_label
                     ),
                 }
             }
@@ -249,35 +256,36 @@ impl ResultsLog {
                 }
                 expected_main_iteration += 1;
             }
-            columns[2]
+            columns[layout.metric]
                 .parse::<Decimal>()
                 .with_context(|| format!("results.tsv line {} has invalid metric", index + 1))?;
-            columns[3]
+            columns[layout.delta]
                 .trim_start_matches('+')
                 .parse::<Decimal>()
                 .with_context(|| format!("results.tsv line {} has invalid delta", index + 1))?;
-            if !is_valid_guard(columns[4]) {
+            if !is_valid_guard(columns[layout.guard]) {
                 anyhow::bail!(
                     "results.tsv line {} has invalid guard {:?}",
                     index + 1,
-                    columns[4]
+                    columns[layout.guard]
                 );
             }
-            if !is_valid_status(columns[5]) {
+            let status = columns[layout.status];
+            if !is_valid_status(status) {
                 anyhow::bail!(
                     "results.tsv line {} has invalid status {:?}",
                     index + 1,
-                    columns[5]
+                    status
                 );
             }
-            if main_iteration.is_none() && columns[5] == "baseline" {
+            if main_iteration.is_none() && status == "baseline" {
                 anyhow::bail!(
                     "results.tsv line {} has worker row with baseline status",
                     index + 1
                 );
             }
             if let Some(iteration) = main_iteration {
-                match (iteration, columns[5]) {
+                match (iteration, status) {
                     (0, "baseline") => {}
                     (0, status) => anyhow::bail!(
                         "results.tsv line {} has baseline iteration with status {:?}",
@@ -317,6 +325,43 @@ impl ResultsLog {
 
 fn is_valid_guard(value: &str) -> bool {
     matches!(value, "pass" | "fail" | "-" | "skip")
+}
+
+#[derive(Debug, Clone)]
+struct ResultsTsvLayout {
+    iteration: usize,
+    metric: usize,
+    delta: usize,
+    guard: usize,
+    status: usize,
+    width: usize,
+}
+
+impl ResultsTsvLayout {
+    fn parse(header: &str) -> Result<Self> {
+        let columns = header.split('\t').collect::<Vec<_>>();
+        require_tsv_column(&columns, "commit", &["commit"])?;
+        require_tsv_column(&columns, "description", &["description"])?;
+        Ok(Self {
+            iteration: require_tsv_column(&columns, "iteration", &["iteration"])?,
+            metric: require_tsv_column(
+                &columns,
+                "metric",
+                &["metric", "metric_value", "error_count"],
+            )?,
+            delta: require_tsv_column(&columns, "delta", &["delta"])?,
+            guard: require_tsv_column(&columns, "guard", &["guard"])?,
+            status: require_tsv_column(&columns, "status", &["status"])?,
+            width: columns.len(),
+        })
+    }
+}
+
+fn require_tsv_column(headers: &[&str], label: &str, names: &[&str]) -> Result<usize> {
+    headers
+        .iter()
+        .position(|header| names.iter().any(|name| header == name))
+        .with_context(|| format!("results.tsv is missing required {label} column"))
 }
 
 fn is_valid_status(value: &str) -> bool {
@@ -737,6 +782,19 @@ mod tests {
                 "{}\n0\tbase\t10\t0\t-\tbaseline\tbaseline\n1\tabc1234\t11\t+1\tskip\tkeep\tguard skipped\n",
                 tsv_header(Direction::Higher)
             ),
+        )
+        .unwrap();
+
+        log.validate().unwrap();
+    }
+
+    #[test]
+    fn test_validate_accepts_timestamp_and_guard_metric_columns() {
+        let dir = tempfile::tempdir().unwrap();
+        let log = ResultsLog::create(dir.path(), Direction::Higher).unwrap();
+        fs::write(
+            log.path(),
+            "# metric_direction: higher\niteration\ttimestamp\tcommit\tmetric\tdelta\tguard\tguard-metric\tstatus\tdescription\n0\t2026-05-30T00:00:00Z\tbase\t10\t0\t-\t-\tbaseline\tbaseline\n1\t2026-05-30T00:01:00Z\tabc1234\t11\t+1\tpass\tok\tkeep\timproved\n",
         )
         .unwrap();
 

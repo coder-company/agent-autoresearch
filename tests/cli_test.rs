@@ -2948,6 +2948,42 @@ fn test_resume_tsv_fallback_retains_keep_reworked_status() {
 }
 
 #[test]
+fn test_resume_tsv_fallback_accepts_timestamp_and_guard_metric_columns() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    std::fs::write(
+        dir.path().join("autoresearch-results/results.tsv"),
+        "# metric_direction: higher\niteration\ttimestamp\tcommit\tmetric\tdelta\tguard\tguard-metric\tstatus\tdescription\n0\t2026-05-30T00:00:00Z\tabc1234\t50\t0\t-\t-\tbaseline\tinitial\n1\t2026-05-30T00:01:00Z\tdef5678\t55\t+5\tpass\tok\tkeep\timproved\n",
+    )
+    .unwrap();
+    std::fs::remove_file(dir.path().join("autoresearch-results/state.json")).unwrap();
+
+    cmd()
+        .args(["resume", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"tsv_fallback\""))
+        .stdout(predicate::str::contains("\"current_metric\": \"55\""))
+        .stdout(predicate::str::contains("\"best_metric\": \"55\""))
+        .stdout(predicate::str::contains("\"keeps\": 1"));
+}
+
+#[test]
 fn test_resume_tsv_fallback_counts_legacy_failure_statuses() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
