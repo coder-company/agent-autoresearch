@@ -1,10 +1,12 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use rust_decimal::Decimal;
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::str::FromStr;
 
 use autoresearch::core::config::{Direction, RollbackStrategy, RunConfig, RunMode, VerifyFormat};
+use autoresearch::core::criteria;
 use autoresearch::core::git::{GitRepo, WorktreeStatus};
 use autoresearch::core::health;
 use autoresearch::core::results::{
@@ -56,6 +58,12 @@ enum Commands {
         /// Guard command
         #[arg(long)]
         guard: Option<String>,
+        /// Acceptance criteria JSON array
+        #[arg(long)]
+        acceptance_criteria: Option<String>,
+        /// Required keep criteria JSON array
+        #[arg(long)]
+        required_keep_criteria: Option<String>,
         /// Iteration cap
         #[arg(long)]
         iterations: Option<u32>,
@@ -144,6 +152,9 @@ enum Commands {
         /// Trial metric value
         #[arg(long)]
         metric: String,
+        /// Full metrics JSON object for criteria checks
+        #[arg(long)]
+        metrics_json: Option<String>,
         /// Commit hash of the trial
         #[arg(long)]
         commit: Option<String>,
@@ -273,6 +284,8 @@ fn main() -> Result<()> {
             scope,
             metric,
             guard,
+            acceptance_criteria,
+            required_keep_criteria,
             iterations,
             run_tag,
             stop_condition,
@@ -290,6 +303,8 @@ fn main() -> Result<()> {
             scope,
             metric.as_deref(),
             guard.as_deref(),
+            acceptance_criteria,
+            required_keep_criteria,
             iterations,
             run_tag,
             stop_condition,
@@ -332,6 +347,7 @@ fn main() -> Result<()> {
         Commands::Decide {
             decision,
             metric,
+            metrics_json,
             commit,
             description,
             rollback,
@@ -340,6 +356,7 @@ fn main() -> Result<()> {
         } => cmd_decide(
             &decision,
             &metric,
+            metrics_json.as_deref(),
             commit.as_deref(),
             &description,
             &rollback,
@@ -397,6 +414,8 @@ fn cmd_init(
     scope: Option<Vec<String>>,
     metric_desc: Option<&str>,
     guard: Option<&str>,
+    acceptance_criteria_raw: Option<String>,
+    required_keep_criteria_raw: Option<String>,
     iterations: Option<u32>,
     run_tag: Option<String>,
     stop_condition: Option<String>,
@@ -415,6 +434,12 @@ fn cmd_init(
         .transpose()
         .context("Invalid run mode")?;
     let rollback_strategy = parse_rollback_strategy(rollback)?;
+    let acceptance_criteria =
+        criteria::parse_criteria_json(acceptance_criteria_raw.as_deref(), "acceptance_criteria")?;
+    let required_keep_criteria = criteria::parse_criteria_json(
+        required_keep_criteria_raw.as_deref(),
+        "required_keep_criteria",
+    )?;
 
     // Safety screen
     verify::screen_command(verify_cmd)?;
@@ -456,13 +481,15 @@ fn cmd_init(
         stop_condition,
         verify_format: fmt,
         primary_metric_key: key.map(|k| k.to_string()),
-        acceptance_criteria: Vec::new(),
-        required_keep_criteria: Vec::new(),
+        acceptance_criteria,
+        required_keep_criteria,
         rollback_strategy,
         run_mode,
         workspace_root,
         primary_repo,
     };
+    let acceptance_criteria_count = run_config.acceptance_criteria.len();
+    let required_keep_criteria_count = run_config.required_keep_criteria.len();
 
     // Write state.json
     let state = RunState::from_baseline(result.metric, head.clone(), Some(run_config));
@@ -479,6 +506,8 @@ fn cmd_init(
         "baseline_commit": head,
         "direction": direction_str,
         "iterations": iterations,
+        "acceptance_criteria_count": acceptance_criteria_count,
+        "required_keep_criteria_count": required_keep_criteria_count,
         "run_mode": run_mode.map(|mode| match mode {
             RunMode::Foreground => "foreground",
             RunMode::Background => "background",
@@ -637,6 +666,7 @@ fn cmd_log(
 fn cmd_decide(
     decision: &str,
     metric_str: &str,
+    metrics_json: Option<&str>,
     commit: Option<&str>,
     description: &str,
     rollback_str: &str,
@@ -661,8 +691,37 @@ fn cmd_decide(
     let content = std::fs::read_to_string(&state_path)
         .context("No state.json found — run `autoresearch init` first")?;
     let mut state: RunState = serde_json::from_str(&content)?;
+    let (primary_metric_key, verify_format, acceptance_criteria, required_keep_criteria) =
+        match state.config.as_ref() {
+            Some(config) => (
+                config
+                    .primary_metric_key
+                    .clone()
+                    .or_else(|| {
+                        if config.metric.trim().is_empty() {
+                            None
+                        } else {
+                            Some(config.metric.clone())
+                        }
+                    })
+                    .unwrap_or_else(|| "metric".to_string()),
+                config.verify_format,
+                config.acceptance_criteria.clone(),
+                config.required_keep_criteria.clone(),
+            ),
+            None => (
+                "metric".to_string(),
+                VerifyFormat::Scalar,
+                Vec::new(),
+                Vec::new(),
+            ),
+        };
 
     let delta = metric - state.current_metric;
+    let trial_metrics =
+        build_trial_metrics(metric, metrics_json, &primary_metric_key, verify_format)?;
+    let acceptance = criteria::evaluate_criteria(&acceptance_criteria, &trial_metrics);
+    let required_keep = criteria::evaluate_criteria(&required_keep_criteria, &trial_metrics);
     let decision = if decision == "auto" {
         if state.direction.is_improvement(delta) {
             "keep"
@@ -672,7 +731,9 @@ fn cmd_decide(
     } else {
         decision
     };
-    let decision = if guard == GuardResult::Fail && decision == "keep" {
+    let decision = if decision == "keep" && !required_keep.satisfied {
+        "discard"
+    } else if guard == GuardResult::Fail && decision == "keep" {
         "discard"
     } else {
         decision
@@ -812,6 +873,8 @@ fn cmd_decide(
         "crashes": state.crashes,
         "consecutive_discards": state.consecutive_discards,
         "rollback_applied": needs_rollback,
+        "acceptance": acceptance,
+        "required_keep": required_keep,
         "escalation": escalation_guidance,
     });
     println!("{}", serde_json::to_string_pretty(&out)?);
@@ -1379,6 +1442,25 @@ fn cmd_exec(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
 
 fn resolve_cwd(cwd: Option<PathBuf>) -> PathBuf {
     cwd.unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+}
+
+fn build_trial_metrics(
+    primary_metric: Decimal,
+    metrics_json: Option<&str>,
+    primary_metric_key: &str,
+    verify_format: VerifyFormat,
+) -> Result<BTreeMap<String, Decimal>> {
+    match metrics_json {
+        Some(raw) => autoresearch::core::metrics::parse_json_metrics_map(raw),
+        None if verify_format == VerifyFormat::MetricsJson => Ok(BTreeMap::from([(
+            primary_metric_key.to_string(),
+            primary_metric,
+        )])),
+        None => Ok(BTreeMap::from([(
+            primary_metric_key.to_string(),
+            primary_metric,
+        )])),
+    }
 }
 
 fn parse_direction(s: &str) -> Result<Direction> {

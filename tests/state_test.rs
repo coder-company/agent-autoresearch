@@ -590,6 +590,112 @@ fn test_decide_refuses_rollback_without_experiment_head() {
         .stderr(predicate::str::contains("Refusing rollback"));
 }
 
+#[test]
+fn test_decide_discards_when_required_keep_criteria_fail() {
+    use assert_cmd::Command;
+    use predicates::prelude::*;
+    use tempfile::TempDir;
+
+    let dir = TempDir::new().unwrap();
+    let dir_path = dir.path();
+
+    std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["config", "user.email", "test@test.com"])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["config", "user.name", "Test"])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+    std::fs::write(dir_path.join(".gitignore"), "autoresearch-results/\n").unwrap();
+    std::fs::write(
+        dir_path.join("metrics.json"),
+        r#"{"score":50,"failures":0}"#,
+    )
+    .unwrap();
+    std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["commit", "-m", "initial"])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+
+    Command::cargo_bin("autoresearch")
+        .unwrap()
+        .args([
+            "init",
+            "--verify",
+            "cat metrics.json",
+            "--format",
+            "metrics_json",
+            "--key",
+            "score",
+            "--metric",
+            "score",
+            "--direction",
+            "higher",
+            "--required-keep-criteria",
+            r#"[{"metric_key":"failures","operator":"==","target":"0"}]"#,
+            "--cwd",
+            dir_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "\"required_keep_criteria_count\": 1",
+        ));
+
+    std::fs::write(
+        dir_path.join("metrics.json"),
+        r#"{"score":60,"failures":2}"#,
+    )
+    .unwrap();
+    std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["commit", "-m", "experiment: improve score with failures"])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+
+    Command::cargo_bin("autoresearch")
+        .unwrap()
+        .args([
+            "decide",
+            "--metric",
+            "60",
+            "--metrics-json",
+            r#"{"score":60,"failures":2}"#,
+            "--description",
+            "score improved but failures regressed",
+            "--cwd",
+            dir_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"discard\""))
+        .stdout(predicate::str::contains("failures == 0"));
+
+    let state_content =
+        std::fs::read_to_string(dir_path.join("autoresearch-results/state.json")).unwrap();
+    assert!(state_content.contains("\"current_metric\": \"50\""));
+    assert!(state_content.contains("\"discards\": 1"));
+}
+
 fn commit_metric(dir_path: &std::path::Path, value: &str, message: &str) {
     std::fs::write(dir_path.join("metric.txt"), value).unwrap();
     std::process::Command::new("git")
