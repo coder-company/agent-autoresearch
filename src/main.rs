@@ -2130,7 +2130,10 @@ fn cmd_resume(cwd: Option<PathBuf>) -> Result<()> {
         if print_tsv_fallback_resume(&results_dir, None)? {
             return Ok(());
         }
-        println!(r#"{{"resumable":false}}"#);
+        println!(
+            "{}",
+            r#"{"resumable":false,"decision":"fresh_start","recommendation":"fresh_start","reason":"no_artifacts"}"#
+        );
         return Ok(());
     }
 
@@ -2156,6 +2159,7 @@ fn cmd_resume(cwd: Option<PathBuf>) -> Result<()> {
     if !tsv_path.exists() {
         let out = serde_json::json!({
             "resumable": false,
+            "decision": "fresh_start",
             "recommendation": "fresh_start",
             "reason": "missing_results",
         });
@@ -2166,6 +2170,7 @@ fn cmd_resume(cwd: Option<PathBuf>) -> Result<()> {
     if let Err(err) = log.validate() {
         let out = serde_json::json!({
             "resumable": false,
+            "decision": "fresh_start",
             "recommendation": "fresh_start",
             "reason": "results_corrupt",
             "error": err.to_string(),
@@ -2213,9 +2218,15 @@ fn cmd_resume(cwd: Option<PathBuf>) -> Result<()> {
     } else {
         "fresh_start"
     };
+    let decision = if recommendation == "resume" {
+        "full_resume"
+    } else {
+        "fresh_start"
+    };
 
     let out = serde_json::json!({
         "resumable": is_resumable,
+        "decision": decision,
         "iteration": state.iteration,
         "current_metric": state.current_metric.to_string(),
         "best_metric": state.best_metric.to_string(),
@@ -2240,6 +2251,7 @@ fn print_tsv_fallback_resume(results_dir: &Path, state_error: Option<String>) ->
     if let Err(err) = log.validate() {
         let out = serde_json::json!({
             "resumable": false,
+            "decision": "fresh_start",
             "recommendation": "fresh_start",
             "reason": "results_corrupt",
             "error": err.to_string(),
@@ -2299,6 +2311,7 @@ fn tsv_fallback_resume(
     let last = rows.last()?;
     Some(serde_json::json!({
         "resumable": true,
+        "decision": "tsv_fallback",
         "source": "results.tsv",
         "recommendation": "tsv_fallback",
         "iteration": last.iteration,

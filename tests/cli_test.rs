@@ -2138,6 +2138,7 @@ fn test_resume_reports_baseline_as_resumable() {
         .assert()
         .success()
         .stdout(predicate::str::contains("\"resumable\": true"))
+        .stdout(predicate::str::contains("\"decision\": \"full_resume\""))
         .stdout(predicate::str::contains("\"recommendation\": \"resume\""));
 }
 
@@ -2238,6 +2239,7 @@ fn test_resume_uses_results_tsv_fallback_without_state() {
         .assert()
         .success()
         .stdout(predicate::str::contains("\"resumable\": true"))
+        .stdout(predicate::str::contains("\"decision\": \"tsv_fallback\""))
         .stdout(predicate::str::contains("\"source\": \"results.tsv\""))
         .stdout(predicate::str::contains(
             "\"recommendation\": \"tsv_fallback\"",
