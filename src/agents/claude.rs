@@ -79,6 +79,18 @@ impl ClaudeAdapter {
                         ]
                     }
                 ],
+                "PostToolUse": [
+                    {
+                        "matcher": "Bash",
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": "autoresearch hook verify-capture",
+                                "timeout": 5
+                            }
+                        ]
+                    }
+                ],
                 "UserPromptSubmit": [
                     {
                         "hooks": [
@@ -100,12 +112,45 @@ impl ClaudeAdapter {
                         ]
                     }
                 ],
+                "Stop": [
+                    {
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": "autoresearch hook stop-check",
+                                "timeout": 5
+                            }
+                        ]
+                    }
+                ],
+                "PostCompact": [
+                    {
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": "autoresearch hook compaction-reanchor",
+                                "timeout": 5
+                            }
+                        ]
+                    }
+                ],
                 "SubagentStart": [
                     {
                         "hooks": [
                             {
                                 "type": "command",
                                 "command": "autoresearch hook subagent-context",
+                                "timeout": 5
+                            }
+                        ]
+                    }
+                ],
+                "SubagentEnd": [
+                    {
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": "autoresearch hook subagent-collect",
                                 "timeout": 5
                             }
                         ]
@@ -129,6 +174,28 @@ impl ClaudeAdapter {
                                 "type": "command",
                                 "command": "autoresearch hook session-end",
                                 "timeout": 5
+                            }
+                        ]
+                    }
+                ],
+                "PreCompact": [
+                    {
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": "autoresearch hook pre-compact-snapshot",
+                                "timeout": 5
+                            }
+                        ]
+                    }
+                ],
+                "Notification": [
+                    {
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": "autoresearch hook notification-relay",
+                                "timeout": 3
                             }
                         ]
                     }
@@ -165,24 +232,12 @@ mod tests {
     use super::ClaudeAdapter;
 
     #[test]
-    fn hooks_json_wires_dev_rules_reminder() {
+    fn hooks_json_matches_packaged_hooks() {
         let config = ClaudeAdapter::hooks_json();
-        let hooks = config
-            .pointer("/hooks/UserPromptSubmit/0/hooks")
-            .and_then(|value| value.as_array())
-            .unwrap();
-        let commands = hooks
-            .iter()
-            .filter_map(|hook| hook.get("command").and_then(|value| value.as_str()))
-            .collect::<Vec<_>>();
+        let packaged = include_str!("../../hooks/hooks.json")
+            .replace("${CLAUDE_PLUGIN_ROOT}/bin/autoresearch", "autoresearch");
+        let packaged: serde_json::Value = serde_json::from_str(&packaged).unwrap();
 
-        assert_eq!(
-            commands,
-            [
-                "autoresearch hook iteration-context",
-                "autoresearch hook dev-rules-reminder",
-                "autoresearch hook simplify-gate",
-            ]
-        );
+        assert_eq!(config, packaged);
     }
 }
