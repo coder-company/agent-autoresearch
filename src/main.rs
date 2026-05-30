@@ -3,9 +3,11 @@ use clap::{Parser, Subcommand};
 use rust_decimal::Decimal;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as FmtWrite;
+use std::fs::OpenOptions;
+use std::io::Write as IoWrite;
 use std::path::Path;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Child, Command, Stdio};
 use std::str::FromStr;
 
 use autoresearch::core::config::{Direction, RollbackStrategy, RunConfig, RunMode, VerifyFormat};
@@ -416,6 +418,21 @@ enum ParallelCommands {
         /// Keep worker branches after removing worktrees
         #[arg(long)]
         keep_branches: bool,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+    /// Run prepared worker prompts through `codex exec` in their worktrees
+    Run {
+        /// Manifest written by `autoresearch parallel prepare`
+        #[arg(long)]
+        manifest: PathBuf,
+        /// Execution policy for nested Codex workers
+        #[arg(long, default_value = "danger_full_access")]
+        execution_policy: String,
+        /// Codex binary to launch
+        #[arg(long, default_value = "codex")]
+        codex_bin: String,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -1998,6 +2015,15 @@ struct ParallelPreparedWorker {
     worker_id: String,
     branch: String,
     worktree: String,
+    #[serde(default)]
+    prompt_file: Option<String>,
+}
+
+struct ParallelRunningWorker {
+    worker_id: String,
+    child: Child,
+    log_file: PathBuf,
+    started_at: String,
 }
 
 fn default_completed_status() -> String {
@@ -2032,6 +2058,16 @@ fn cmd_parallel(command: ParallelCommands) -> Result<()> {
         } => {
             let workspace = resolve_results_workspace(cwd);
             let out = cmd_parallel_cleanup(&workspace, manifest, keep_branches)?;
+            println!("{}", serde_json::to_string_pretty(&out)?);
+        }
+        ParallelCommands::Run {
+            manifest,
+            execution_policy,
+            codex_bin,
+            cwd,
+        } => {
+            let workspace = resolve_results_workspace(cwd);
+            let out = cmd_parallel_run(&workspace, manifest, &execution_policy, &codex_bin)?;
             println!("{}", serde_json::to_string_pretty(&out)?);
         }
         ParallelCommands::Template {
@@ -2261,6 +2297,114 @@ fn cmd_parallel_cleanup(
         "manifest": manifest_path.display().to_string(),
         "keep_branches": keep_branches,
         "workers": cleaned,
+    }))
+}
+
+fn cmd_parallel_run(
+    workspace: &Path,
+    manifest: PathBuf,
+    execution_policy: &str,
+    codex_bin: &str,
+) -> Result<serde_json::Value> {
+    let manifest_path = resolve_workspace_path(workspace, manifest);
+    let manifest_text = std::fs::read_to_string(&manifest_path)
+        .with_context(|| format!("failed to read {}", manifest_path.display()))?;
+    let mut manifest_json: serde_json::Value = serde_json::from_str(&manifest_text)
+        .with_context(|| format!("failed to parse {}", manifest_path.display()))?;
+    let manifest: ParallelPrepareManifest = serde_json::from_value(manifest_json.clone())
+        .with_context(|| format!("failed to parse {}", manifest_path.display()))?;
+    if manifest.workers.is_empty() {
+        anyhow::bail!("parallel run manifest must contain at least one worker");
+    }
+
+    let codex_args = parallel_codex_args(execution_policy)?;
+    let mut running = Vec::new();
+    for worker in &manifest.workers {
+        let worktree = PathBuf::from(&worker.worktree);
+        if !worktree.exists() {
+            anyhow::bail!(
+                "parallel worker worktree is missing for worker-{}: {}",
+                worker.worker_id,
+                worktree.display()
+            );
+        }
+        let prompt_file = worker
+            .prompt_file
+            .as_deref()
+            .map(PathBuf::from)
+            .unwrap_or_else(|| worktree.join(".codex-autoresearch/parallel-worker.md"));
+        let prompt = std::fs::read_to_string(&prompt_file)
+            .with_context(|| format!("failed to read {}", prompt_file.display()))?;
+        let log_file = worktree.join(".codex-autoresearch/parallel-worker.log");
+        if let Some(parent) = log_file.parent() {
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("failed to create {}", parent.display()))?;
+        }
+        let log = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&log_file)
+            .with_context(|| format!("failed to open {}", log_file.display()))?;
+        let err_log = log
+            .try_clone()
+            .context("failed to clone parallel worker log handle")?;
+        let mut child = Command::new(codex_bin)
+            .arg("exec")
+            .args(&codex_args)
+            .current_dir(&worktree)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::from(log))
+            .stderr(Stdio::from(err_log))
+            .spawn()
+            .with_context(|| format!("failed to launch worker-{} codex exec", worker.worker_id))?;
+        if let Some(mut stdin) = child.stdin.take() {
+            stdin
+                .write_all(prompt.as_bytes())
+                .with_context(|| format!("failed to write worker-{} prompt", worker.worker_id))?;
+        }
+        running.push(ParallelRunningWorker {
+            worker_id: worker.worker_id.clone(),
+            child,
+            log_file,
+            started_at: chrono::Utc::now().to_rfc3339(),
+        });
+    }
+
+    let mut results = Vec::new();
+    for mut worker in running {
+        let status = worker
+            .child
+            .wait()
+            .with_context(|| format!("failed to wait for worker-{}", worker.worker_id))?;
+        let exit_code = status.code();
+        results.push(serde_json::json!({
+            "worker_id": worker.worker_id,
+            "status": if status.success() { "completed" } else { "crash" },
+            "exit_code": exit_code,
+            "log_file": worker.log_file.display().to_string(),
+            "started_at": worker.started_at,
+            "stopped_at": chrono::Utc::now().to_rfc3339(),
+        }));
+    }
+
+    if let Some(object) = manifest_json.as_object_mut() {
+        object.insert("status".to_string(), serde_json::json!("ran"));
+        object.insert(
+            "worker_runs".to_string(),
+            serde_json::Value::Array(results.clone()),
+        );
+    }
+    write_json_file(&manifest_path, &manifest_json)?;
+    let success = results.iter().all(|result| {
+        result
+            .get("status")
+            .is_some_and(|status| status == "completed")
+    });
+
+    Ok(serde_json::json!({
+        "status": if success { "ok" } else { "completed_with_failures" },
+        "manifest": manifest_path.display().to_string(),
+        "workers": results,
     }))
 }
 
@@ -3487,6 +3631,18 @@ fn git_branch_exists(workspace: &Path, branch: &str) -> Result<bool> {
             "git show-ref failed: {}{}",
             String::from_utf8_lossy(&output.stderr),
             String::from_utf8_lossy(&output.stdout)
+        ),
+    }
+}
+
+fn parallel_codex_args(execution_policy: &str) -> Result<Vec<String>> {
+    match execution_policy {
+        "danger_full_access" => Ok(vec![
+            "--dangerously-bypass-approvals-and-sandbox".to_string(),
+        ]),
+        "workspace_write" => Ok(Vec::new()),
+        _ => anyhow::bail!(
+            "Unknown execution policy: {execution_policy}. Use danger_full_access or workspace_write."
         ),
     }
 }

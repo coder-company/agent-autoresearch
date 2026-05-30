@@ -4791,6 +4791,96 @@ fn test_parallel_cleanup_removes_worker_worktrees_and_branches() {
     assert_eq!(String::from_utf8_lossy(&status.stdout), "");
 }
 
+#[cfg(unix)]
+#[test]
+fn test_parallel_run_launches_prepared_worker_prompts() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+    write_metric_and_commit(&dir, "41\n");
+    let fake_codex = write_fake_codex(
+        &dir,
+        r#"
+printf '%s\n' "$PWD" > .codex-autoresearch/ran-cwd
+cat > .codex-autoresearch/received-prompt
+exit 0
+"#,
+    );
+    let fake_codex = fake_codex.to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "lower",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "parallel",
+            "prepare",
+            "--workers",
+            "2",
+            "--branch-prefix",
+            "ar/run",
+            "--manifest",
+            "autoresearch-results/run-manifest.json",
+            "--cwd",
+            subdir.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "parallel",
+            "run",
+            "--manifest",
+            "autoresearch-results/run-manifest.json",
+            "--execution-policy",
+            "workspace_write",
+            "--codex-bin",
+            fake_codex,
+            "--cwd",
+            subdir.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\": \"ok\""))
+        .stdout(predicate::str::contains("\"worker_id\": \"a\""))
+        .stdout(predicate::str::contains("\"worker_id\": \"b\""));
+
+    let manifest_path = dir.path().join("autoresearch-results/run-manifest.json");
+    let manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(manifest_path).unwrap()).unwrap();
+    assert_eq!(manifest["status"], "ran");
+    assert_eq!(manifest["worker_runs"].as_array().unwrap().len(), 2);
+    assert_eq!(manifest["worker_runs"][0]["status"], "completed");
+
+    for worker in ["a", "b"] {
+        let worktree = dir.path().join(format!(
+            "autoresearch-results/parallel-worktrees/iteration-1/worker-{worker}"
+        ));
+        let received =
+            std::fs::read_to_string(worktree.join(".codex-autoresearch/received-prompt")).unwrap();
+        assert!(received.contains(&format!("Parallel Worker {worker}")));
+        let ran_cwd =
+            std::fs::read_to_string(worktree.join(".codex-autoresearch/ran-cwd")).unwrap();
+        assert_eq!(ran_cwd.trim(), worktree.to_str().unwrap());
+        assert!(worktree
+            .join(".codex-autoresearch/parallel-worker.log")
+            .exists());
+    }
+}
+
 #[test]
 fn test_parallel_closeout_selects_best_worker() {
     let dir = TempDir::new().unwrap();
