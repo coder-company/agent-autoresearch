@@ -29,3 +29,27 @@ fn guide_index_links_every_top_level_guide() {
         );
     }
 }
+
+#[test]
+fn readme_links_required_docs_entrypoints() {
+    let root = repo_root();
+    let readme = fs::read_to_string(root.join("README.md")).unwrap();
+    let required_docs = [
+        "docs/INSTALL.md",
+        "docs/GUIDE.md",
+        "docs/EXAMPLES.md",
+        "docs/system-architecture.md",
+        "docs/project-changelog.md",
+    ];
+
+    for path in required_docs {
+        assert!(
+            root.join(path).is_file(),
+            "required documentation entrypoint is missing: {path}"
+        );
+        assert!(
+            readme.contains(path),
+            "README.md does not link required documentation entrypoint: {path}"
+        );
+    }
+}
