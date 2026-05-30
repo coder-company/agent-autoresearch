@@ -400,3 +400,116 @@ fn test_escalation_thresholds_via_consecutive_discards() {
         std::fs::read_to_string(dir_path.join("autoresearch-results/state.json")).unwrap();
     assert!(state_content.contains("\"consecutive_discards\": 5"));
 }
+
+#[test]
+fn test_decide_auto_uses_metric_direction() {
+    use assert_cmd::Command;
+    use predicates::prelude::*;
+    use tempfile::TempDir;
+
+    let dir = TempDir::new().unwrap();
+    let dir_path = dir.path();
+
+    std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["config", "user.email", "test@test.com"])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["config", "user.name", "Test"])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+
+    std::fs::write(dir_path.join(".gitignore"), "autoresearch-results/\n").unwrap();
+    std::fs::write(dir_path.join("metric.txt"), "50\n").unwrap();
+    std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["commit", "-m", "initial"])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+
+    Command::cargo_bin("autoresearch")
+        .unwrap()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            dir_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    std::fs::write(dir_path.join("metric.txt"), "60\n").unwrap();
+    std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["commit", "-m", "experiment: improve metric"])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+
+    Command::cargo_bin("autoresearch")
+        .unwrap()
+        .args([
+            "decide",
+            "--metric",
+            "60",
+            "--description",
+            "auto improvement",
+            "--cwd",
+            dir_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"keep\""));
+
+    std::fs::write(dir_path.join("metric.txt"), "55\n").unwrap();
+    std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["commit", "-m", "experiment: regress metric"])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+
+    Command::cargo_bin("autoresearch")
+        .unwrap()
+        .args([
+            "decide",
+            "--metric",
+            "55",
+            "--description",
+            "auto regression",
+            "--cwd",
+            dir_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"discard\""))
+        .stdout(predicate::str::contains("\"rollback_applied\": true"));
+
+    let state_content =
+        std::fs::read_to_string(dir_path.join("autoresearch-results/state.json")).unwrap();
+    assert!(state_content.contains("\"current_metric\": \"60\""));
+    assert!(state_content.contains("\"discards\": 1"));
+}

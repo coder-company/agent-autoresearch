@@ -117,8 +117,8 @@ enum Commands {
 
     /// Apply keep/discard decision: update state, revert if needed, track escalation
     Decide {
-        /// Decision: keep, discard, crash, no-op
-        #[arg(long)]
+        /// Decision: auto, keep, discard, crash, no-op
+        #[arg(long, default_value = "auto")]
         decision: String,
         /// Trial metric value
         #[arg(long)]
@@ -596,17 +596,26 @@ fn cmd_decide(
         _ => GuardResult::Skip,
     };
 
-    // Guard failure overrides keep → discard
+    // Load state
+    let content = std::fs::read_to_string(&state_path)
+        .context("No state.json found — run `autoresearch init` first")?;
+    let mut state: RunState = serde_json::from_str(&content)?;
+
+    let delta = metric - state.current_metric;
+    let decision = if decision == "auto" {
+        if state.direction.is_improvement(delta) {
+            "keep"
+        } else {
+            "discard"
+        }
+    } else {
+        decision
+    };
     let decision = if guard == GuardResult::Fail && decision == "keep" {
         "discard"
     } else {
         decision
     };
-
-    // Load state
-    let content = std::fs::read_to_string(&state_path)
-        .context("No state.json found — run `autoresearch init` first")?;
-    let mut state: RunState = serde_json::from_str(&content)?;
 
     // Load escalation state
     let esc_path = results_dir.join("escalation.json");
@@ -619,7 +628,6 @@ fn cmd_decide(
     // Load lessons
     let lessons_log = LessonsLog::open_or_create(&results_dir)?;
 
-    let delta = metric - state.current_metric;
     let git = GitRepo::open(&workspace)?;
     let iteration = state.iteration + 1;
 
