@@ -358,11 +358,15 @@ install_codex_skill() {
             rm -rf "$skill_dir"
             mkdir -p "$skill_dir"
 
-            # Copy skill files
-            cp "$REPO_DIR/SKILL.md" "$skill_dir/SKILL.md"
-            if [[ -d "$REPO_DIR/references" ]]; then
-                mkdir -p "$skill_dir/references"
-                cp -r "$REPO_DIR/references/"* "$skill_dir/references/" 2>/dev/null || true
+            # Copy the maintained Codex skill distribution when available.
+            if [[ -d "$REPO_DIR/.agents/skills/autoresearch" ]]; then
+                cp -R "$REPO_DIR/.agents/skills/autoresearch/." "$skill_dir/"
+            else
+                cp "$REPO_DIR/SKILL.md" "$skill_dir/SKILL.md"
+                if [[ -d "$REPO_DIR/references" ]]; then
+                    mkdir -p "$skill_dir/references"
+                    cp -r "$REPO_DIR/references/"* "$skill_dir/references/" 2>/dev/null || true
+                fi
             fi
 
             success "Codex skill installed to $skill_dir"
