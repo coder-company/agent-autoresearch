@@ -1,14 +1,22 @@
 use super::{HookInput, HookResponse};
+use chrono::Utc;
+use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::process::Command;
+use std::time::{Duration, SystemTime};
 
 /// Session initialization: detect environment, check for resumable runs.
-pub fn run(_input: Option<&HookInput>) -> HookResponse {
+pub fn run(input: Option<&HookInput>) -> HookResponse {
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     let project_root = git_output(&cwd, &["rev-parse", "--show-toplevel"])
         .map(PathBuf::from)
         .unwrap_or_else(|| cwd.clone());
     let branch = git_output(&cwd, &["rev-parse", "--abbrev-ref", "HEAD"]).unwrap_or_default();
+    let session_id = input
+        .and_then(|input| input.session_id.as_deref())
+        .unwrap_or("unknown");
+    persist_session_state(&project_root, &branch, session_id);
+    prune_stale_session_files();
     let mut context = format!(
         "## Session initialized\n\
          - Project: {}\n\
@@ -54,6 +62,56 @@ pub fn run(_input: Option<&HookInput>) -> HookResponse {
     }
 
     HookResponse::inject(context)
+}
+
+fn persist_session_state(project_root: &std::path::Path, branch: &str, session_id: &str) {
+    let state = serde_json::json!({
+        "projectRoot": project_root,
+        "plansPath": project_root.join("plans"),
+        "reportsPath": project_root.join("plans/reports"),
+        "gitBranch": branch,
+        "sessionId": session_id,
+        "iterationCount": 0,
+        "startedAt": Utc::now().to_rfc3339(),
+    });
+    let _ = std::fs::write(
+        session_state_path(project_root, session_id),
+        serde_json::to_string_pretty(&state).unwrap_or_else(|_| "{}".to_string()),
+    );
+}
+
+fn prune_stale_session_files() {
+    let Ok(entries) = std::fs::read_dir(std::env::temp_dir()) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+            continue;
+        };
+        if !name.starts_with("ar-session-") || !name.ends_with(".json") {
+            continue;
+        }
+        let Ok(metadata) = entry.metadata() else {
+            continue;
+        };
+        let Ok(modified) = metadata.modified() else {
+            continue;
+        };
+        let stale = SystemTime::now()
+            .duration_since(modified)
+            .is_ok_and(|age| age > Duration::from_secs(24 * 60 * 60));
+        if stale {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+}
+
+fn session_state_path(project_root: &std::path::Path, session_id: &str) -> PathBuf {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    project_root.hash(&mut hasher);
+    session_id.hash(&mut hasher);
+    std::env::temp_dir().join(format!("ar-session-{}.json", hasher.finish()))
 }
 
 fn git_output(cwd: &std::path::Path, args: &[&str]) -> Option<String> {

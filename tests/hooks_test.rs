@@ -125,6 +125,34 @@ exit 0
     bin_dir
 }
 
+fn find_session_state(
+    project_root: &std::path::Path,
+    session_id: &str,
+) -> Option<(std::path::PathBuf, serde_json::Value)> {
+    for entry in std::fs::read_dir(std::env::temp_dir()).ok()?.flatten() {
+        let path = entry.path();
+        let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+            continue;
+        };
+        if !name.starts_with("ar-session-") || !name.ends_with(".json") {
+            continue;
+        }
+        let Ok(content) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        let Ok(state) = serde_json::from_str::<serde_json::Value>(&content) else {
+            continue;
+        };
+        if state.get("sessionId").and_then(|value| value.as_str()) == Some(session_id)
+            && state.get("projectRoot").and_then(|value| value.as_str())
+                == Some(project_root.to_str().unwrap())
+        {
+            return Some((path, state));
+        }
+    }
+    None
+}
+
 // ── Scout Block ──────────────────────────────────────────────────────
 
 #[test]
@@ -949,6 +977,47 @@ fn test_session_init_injects_project_context() {
 }
 
 #[test]
+fn test_session_init_persists_state_and_session_end_cleans_it() {
+    let dir = tempfile::tempdir().unwrap();
+    init_git_repo(dir.path());
+    let input = serde_json::json!({
+        "session_id": format!(
+            "session-state-{}",
+            dir.path().file_name().unwrap().to_str().unwrap()
+        )
+    });
+    let session_id = input
+        .get("session_id")
+        .and_then(|value| value.as_str())
+        .unwrap();
+
+    run_hook_in(dir.path(), "session-init", &input.to_string())
+        .success()
+        .stdout(predicate::str::contains("\"additionalContext\""));
+
+    let (state_path, state) = find_session_state(dir.path(), session_id).unwrap();
+    assert_eq!(state["projectRoot"], dir.path().to_str().unwrap());
+    assert_eq!(
+        state["plansPath"],
+        dir.path().join("plans").to_str().unwrap()
+    );
+    assert_eq!(
+        state["reportsPath"],
+        dir.path().join("plans/reports").to_str().unwrap()
+    );
+    assert_eq!(state["sessionId"], session_id);
+    assert!(state
+        .get("startedAt")
+        .and_then(|value| value.as_str())
+        .is_some());
+
+    run_hook_in(dir.path(), "session-end", &input.to_string())
+        .success()
+        .stdout(predicate::str::contains("Duration:"));
+    assert!(!state_path.exists());
+}
+
+#[test]
 fn test_session_init_includes_resumable_run_context() {
     let dir = tempfile::tempdir().unwrap();
     init_git_repo(dir.path());
@@ -1048,6 +1117,12 @@ fn test_session_end_posts_webhook_summary() {
     init_git_repo(dir.path());
     let fake_bin = write_fake_curl(dir.path());
     let payload_path = dir.path().join("webhook-payload.json");
+    let input = serde_json::json!({
+        "session_id": format!(
+            "webhook-session-{}",
+            dir.path().file_name().unwrap().to_str().unwrap()
+        )
+    });
     let results = dir.path().join("autoresearch-results");
     std::fs::create_dir_all(&results).unwrap();
     std::fs::write(
@@ -1060,11 +1135,14 @@ fn test_session_end_posts_webhook_summary() {
         fake_bin.display(),
         std::env::var("PATH").unwrap_or_default()
     );
+    run_hook_in(dir.path(), "session-init", &input.to_string())
+        .success()
+        .stdout(predicate::str::contains("\"additionalContext\""));
 
     run_hook_in_with_env(
         dir.path(),
         "session-end",
-        "{}",
+        &input.to_string(),
         &[
             ("AR_NOTIFY_WEBHOOK", "https://example.invalid/hook"),
             ("AR_WEBHOOK_PAYLOAD", payload_path.to_str().unwrap()),
@@ -1081,6 +1159,10 @@ fn test_session_end_posts_webhook_summary() {
         payload["project"],
         dir.path().file_name().unwrap().to_str().unwrap()
     );
+    assert!(payload
+        .get("duration")
+        .and_then(|value| value.as_str())
+        .is_some());
     assert_eq!(payload["tsv_summary"], "1 iterations, metric: 10");
 }
 
