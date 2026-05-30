@@ -579,6 +579,44 @@ fn test_health_ok_after_init() {
 }
 
 #[test]
+fn test_health_defaults_to_repo_root_results_from_subdir() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+
+    cmd()
+        .args([
+            "health",
+            "--verify",
+            "cat metric.txt",
+            "--min-free-mb",
+            "1",
+            "--cwd",
+            subdir.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"ok\""))
+        .stdout(predicate::str::contains(dir.path().display().to_string()));
+}
+
+#[test]
 fn test_health_blocks_missing_verify_command() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

@@ -1439,7 +1439,7 @@ fn cmd_status(cwd: Option<PathBuf>) -> Result<()> {
 // ── Health ────────────────────────────────────────────────────────────
 
 fn cmd_health(verify: Option<&str>, min_free_mb: u64, cwd: Option<PathBuf>) -> Result<()> {
-    let workspace = resolve_cwd(cwd);
+    let workspace = resolve_results_workspace(cwd);
     let report = health::run_health_check(&workspace, verify, min_free_mb)?;
     let has_blockers = report.has_blockers();
     println!("{}", serde_json::to_string_pretty(&report)?);
