@@ -1446,6 +1446,7 @@ fn test_handoff_defaults_to_repo_root_results_from_subdir() {
     let handoff =
         std::fs::read_to_string(dir.path().join("autoresearch-results/handoff.json")).unwrap();
     assert!(handoff.contains("\"source\": \"debug\""));
+    assert!(handoff.contains("\"source_command\": \"debug\""));
     assert!(handoff.contains("\"status\": \"COMPLETE\""));
     assert!(!subdir.join("autoresearch-results").exists());
 }

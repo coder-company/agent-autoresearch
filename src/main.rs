@@ -2719,6 +2719,7 @@ fn cmd_handoff(
     let handoff = serde_json::json!({
         "version": "0.1.0",
         "source": source,
+        "source_command": source,
         "timestamp": timestamp,
         "status": status,
         "results_tsv": "autoresearch-results/results.tsv",
