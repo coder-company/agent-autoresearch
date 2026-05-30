@@ -2731,6 +2731,7 @@ fn cmd_handoff(
         "timestamp": timestamp,
         "status": status,
         "results_tsv": "autoresearch-results/results.tsv",
+        "results_path": results_dir.join("results.tsv").to_string_lossy().to_string(),
         "goal": goal,
         "scope": scope,
         "findings": findings_val,
