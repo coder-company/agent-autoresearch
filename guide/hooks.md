@@ -80,7 +80,7 @@ Patterns detected and blocked:
 | AWS credentials | `AKIA...` (access key ID) |
 | Private keys | `-----BEGIN RSA PRIVATE KEY-----` |
 | GitHub PATs | `ghp_[A-Za-z0-9]{36}` |
-| OpenAI keys | `sk-[A-Za-z0-9]{48}` |
+| OpenAI keys | `sk-[A-Za-z0-9_-]{20,}` |
 | Generic secrets | `password=`, `secret=`, `credential=` |
 
 ---

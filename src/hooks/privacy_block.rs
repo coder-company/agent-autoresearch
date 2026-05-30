@@ -9,7 +9,7 @@ static SENSITIVE_PATTERNS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
         Regex::new(r"(?i)(aws|gcp|azure)[\w]*[_-]?(secret|key|token)").unwrap(),
         Regex::new(r"-----BEGIN (RSA |EC |DSA )?PRIVATE KEY-----").unwrap(),
         Regex::new(r"ghp_[A-Za-z0-9]{36}").unwrap(), // GitHub PAT
-        Regex::new(r"sk-[A-Za-z0-9]{48}").unwrap(),  // OpenAI key
+        Regex::new(r"sk-[A-Za-z0-9_-]{20,}").unwrap(), // OpenAI key variants
         Regex::new(r"AKIA[A-Z0-9]{16}").unwrap(),    // AWS access key
     ]
 });

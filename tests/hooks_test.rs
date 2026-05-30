@@ -439,17 +439,22 @@ fn test_hook_disable_env_allows_scout_block() {
 
 #[test]
 fn test_privacy_block_catches_api_keys() {
-    let input = serde_json::json!({
-        "tool_name": "Write",
-        "tool_input": {
-            "path": "config.js",
-            "content": "const config = { api_key: 'sk-abc123def456ghi789jkl012mno345pqr678stu901vwx234' }"
-        }
-    });
+    for content in [
+        "const config = { api_key: 'sk-abc123def456ghi789jkl012mno345pqr678stu901vwx234' }",
+        "Authorization: Bearer sk-proj-abc123def456ghi789jkl012mno345pqr678stu901vwx234",
+    ] {
+        let input = serde_json::json!({
+            "tool_name": "Write",
+            "tool_input": {
+                "path": "config.js",
+                "content": content
+            }
+        });
 
-    run_hook("privacy-block", &input.to_string())
-        .success()
-        .stdout(predicate::str::contains("\"decision\":\"block\""));
+        run_hook("privacy-block", &input.to_string())
+            .success()
+            .stdout(predicate::str::contains("\"decision\":\"block\""));
+    }
 }
 
 #[test]
