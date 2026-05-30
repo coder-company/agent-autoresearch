@@ -24,7 +24,7 @@ The binary handles the mechanical infrastructure. The agent handles the intellig
 
 | User | Integration |
 |------|-------------|
-| Claude Code users | Plugin install (`claude plugin add`), hooks fire automatically |
+| Claude Code users | Installer builds the binary and installs the plugin hooks |
 | Codex CLI users | Skill file loaded at session start, CLI called via bash |
 | Any LLM agent | CLI called directly, skill markdown parsed by agent |
 
