@@ -12,6 +12,7 @@ Usage:
   ./scripts/run_skill_e2e.sh binary-smoke [--clean]
   ./scripts/run_skill_e2e.sh multi-repo-smoke [--clean]
   ./scripts/run_skill_e2e.sh runtime-smoke [--clean]
+  ./scripts/run_skill_e2e.sh parallel-smoke [--clean]
 
 Modes:
   binary-smoke  Create a disposable git repo and exercise init, decide, status,
@@ -22,6 +23,9 @@ Modes:
   runtime-smoke
                 Create a disposable git repo, start a fake detached Codex
                 runtime, verify status artifacts, and stop it.
+  parallel-smoke
+                Create a disposable git repo, prepare parallel worktrees, run
+                fake Codex workers, verify manifest updates, and clean up.
 
 Flags:
   --clean       Delete the temp repo after a successful run.
@@ -93,6 +97,25 @@ while [[ $# -gt 0 ]]; do
 done
 cat >/dev/null
 sleep 30
+EOF
+    chmod +x "$path"
+}
+
+write_exiting_fake_codex() {
+    local path="$1"
+    cat > "$path" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" != "exec" ]]; then
+    echo "expected codex exec" >&2
+    exit 64
+fi
+shift
+while [[ $# -gt 0 ]]; do
+    shift
+done
+cat >/dev/null
+exit 0
 EOF
     chmod +x "$path"
 }
@@ -241,6 +264,56 @@ run_runtime_smoke() {
     cleanup_if_requested "$tmpdir"
 }
 
+run_parallel_smoke() {
+    require_tool git
+
+    local bin tmpdir repo fake_codex prepare_output run_output cleanup_output manifest
+    bin="$(autoresearch_bin)"
+    tmpdir="$(mktemp -d)"
+    repo="$tmpdir/repo"
+    fake_codex="$tmpdir/fake-codex"
+    manifest="autoresearch-results/parallel-manifest.json"
+
+    init_fixture_repo "$repo"
+    write_exiting_fake_codex "$fake_codex"
+
+    "$bin" init \
+        --verify "cat metric.txt" \
+        --direction lower \
+        --goal "Exercise parallel worker execution" \
+        --scope metric.txt \
+        --cwd "$repo" >/dev/null
+
+    prepare_output="$("$bin" parallel prepare \
+        --workers 2 \
+        --branch-prefix "autoresearch/e2e" \
+        --cwd "$repo")"
+    grep -q '"status": "ok"' <<<"$prepare_output"
+    grep -q '"worker_id": "a"' "$repo/$manifest"
+    test -d "$repo/autoresearch-results/parallel-worktrees/iteration-1/worker-a"
+
+    run_output="$("$bin" parallel run \
+        --manifest "$manifest" \
+        --execution-policy workspace_write \
+        --codex-bin "$fake_codex" \
+        --timeout-seconds 5 \
+        --cwd "$repo")"
+    grep -q '"status": "ok"' <<<"$run_output"
+    grep -q '"worker_runs"' "$repo/$manifest"
+    grep -q '"status": "completed"' "$repo/$manifest"
+
+    cleanup_output="$("$bin" parallel cleanup \
+        --manifest "$manifest" \
+        --cwd "$repo")"
+    grep -q '"status": "ok"' <<<"$cleanup_output"
+    grep -q '"status": "cleaned"' "$repo/$manifest"
+    test ! -d "$repo/autoresearch-results/parallel-worktrees/iteration-1/worker-a"
+    ! git -C "$repo" show-ref --verify --quiet refs/heads/autoresearch/e2e-1-a
+
+    echo "parallel smoke: OK"
+    cleanup_if_requested "$tmpdir"
+}
+
 case "$MODE" in
     binary-smoke)
         run_binary_smoke
@@ -250,6 +323,9 @@ case "$MODE" in
         ;;
     runtime-smoke)
         run_runtime_smoke
+        ;;
+    parallel-smoke)
+        run_parallel_smoke
         ;;
     *)
         echo "Unknown mode: $MODE" >&2
