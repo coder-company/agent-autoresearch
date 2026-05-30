@@ -190,6 +190,8 @@ require_grep 'hidden `docs-manager` helper agent' docs/changelog.md
 require_grep 'MAX_RELEASE_BINARY_BYTES=\$\(\(5 \* 1024 \* 1024\)\)' scripts/run_contributor_gate.sh
 require_grep 'MAX_RELEASE_BINARY_BYTES=\$\(\(5 \* 1024 \* 1024\)\)' scripts/release.sh
 require_grep 'cargo fmt --manifest-path "\$ROOT/Cargo.toml" -- --check' scripts/release.sh
+require_grep '"\$ROOT/scripts/validate_distribution\.sh"' scripts/release.sh
+require_grep '\[10/10\] Committing and tagging' scripts/release.sh
 require_grep 'git -C "\$ROOT" log --format=' scripts/release.sh
 require_grep 'workflow_dispatch:' .github/workflows/ci.yml
 require_grep 'timeout-minutes: 25' .github/workflows/ci.yml

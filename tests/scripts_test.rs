@@ -122,6 +122,8 @@ fn release_script_enforces_release_binary_size() {
     assert!(script.contains("wc -c < \"$RELEASE_BINARY\""));
     assert!(script.contains("release binary is too large"));
     assert!(script.contains("cargo fmt --manifest-path \"$ROOT/Cargo.toml\" -- --check"));
+    assert!(script.contains("\"$ROOT/scripts/validate_distribution.sh\""));
+    assert!(script.contains("[10/10] Committing and tagging"));
 }
 
 #[test]

@@ -20,6 +20,7 @@ Manual steps for cutting a release. For automation, use `./scripts/release.sh <v
 - [ ] Update `plugins/autoresearch/.codex-plugin/plugin.json` (`<VERSION>-codex.0`)
 - [ ] Update skill frontmatter in `skills/autoresearch/SKILL.md` and `.agents/skills/autoresearch/SKILL.md`
 - [ ] Run `./scripts/transform.sh` so `.opencode/` and `plugins/autoresearch/skills/` inherit the version bump
+- [ ] Run `./scripts/validate_distribution.sh`
 - [ ] Run `cargo build --release` to regenerate `Cargo.lock`
 
 ## Build & Verify

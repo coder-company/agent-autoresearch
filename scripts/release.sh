@@ -50,11 +50,11 @@ if [[ -n "$(git -C "$ROOT" status --porcelain)" ]]; then
 fi
 
 # ── 2. Bump version in Cargo.toml ───────────────────────────────────
-echo "[1/8] Bumping Cargo.toml to $VERSION..."
+echo "[1/10] Bumping Cargo.toml to $VERSION..."
 sed -i "s/^version = \".*\"/version = \"$VERSION\"/" "$ROOT/Cargo.toml"
 
 # ── 3. Bump agent package manifests ─────────────────────────────────
-echo "[2/8] Bumping agent package manifests..."
+echo "[2/10] Bumping agent package manifests..."
 update_json_version "$ROOT/.claude-plugin/plugin.json" "$VERSION"
 update_json_version "$ROOT/.claude-plugin/marketplace.json" "$VERSION"
 update_json_version "$ROOT/plugins/autoresearch/.codex-plugin/plugin.json" "$VERSION-codex.0"
@@ -62,22 +62,26 @@ update_skill_version "$ROOT/skills/autoresearch/SKILL.md"
 update_skill_version "$ROOT/.agents/skills/autoresearch/SKILL.md"
 
 # ── 4. Sync generated distributions ─────────────────────────────────
-echo "[3/8] Syncing generated distributions..."
+echo "[3/10] Syncing generated distributions..."
 "$ROOT/scripts/transform.sh"
 
-# ── 5. Run format check + tests ─────────────────────────────────────
-echo "[4/8] Checking formatting..."
+# ── 5. Validate distributions ───────────────────────────────────────
+echo "[4/10] Validating distributions..."
+"$ROOT/scripts/validate_distribution.sh"
+
+# ── 6. Run format check + tests ─────────────────────────────────────
+echo "[5/10] Checking formatting..."
 cargo fmt --manifest-path "$ROOT/Cargo.toml" -- --check
 
-echo "[5/9] Running tests..."
+echo "[6/10] Running tests..."
 cargo test --manifest-path "$ROOT/Cargo.toml"
 
-# ── 6. Run clippy ───────────────────────────────────────────────────
-echo "[6/9] Running clippy..."
+# ── 7. Run clippy ───────────────────────────────────────────────────
+echo "[7/10] Running clippy..."
 cargo clippy --manifest-path "$ROOT/Cargo.toml" -- -D warnings
 
-# ── 7. Build release ────────────────────────────────────────────────
-echo "[7/9] Building release binary..."
+# ── 8. Build release ────────────────────────────────────────────────
+echo "[8/10] Building release binary..."
 cargo build --manifest-path "$ROOT/Cargo.toml" --release
 
 MAX_RELEASE_BINARY_BYTES=$((5 * 1024 * 1024))
@@ -91,8 +95,8 @@ fi
 BINARY_SIZE=$(du -h "$ROOT/target/release/autoresearch" | cut -f1)
 echo "  Binary size: $BINARY_SIZE"
 
-# ── 8. Update changelog ────────────────────────────────────────────
-echo "[8/9] Adding changelog entry..."
+# ── 9. Update changelog ────────────────────────────────────────────
+echo "[9/10] Adding changelog entry..."
 CHANGELOG="$ROOT/docs/changelog.md"
 if [ -f "$CHANGELOG" ]; then
     DATE=$(date +%Y-%m-%d)
@@ -132,8 +136,8 @@ if [ -f "$CHANGELOG" ]; then
     echo "  Added changelog entry for v$VERSION from recent commit subjects."
 fi
 
-# ── 9. Commit and tag ──────────────────────────────────────────────
-echo "[9/9] Committing and tagging..."
+# ── 10. Commit and tag ─────────────────────────────────────────────
+echo "[10/10] Committing and tagging..."
 git -C "$ROOT" add \
     Cargo.toml \
     Cargo.lock \
