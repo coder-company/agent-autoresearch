@@ -496,6 +496,44 @@ fn test_health_blocks_detached_head() {
 }
 
 #[test]
+fn test_health_blocks_stale_git_lock() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    std::fs::write(dir.path().join(".git/index.lock"), "stale\n").unwrap();
+
+    cmd()
+        .args([
+            "health",
+            "--verify",
+            "cat metric.txt",
+            "--min-free-mb",
+            "1",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .code(2)
+        .stdout(predicate::str::contains("\"decision\": \"block\""))
+        .stdout(predicate::str::contains("git_lock_file"))
+        .stdout(predicate::str::contains("index.lock"));
+}
+
+#[test]
 fn test_health_warns_when_context_missing() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

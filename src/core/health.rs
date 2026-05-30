@@ -63,15 +63,31 @@ pub fn run_health_check(
                 });
             }
 
-            match repo.worktree_status()? {
-                WorktreeStatus::Clean => "clean".to_string(),
-                WorktreeStatus::OnlyArtifacts => "only_artifacts".to_string(),
-                WorktreeStatus::Dirty(files) => {
-                    warnings.push(HealthFinding {
-                        code: "dirty_worktree",
-                        message: format!("unexpected worktree changes: {}", files.join(", ")),
-                    });
-                    "dirty".to_string()
+            let lock_files = repo.lock_files();
+            if !lock_files.is_empty() {
+                blockers.push(HealthFinding {
+                    code: "git_lock_file",
+                    message: format!(
+                        "stale git lock files found: {}",
+                        lock_files
+                            .iter()
+                            .map(|path| display_path(path))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                });
+                "locked".to_string()
+            } else {
+                match repo.worktree_status()? {
+                    WorktreeStatus::Clean => "clean".to_string(),
+                    WorktreeStatus::OnlyArtifacts => "only_artifacts".to_string(),
+                    WorktreeStatus::Dirty(files) => {
+                        warnings.push(HealthFinding {
+                            code: "dirty_worktree",
+                            message: format!("unexpected worktree changes: {}", files.join(", ")),
+                        });
+                        "dirty".to_string()
+                    }
                 }
             }
         }

@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use git2::{Repository, Signature, StatusOptions};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Git operations for the autoresearch loop.
 pub struct GitRepo {
@@ -65,6 +65,18 @@ impl GitRepo {
     /// Return true when HEAD is detached instead of pointing at a branch.
     pub fn head_detached(&self) -> Result<bool> {
         self.repo.head_detached().context("Failed to inspect HEAD")
+    }
+
+    /// Return known git lock files that can block safe commit/status operations.
+    pub fn lock_files(&self) -> Vec<PathBuf> {
+        const LOCK_FILES: &[&str] = &["index.lock", "HEAD.lock", "config.lock", "packed-refs.lock"];
+
+        let git_dir = self.repo.path();
+        LOCK_FILES
+            .iter()
+            .map(|name| git_dir.join(name))
+            .filter(|path| path.exists())
+            .collect()
     }
 
     /// Check the working tree status.
