@@ -2312,6 +2312,7 @@ fn tsv_fallback_resume(
             "crash" => crashes += 1,
             "no-op" => no_ops += 1,
             "blocked" => blocked += 1,
+            "drift" => current_metric = row.metric,
             _ => {}
         }
     }
@@ -2801,6 +2802,7 @@ fn parse_status(s: &str) -> Result<IterationStatus> {
         "pivot" => Ok(IterationStatus::Pivot),
         "refine" => Ok(IterationStatus::Refine),
         "search" => Ok(IterationStatus::Search),
+        "drift" => Ok(IterationStatus::Drift),
         _ => anyhow::bail!("Unknown status: {s}"),
     }
 }

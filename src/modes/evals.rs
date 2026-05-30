@@ -148,6 +148,7 @@ fn is_valid_status(value: &str) -> bool {
             | "pivot"
             | "refine"
             | "search"
+            | "drift"
     )
 }
 
@@ -394,6 +395,17 @@ mod tests {
         let err = parse_results_tsv(tsv).unwrap_err().to_string();
 
         assert!(err.contains("Invalid iteration label one"));
+    }
+
+    #[test]
+    fn test_parse_results_tsv_accepts_drift_status() {
+        let tsv = "# metric_direction: higher\niteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n\
+                   0\tbase\t85\t0\t-\tbaseline\tinitial\n\
+                   1\t-\t83\t-2\t-\tdrift\trecalibrated\n";
+
+        let rows = parse_results_tsv(tsv).unwrap();
+
+        assert_eq!(rows[1].status, "drift");
     }
 
     #[test]

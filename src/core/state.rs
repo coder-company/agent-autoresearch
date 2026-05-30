@@ -312,6 +312,7 @@ pub enum IterationStatus {
     Pivot,
     Refine,
     Search,
+    Drift,
 }
 
 impl IterationStatus {
@@ -326,6 +327,7 @@ impl IterationStatus {
             Self::Pivot => "pivot",
             Self::Refine => "refine",
             Self::Search => "search",
+            Self::Drift => "drift",
         }
     }
 }
