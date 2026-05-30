@@ -46,6 +46,13 @@ pub fn run_verify(
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
     let exit_code = output.status.code().unwrap_or(-1);
 
+    if !output.status.success() {
+        anyhow::bail!(
+            "Verify command exited with status {exit_code}. stderr: {}",
+            stderr.lines().rev().take(3).collect::<Vec<_>>().join(" | ")
+        );
+    }
+
     let metric = match format {
         VerifyFormat::Scalar => parse_scalar_metric(&stdout)?,
         VerifyFormat::MetricsJson => {

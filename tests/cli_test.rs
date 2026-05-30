@@ -91,6 +91,27 @@ fn test_verify_scalar_multiline_takes_last() {
         .stdout(predicate::str::contains("\"metric\":\"99.5\""));
 }
 
+#[test]
+fn test_verify_fails_on_nonzero_exit_even_with_metric() {
+    let dir = TempDir::new().unwrap();
+
+    cmd()
+        .args([
+            "verify",
+            "--command",
+            "echo 42; exit 1",
+            "--format",
+            "scalar",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "Verify command exited with status 1",
+        ));
+}
+
 // ── Evals Command ────────────────────────────────────────────────────
 
 #[test]
