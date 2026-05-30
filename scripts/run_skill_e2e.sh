@@ -88,7 +88,7 @@ cleanup_if_requested() {
 run_binary_smoke() {
     require_tool git
 
-    local bin tmpdir repo trial_commit
+    local bin tmpdir repo trial_commit watch_output evals_output
     bin="$(autoresearch_bin)"
     tmpdir="$(mktemp -d)"
     repo="$tmpdir/repo"
@@ -115,8 +115,10 @@ run_binary_smoke() {
         --cwd "$repo" >/dev/null
 
     "$bin" status --cwd "$repo" >/dev/null
-    "$bin" watch --once --lines 2 --cwd "$repo" | grep -q 'reduced marker count'
-    (cd "$repo" && "$bin" evals --format json) | grep -q '"keeps": 1'
+    watch_output="$("$bin" watch --once --lines 2 --cwd "$repo")"
+    grep -q 'reduced marker count' <<<"$watch_output"
+    evals_output="$(cd "$repo" && "$bin" evals --format json)"
+    grep -q '"keeps": 1' <<<"$evals_output"
     grep -q $'1\t' "$repo/autoresearch-results/results.tsv"
     grep -q 'reduced marker count' "$repo/autoresearch-results/results.tsv"
 
@@ -127,7 +129,7 @@ run_binary_smoke() {
 run_multi_repo_smoke() {
     require_tool git
 
-    local bin tmpdir primary companion
+    local bin tmpdir primary companion health_output
     bin="$(autoresearch_bin)"
     tmpdir="$(mktemp -d)"
     primary="$tmpdir/primary"
@@ -155,8 +157,8 @@ run_multi_repo_smoke() {
     grep -Fq "$companion" "$primary/autoresearch-results/context.json"
     test -f "$companion/.codex-autoresearch/pointer.json"
 
-    "$bin" health --verify "cat metric.txt" --min-free-mb 1 --cwd "$primary" \
-        | grep -q '"decision": "ok"'
+    health_output="$("$bin" health --verify "cat metric.txt" --min-free-mb 1 --cwd "$primary")"
+    grep -q '"decision": "ok"' <<<"$health_output"
 
     "$bin" handoff \
         --source loop \
