@@ -1,0 +1,41 @@
+{
+  "name": "autoresearch",
+  "version": "0.1.0-codex.0",
+  "description": "Autonomous improve-verify loops for Codex.",
+  "author": {
+    "name": "Coder Company",
+    "url": "https://github.com/coder-company"
+  },
+  "homepage": "https://github.com/coder-company/agent-autoresearch",
+  "repository": "https://github.com/coder-company/agent-autoresearch",
+  "license": "MIT",
+  "keywords": [
+    "autoresearch",
+    "codex",
+    "automation",
+    "debugging",
+    "security",
+    "evals"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Autoresearch",
+    "shortDescription": "Autonomous improvement workflows for Codex.",
+    "longDescription": "Binary-backed autonomous loops: plan, iterate, debug, fix, audit, ship, reason, probe, evaluate, and run CI exec workflows.",
+    "developerName": "Coder Company",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/coder-company/agent-autoresearch",
+    "privacyPolicyURL": "https://github.com/coder-company/agent-autoresearch/blob/main/LICENSE",
+    "termsOfServiceURL": "https://github.com/coder-company/agent-autoresearch/blob/main/LICENSE",
+    "brandColor": "#2563EB",
+    "defaultPrompt": [
+      "$autoresearch plan Improve test coverage to 90%",
+      "$autoresearch fix Verify: npm test",
+      "$autoresearch exec Config: <RunConfig JSON>"
+    ]
+  }
+}

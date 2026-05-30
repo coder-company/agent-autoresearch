@@ -75,6 +75,8 @@ required_paths=(
     references/results-logging.md
     .agents/skills/autoresearch/SKILL.md
     .opencode/skills/autoresearch/SKILL.md
+    plugins/autoresearch/.codex-plugin/plugin.json
+    plugins/autoresearch/skills/autoresearch/SKILL.md
 )
 
 for path in "${required_paths[@]}"; do
@@ -91,6 +93,10 @@ cmp -s "$ROOT/agents/skill-openai.yaml" "$ROOT/.agents/skills/autoresearch/agent
 if grep -Eq '^(name|description|model|tools):' "$ROOT/.agents/skills/autoresearch/agents/openai.yaml"; then
     fail ".agents/skills/autoresearch/agents/openai.yaml contains full tool-schema fields"
 fi
+cmp -s "$ROOT/.agents/skills/autoresearch/SKILL.md" "$ROOT/plugins/autoresearch/skills/autoresearch/SKILL.md" \
+    || fail "plugins/autoresearch skill entrypoint drifted from .agents skill"
+cmp -s "$ROOT/.agents/skills/autoresearch/agents/openai.yaml" "$ROOT/plugins/autoresearch/skills/autoresearch/agents/openai.yaml" \
+    || fail "plugins/autoresearch agent metadata drifted from .agents skill"
 
 require_grep '\$autoresearch' .agents/skills/autoresearch/SKILL.md
 require_grep 'autoresearch runtime run' .agents/skills/autoresearch/SKILL.md
@@ -124,6 +130,7 @@ require_grep 'environment-summary' references/environment-awareness.md
 require_grep 'environment-summary' commands/autoresearch.md
 
 check_synced_reference_package "$ROOT/.agents/skills/autoresearch"
+check_synced_reference_package "$ROOT/plugins/autoresearch/skills/autoresearch"
 check_synced_reference_package "$ROOT/.opencode/skills/autoresearch"
 
 echo "Distribution validation passed."

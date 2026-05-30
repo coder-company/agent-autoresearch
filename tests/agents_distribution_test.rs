@@ -121,3 +121,29 @@ fn codex_skill_packages_openai_agent_metadata() {
         );
     }
 }
+
+#[test]
+fn codex_plugin_packages_synced_skill() {
+    let root = repo_root();
+    let manifest_path = root.join("plugins/autoresearch/.codex-plugin/plugin.json");
+    let manifest: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&manifest_path).unwrap()).unwrap();
+
+    assert_eq!(manifest["name"], "autoresearch");
+    assert_eq!(manifest["skills"], "./skills/");
+    assert!(
+        manifest["interface"]["defaultPrompt"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|prompt| prompt.as_str().unwrap().contains("$autoresearch")),
+        "plugin manifest should expose $autoresearch prompts"
+    );
+
+    let packaged_skill = root.join("plugins/autoresearch/skills/autoresearch/SKILL.md");
+    assert_eq!(
+        fs::read_to_string(root.join(".agents/skills/autoresearch/SKILL.md")).unwrap(),
+        fs::read_to_string(&packaged_skill).unwrap(),
+        "Codex plugin skill drifted from .agents skill package"
+    );
+}

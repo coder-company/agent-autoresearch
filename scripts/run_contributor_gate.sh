@@ -30,9 +30,9 @@ echo "==> scripts/validate_distribution.sh"
 echo "==> git diff --check"
 git diff --check
 
-if ! git diff --quiet -- .opencode .agents; then
+if ! git diff --quiet -- .opencode .agents plugins/autoresearch/skills; then
     echo "Generated distribution files are out of sync. Run ./scripts/transform.sh and commit the result." >&2
-    git status --short -- .opencode .agents >&2
+    git status --short -- .opencode .agents plugins/autoresearch/skills >&2
     exit 1
 fi
 

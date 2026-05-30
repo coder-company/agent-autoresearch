@@ -120,14 +120,26 @@ check_reference_links "$ROOT/.agents/skills/autoresearch" \
 
 agents_count=$(find "$ROOT/.agents" -type f | wc -l)
 
+# ── Codex plugin package ─────────────────────────────────────────────
+
+echo "Building plugins/autoresearch skill package..."
+
+rm -rf "$ROOT/plugins/autoresearch/skills/autoresearch"
+mkdir -p "$ROOT/plugins/autoresearch/skills"
+cp -R "$ROOT/.agents/skills/autoresearch" "$ROOT/plugins/autoresearch/skills/autoresearch"
+
+plugin_count=$(find "$ROOT/plugins/autoresearch" -type f | wc -l)
+
 # ── Summary ─────────────────────────────────────────────────────────
 
 echo ""
 echo "=== Transform Complete ==="
 echo ".opencode/  : $opencode_count files"
 echo ".agents/    : $agents_count files"
+echo "plugin      : $plugin_count files"
 echo ""
 echo "Distributions:"
 echo "  .opencode/commands/    — OpenCode command surface"
 echo "  .opencode/skills/      — OpenCode skill definitions"
 echo "  .agents/skills/        — Generic agent skills (maintained directly)"
+echo "  plugins/autoresearch/  — Codex plugin package"
