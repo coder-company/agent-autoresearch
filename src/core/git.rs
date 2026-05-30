@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use git2::{Repository, Signature, StatusOptions};
+use git2::{Repository, Signature, Status, StatusOptions};
 use std::path::{Path, PathBuf};
 
 /// Git operations for the autoresearch loop.
@@ -77,6 +77,30 @@ impl GitRepo {
             .map(|name| git_dir.join(name))
             .filter(|path| path.exists())
             .collect()
+    }
+
+    /// Return autoresearch-owned artifacts that are staged in the git index.
+    pub fn staged_owned_artifacts(&self) -> Result<Vec<String>> {
+        let mut opts = StatusOptions::new();
+        opts.include_untracked(true);
+        let statuses = self.repo.statuses(Some(&mut opts))?;
+        let staged_mask = Status::INDEX_NEW
+            | Status::INDEX_MODIFIED
+            | Status::INDEX_DELETED
+            | Status::INDEX_RENAMED
+            | Status::INDEX_TYPECHANGE;
+
+        Ok(statuses
+            .iter()
+            .filter_map(|entry| {
+                let path = entry.path()?;
+                if entry.status().intersects(staged_mask) && is_owned_artifact(path) {
+                    Some(path.to_string())
+                } else {
+                    None
+                }
+            })
+            .collect())
     }
 
     /// Check the working tree status.

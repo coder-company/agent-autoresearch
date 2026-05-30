@@ -78,6 +78,17 @@ pub fn run_health_check(
                 });
                 "locked".to_string()
             } else {
+                let staged_artifacts = repo.staged_owned_artifacts()?;
+                if !staged_artifacts.is_empty() {
+                    blockers.push(HealthFinding {
+                        code: "staged_autoresearch_artifacts",
+                        message: format!(
+                            "autoresearch-owned artifacts are staged: {}",
+                            staged_artifacts.join(", ")
+                        ),
+                    });
+                }
+
                 match repo.worktree_status()? {
                     WorktreeStatus::Clean => "clean".to_string(),
                     WorktreeStatus::OnlyArtifacts => "only_artifacts".to_string(),

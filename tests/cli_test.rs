@@ -534,6 +534,48 @@ fn test_health_blocks_stale_git_lock() {
 }
 
 #[test]
+fn test_health_blocks_staged_autoresearch_artifacts() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    std::process::Command::new("git")
+        .args(["add", "-f", "autoresearch-results/state.json"])
+        .current_dir(dir.path())
+        .output()
+        .unwrap();
+
+    cmd()
+        .args([
+            "health",
+            "--verify",
+            "cat metric.txt",
+            "--min-free-mb",
+            "1",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .code(2)
+        .stdout(predicate::str::contains("\"decision\": \"block\""))
+        .stdout(predicate::str::contains("staged_autoresearch_artifacts"))
+        .stdout(predicate::str::contains("autoresearch-results/state.json"));
+}
+
+#[test]
 fn test_health_warns_when_context_missing() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
