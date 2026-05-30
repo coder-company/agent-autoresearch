@@ -58,6 +58,14 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
         }
     }
 
+    if input.tool_name.as_deref() == Some("Bash") {
+        if let Some(path) = sensitive_bash_path(input) {
+            return HookResponse::inject(format!(
+                "WARNING: Bash command references potentially sensitive path `{path}`. Ensure no secrets are exposed or committed."
+            ));
+        }
+    }
+
     // Check tool input content for sensitive patterns
     let content = match &input.tool_input {
         Some(v) => serde_json::to_string(v).unwrap_or_default(),
@@ -74,6 +82,22 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
     }
 
     HookResponse::allow()
+}
+
+fn sensitive_bash_path(input: &HookInput) -> Option<String> {
+    let command = input
+        .tool_input
+        .as_ref()
+        .and_then(|value| value.get("command").or_else(|| value.get("cmd")))
+        .and_then(|value| value.as_str())?;
+    command
+        .split_whitespace()
+        .map(|token| {
+            token
+                .trim_matches(|ch| matches!(ch, '\'' | '"' | '`' | ';' | ','))
+                .to_string()
+        })
+        .find(|token| !token.starts_with("APPROVED:") && is_sensitive_path(token))
 }
 
 fn tool_path(input: &HookInput) -> Option<&str> {

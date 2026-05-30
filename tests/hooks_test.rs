@@ -341,6 +341,36 @@ fn test_privacy_block_allows_documented_exceptions_and_approved_paths() {
 }
 
 #[test]
+fn test_privacy_block_warns_for_bash_sensitive_paths() {
+    let input = serde_json::json!({
+        "tool_name": "Bash",
+        "tool_input": {
+            "command": "cat .env"
+        }
+    });
+
+    run_hook("privacy-block", &input.to_string())
+        .success()
+        .stdout(predicate::str::contains("\"additionalContext\""))
+        .stdout(predicate::str::contains("\"decision\":\"block\"").not());
+}
+
+#[test]
+fn test_privacy_block_allows_bash_documented_exceptions() {
+    let input = serde_json::json!({
+        "tool_name": "Bash",
+        "tool_input": {
+            "command": "cat .env.example"
+        }
+    });
+
+    run_hook("privacy-block", &input.to_string())
+        .success()
+        .stdout(predicate::str::contains("\"additionalContext\"").not())
+        .stdout(predicate::str::contains("\"decision\":\"block\"").not());
+}
+
+#[test]
 fn test_hook_disable_env_allows_privacy_block() {
     let input = serde_json::json!({
         "tool_name": "Read",
