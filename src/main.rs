@@ -2743,6 +2743,12 @@ fn cmd_handoff(
     if !is_valid_handoff_status(status) {
         anyhow::bail!("invalid handoff status {status:?}");
     }
+    if evals_interval == Some(0) {
+        anyhow::bail!("handoff evals interval must be greater than zero");
+    }
+    if evals_interval.is_some() && !evals {
+        anyhow::bail!("handoff evals interval requires --evals");
+    }
     let goal = config_val
         .get("goal")
         .cloned()

@@ -1614,6 +1614,55 @@ fn test_handoff_marks_blocked_chain_non_continuable() {
 }
 
 #[test]
+fn test_handoff_rejects_eval_interval_without_evals() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+
+    cmd()
+        .args([
+            "handoff",
+            "--source",
+            "debug",
+            "--status",
+            "COMPLETE",
+            "--evals-interval",
+            "3",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "handoff evals interval requires --evals",
+        ));
+}
+
+#[test]
+fn test_handoff_rejects_zero_eval_interval() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+
+    cmd()
+        .args([
+            "handoff",
+            "--source",
+            "debug",
+            "--status",
+            "COMPLETE",
+            "--evals",
+            "--evals-interval",
+            "0",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "handoff evals interval must be greater than zero",
+        ));
+}
+
+#[test]
 fn test_exec_defaults_to_repo_root_from_subdir() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
