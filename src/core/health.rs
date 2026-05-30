@@ -3,6 +3,7 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use super::context::RunContext;
 use super::git::{GitRepo, WorktreeStatus};
 use super::results::{results_dir, ResultsLog};
 use super::state::RunState;
@@ -20,8 +21,10 @@ pub struct HealthReport {
     pub workspace: String,
     pub results_path: String,
     pub state_path: String,
+    pub context_path: String,
     pub has_results: bool,
     pub has_state: bool,
+    pub has_context: bool,
     pub main_rows: usize,
     pub expected_rows: Option<u32>,
     pub git_state: String,
@@ -44,6 +47,7 @@ pub fn run_health_check(
 ) -> Result<HealthReport> {
     let results_path = results_dir(workspace);
     let state_path = results_path.join("state.json");
+    let context_path = results_path.join("context.json");
     let tsv_path = results_path.join("results.tsv");
 
     let mut warnings = Vec::new();
@@ -85,6 +89,7 @@ pub fn run_health_check(
 
     let has_results = tsv_path.exists();
     let has_state = state_path.exists();
+    let has_context = context_path.exists();
     let mut main_rows = 0usize;
     let mut expected_rows = None;
     let mut state_verify = None;
@@ -101,6 +106,24 @@ pub fn run_health_check(
         .with_context(|| format!("failed to parse {}", state_path.display()))?;
         expected_rows = Some(state.iteration + 1);
         state_verify = state.config.as_ref().map(|config| config.verify.clone());
+    }
+    if has_context {
+        let context: RunContext = serde_json::from_str(
+            &std::fs::read_to_string(&context_path)
+                .with_context(|| format!("failed to read {}", context_path.display()))?,
+        )
+        .with_context(|| format!("failed to parse {}", context_path.display()))?;
+        if !context.active {
+            warnings.push(HealthFinding {
+                code: "inactive_context",
+                message: "context.json is marked inactive".to_string(),
+            });
+        }
+    } else if has_results || has_state {
+        warnings.push(HealthFinding {
+            code: "missing_context",
+            message: "context.json is missing; resume can still use state.json".to_string(),
+        });
     }
 
     match (has_results, has_state) {
@@ -160,8 +183,10 @@ pub fn run_health_check(
         workspace: display_path(workspace),
         results_path: display_path(&results_path),
         state_path: display_path(&state_path),
+        context_path: display_path(&context_path),
         has_results,
         has_state,
+        has_context,
         main_rows,
         expected_rows,
         git_state,

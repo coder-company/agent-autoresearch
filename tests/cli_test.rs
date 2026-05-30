@@ -257,6 +257,43 @@ fn test_health_blocks_missing_verify_command() {
 }
 
 #[test]
+fn test_health_warns_when_context_missing() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    std::fs::remove_file(dir.path().join("autoresearch-results/context.json")).unwrap();
+
+    cmd()
+        .args([
+            "health",
+            "--verify",
+            "cat metric.txt",
+            "--min-free-mb",
+            "1",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"warn\""))
+        .stdout(predicate::str::contains("missing_context"));
+}
+
+#[test]
 fn test_init_persists_runtime_config() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
