@@ -108,7 +108,7 @@ autoresearch init --verify "pytest --cov=src | tail -1" --direction higher
 # Per-iteration (called by agent each turn)
 autoresearch verify --command "pytest --cov=src | tail -1"
 autoresearch guard --command "tsc --noEmit"
-autoresearch decide --decision keep --metric 62 --commit abc1234 --description "add auth tests"
+autoresearch decide --decision auto --metric 62 --commit abc1234 --description "add auth tests"
 autoresearch progress
 
 # End of run

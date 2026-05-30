@@ -64,9 +64,9 @@ User prompt → [hook: iteration-context injects state]
            → Agent reads state + TSV + git log
            → Agent makes ONE change
            → Agent calls: autoresearch verify --command "..."
-           → Binary runs command, returns metric JSON
-           → Agent calls: autoresearch decide --decision keep/discard --metric N
-           → Binary: updates state.json, appends TSV, reverts if discard
+           → Binary runs command, returns metric + metrics JSON
+           → Agent calls: autoresearch decide --decision auto --metric N --metrics-json '{...}'
+           → Binary: evaluates criteria, updates state.json, appends TSV, reverts if discard
            → [hook: stop-check ensures agent doesn't quit early]
            → Next iteration
 ```

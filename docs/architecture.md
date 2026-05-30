@@ -109,8 +109,8 @@ autoresearch verify --command "..." → metric (Decimal)
 autoresearch guard --command "..."  → pass/fail (optional)
     │
     ▼
-autoresearch decide --decision keep|discard --metric N
+autoresearch decide --decision auto --metric N --metrics-json '{...}'
     │
     ├── keep:    state.record_keep() → update state.json, append TSV
-    └── discard: state.record_discard() → git revert, update state.json, append TSV
+    └── discard: state.record_discard() → rollback, update state.json, append TSV
 ```
