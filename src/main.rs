@@ -2,6 +2,8 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use rust_decimal::Decimal;
 use std::collections::BTreeMap;
+use std::fmt::Write as FmtWrite;
+use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -1107,6 +1109,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
             _ => "flat",
         }
     };
+    let summary_dir = tsv_path.parent().unwrap_or_else(|| Path::new("."));
 
     match format {
         "json" => {
@@ -1126,60 +1129,141 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                     serde_json::json!({"delta": d.to_string(), "description": desc})
                 }).collect::<Vec<_>>(),
             });
-            println!("{}", serde_json::to_string_pretty(&out)?);
+            let json = serde_json::to_string_pretty(&out)?;
+            std::fs::write(summary_dir.join("evals-summary.json"), &json)?;
+            println!("{json}");
+        }
+        "md" => {
+            let report = render_evals_markdown(EvalsReport {
+                direction,
+                total,
+                keeps,
+                discards,
+                crashes,
+                efficiency,
+                baseline,
+                final_metric,
+                best,
+                trend,
+                longest_plateau,
+                top_keeps: &top_keeps,
+            });
+            std::fs::write(summary_dir.join("evals-summary.md"), &report)?;
+            print!("{report}");
         }
         _ => {
-            println!("## Autoresearch Evals");
-            println!();
-            println!("| Stat | Value |");
-            println!("|------|-------|");
-            println!("| Direction | {direction} |");
-            println!("| Iterations | {} |", total.saturating_sub(1));
-            println!("| Kept | {keeps} |");
-            println!("| Discarded | {discards} |");
-            println!("| Crashes | {crashes} |");
-            println!("| Efficiency | {efficiency}% |");
-            println!("| Baseline | {baseline} |");
-            println!("| Final | {final_metric} |");
-            println!("| Best | {best} |");
-            println!("| Trend | {trend} |");
-            println!("| Longest plateau | {longest_plateau} iterations |");
-            println!();
-            if !top_keeps.is_empty() {
-                println!("### Top Improvements");
-                println!();
-                for (i, (delta, desc)) in top_keeps.iter().take(5).enumerate() {
-                    println!("{}. **{delta}** — {desc}", i + 1);
-                }
-                println!();
-            }
-            // Recommendations
-            println!("### Recommendations");
-            println!();
-            if longest_plateau >= 5 {
-                println!("- ⚠️ Plateau of {longest_plateau} iterations detected. Consider a PIVOT strategy.");
-            }
-            if crashes > keeps {
-                println!("- ⚠️ More crashes than keeps. Check verify command reliability.");
-            }
-            if efficiency < 20 && total > 10 {
-                println!(
-                    "- ⚠️ Low efficiency ({efficiency}%). Hypotheses may need better grounding."
-                );
-            }
-            if trend == "declining" {
-                println!("- ⚠️ Declining trend. Recent changes may be counterproductive.");
-            }
-            if trend == "improving" && efficiency > 30 {
-                println!("- ✅ Strong trajectory. Continue current approach.");
-            }
-            if longest_plateau < 3 && efficiency > 40 {
-                println!("- ✅ Healthy run. Good keep rate with no extended plateaus.");
-            }
+            let report = render_evals_markdown(EvalsReport {
+                direction,
+                total,
+                keeps,
+                discards,
+                crashes,
+                efficiency,
+                baseline,
+                final_metric,
+                best,
+                trend,
+                longest_plateau,
+                top_keeps: &top_keeps,
+            });
+            print!("{report}");
         }
     }
 
     Ok(())
+}
+
+struct EvalsReport<'a> {
+    direction: &'a str,
+    total: usize,
+    keeps: usize,
+    discards: usize,
+    crashes: usize,
+    efficiency: u32,
+    baseline: Decimal,
+    final_metric: Decimal,
+    best: Decimal,
+    trend: &'a str,
+    longest_plateau: u32,
+    top_keeps: &'a [(Decimal, &'a str)],
+}
+
+fn render_evals_markdown(report: EvalsReport<'_>) -> String {
+    let mut out = String::new();
+    writeln!(out, "## Autoresearch Evals").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "| Stat | Value |").unwrap();
+    writeln!(out, "|------|-------|").unwrap();
+    writeln!(out, "| Direction | {} |", report.direction).unwrap();
+    writeln!(out, "| Iterations | {} |", report.total.saturating_sub(1)).unwrap();
+    writeln!(out, "| Kept | {} |", report.keeps).unwrap();
+    writeln!(out, "| Discarded | {} |", report.discards).unwrap();
+    writeln!(out, "| Crashes | {} |", report.crashes).unwrap();
+    writeln!(out, "| Efficiency | {}% |", report.efficiency).unwrap();
+    writeln!(out, "| Baseline | {} |", report.baseline).unwrap();
+    writeln!(out, "| Final | {} |", report.final_metric).unwrap();
+    writeln!(out, "| Best | {} |", report.best).unwrap();
+    writeln!(out, "| Trend | {} |", report.trend).unwrap();
+    writeln!(
+        out,
+        "| Longest plateau | {} iterations |",
+        report.longest_plateau
+    )
+    .unwrap();
+    writeln!(out).unwrap();
+
+    if !report.top_keeps.is_empty() {
+        writeln!(out, "### Top Improvements").unwrap();
+        writeln!(out).unwrap();
+        for (i, (delta, desc)) in report.top_keeps.iter().take(5).enumerate() {
+            writeln!(out, "{}. **{}** - {}", i + 1, delta, desc).unwrap();
+        }
+        writeln!(out).unwrap();
+    }
+
+    writeln!(out, "### Recommendations").unwrap();
+    writeln!(out).unwrap();
+    if report.longest_plateau >= 5 {
+        writeln!(
+            out,
+            "- Plateau of {} iterations detected. Consider a PIVOT strategy.",
+            report.longest_plateau
+        )
+        .unwrap();
+    }
+    if report.crashes > report.keeps {
+        writeln!(
+            out,
+            "- More crashes than keeps. Check verify command reliability."
+        )
+        .unwrap();
+    }
+    if report.efficiency < 20 && report.total > 10 {
+        writeln!(
+            out,
+            "- Low efficiency ({}%). Hypotheses may need better grounding.",
+            report.efficiency
+        )
+        .unwrap();
+    }
+    if report.trend == "declining" {
+        writeln!(
+            out,
+            "- Declining trend. Recent changes may be counterproductive."
+        )
+        .unwrap();
+    }
+    if report.trend == "improving" && report.efficiency > 30 {
+        writeln!(out, "- Strong trajectory. Continue current approach.").unwrap();
+    }
+    if report.longest_plateau < 3 && report.efficiency > 40 {
+        writeln!(
+            out,
+            "- Healthy run. Good keep rate with no extended plateaus."
+        )
+        .unwrap();
+    }
+    out
 }
 
 // ── Status ────────────────────────────────────────────────────────────

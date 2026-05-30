@@ -176,6 +176,9 @@ fn test_evals_with_sample_tsv() {
         .assert()
         .success()
         .stdout(predicate::str::contains("\"keeps\": 2"));
+
+    let summary = std::fs::read_to_string(dir.path().join("evals-summary.json")).unwrap();
+    assert!(summary.contains("\"keeps\": 2"));
 }
 
 #[test]
@@ -197,6 +200,32 @@ fn test_evals_text_format() {
         .args(["evals", tsv_path.to_str().unwrap(), "--format", "text"])
         .assert()
         .success();
+}
+
+#[test]
+fn test_evals_md_format_writes_summary_file() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: higher").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t50\t0\t-\tbaseline\tinitial state").unwrap();
+    writeln!(file, "1\tbcd2345\t55\t+5\tpass\tkeep\timprovement").unwrap();
+
+    cmd()
+        .args(["evals", tsv_path.to_str().unwrap(), "--format", "md"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("## Autoresearch Evals"));
+
+    let summary = std::fs::read_to_string(dir.path().join("evals-summary.md")).unwrap();
+    assert!(summary.contains("## Autoresearch Evals"));
+    assert!(summary.contains("| Kept | 1 |"));
 }
 
 #[test]
