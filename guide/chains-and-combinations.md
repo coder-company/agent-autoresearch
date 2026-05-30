@@ -10,11 +10,29 @@ When a command completes, it writes `autoresearch-results/handoff.json`:
 
 ```json
 {
-  "version": "0.1.0",
+  "version": "2.1.0",
+  "protocol_version": "2.1.0",
+  "binary_version": "0.1.0",
   "source": "debug",
+  "source_command": "debug",
+  "timestamp": "2026-05-30T00:00:00Z",
   "status": "COMPLETE",
+  "results_tsv": "autoresearch-results/results.tsv",
+  "workspace_root": "/path/to/workspace",
+  "artifact_root": "/path/to/workspace/autoresearch-results",
+  "results_path": "/path/to/workspace/autoresearch-results/results.tsv",
+  "handoff_path": "/path/to/workspace/autoresearch-results/handoff.json",
+  "goal": "...",
+  "scope": ["src/**"],
+  "hypothesis_queue": [...],
+  "summary": {...},
   "findings": [...],
-  "config": {"goal": "...", "verify": "..."}
+  "config": {"goal": "...", "verify": "..."},
+  "chain": ["fix"],
+  "next_target": "fix",
+  "chain_continue": true,
+  "propagate_evals": false,
+  "evals_interval": null
 }
 ```
 
