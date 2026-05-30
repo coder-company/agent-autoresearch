@@ -15,8 +15,8 @@ There is no lightweight, compiled infrastructure that gives agents a tight modif
 A single compiled Rust binary (about 3MB) that provides:
 
 - **Hook handler** — sub-5ms responses for Claude Code's plugin hook system (PreToolUse, PostToolUse, UserPromptSubmit, Stop, etc.)
-- **CLI commands** — `init`, `verify`, `guard`, `log`, `decide`, `evals`, `status`, `screen`, `resume`, `progress`, `lessons`, `handoff`, `exec`
-- **Agent skill files** — markdown protocols that guide the agent through iteration loops, security audits, debugging, shipping, and more
+- **CLI operations** — `init`, `verify`, `guard`, `decide`, `resume`, `health`, `progress`, `watch`, `lessons`, `handoff`, `exec`, plus `runtime run/start/status/supervise/stop` and `parallel prepare/run/closeout/cleanup`
+- **Agent packages** — Claude plugin commands, Codex `.agents` skill/plugin package, OpenCode skill package, and shared markdown protocols for iteration loops, security audits, debugging, shipping, product improvement research, and more
 
 The binary handles the mechanical infrastructure. The agent handles the intelligence. Clean separation.
 
@@ -25,7 +25,8 @@ The binary handles the mechanical infrastructure. The agent handles the intellig
 | User | Integration |
 |------|-------------|
 | Claude Code users | Installer builds the binary and installs the plugin hooks |
-| Codex CLI users | Skill file loaded at session start, CLI called via bash |
+| Codex CLI users | `$skill-installer` skill plus local `.agents/plugins/marketplace.json` plugin package |
+| OpenCode users | Generated `.opencode/` skill and underscore command names |
 | Any LLM agent | CLI called directly, skill markdown parsed by agent |
 
 ## Architecture
@@ -41,9 +42,13 @@ The binary handles the mechanical infrastructure. The agent handles the intellig
 ┌─────────────────┐     ┌──────────────────────┐
 │ SKILL.md /       │     │ autoresearch-results/ │
 │ commands/*.md    │     │ ├── results.tsv       │
-└─────────────────┘     │ ├── state.json        │
+│ agent packages   │     │ ├── state.json        │
+└─────────────────┘     │ ├── context.json      │
                         │ ├── lessons.md        │
-                        │ └── handoff.json      │
+                        │ ├── handoff.json      │
+                        │ ├── launch.json       │
+                        │ ├── runtime.json      │
+                        │ └── runtime.log       │
                         └──────────────────────┘
 ```
 
@@ -78,6 +83,7 @@ The binary handles the mechanical infrastructure. The agent handles the intellig
 | Probe | Requirements interrogation until saturation |
 | Learn | Auto-generate documentation |
 | Ship | 8-phase ship workflow |
+| Improve | Research ICP needs and generate product improvement PRDs |
 | Evals | Analyze iteration results |
 | Plan | Convert goal → validated config |
 
@@ -87,4 +93,6 @@ The binary handles the mechanical infrastructure. The agent handles the intellig
 2. Failed experiments are automatically reverted (zero pollution)
 3. Cross-session memory via lessons.md survives compaction
 4. Hook latency is imperceptible to the agent/user
-5. Installation is one command, works in 30 seconds
+5. Background `autoresearch runtime run` can relaunch Codex turns without corrupting artifacts
+6. Parallel worker closeout produces one authoritative retained result after verification
+7. Installation is one command for Claude, Codex, and OpenCode paths
