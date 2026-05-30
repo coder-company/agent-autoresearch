@@ -35,10 +35,9 @@ Verify: git repo exists, clean working tree, no lock files, no detached HEAD. Fa
 
 ## Establish Baseline (Iteration 0)
 
-1. Run Target command → count errors (metric = error count, direction = lower_is_better)
-2. Record baseline in TSV
-3. Create output directory: `autoresearch/fix-{YYMMDD}-{HHMM}/`
-4. TSV header: `# metric_direction: lower_is_better\niteration\ttimestamp\terror_type\terror_fixed\tcommit\tmetric\tdelta\tguard\tstatus\tdescription`
+1. Run `autoresearch init --verify "{target command}" --direction lower`.
+2. Let the binary create `autoresearch-results/`, `results.tsv`, `state.json`, `context.json`, and `.codex-autoresearch/pointer.json`.
+3. Use the returned baseline error count as the metric.
 
 ## Set /goal
 
@@ -51,7 +50,7 @@ After baseline established, activate the completion condition:
 ## Iteration Loop (until zero errors or max_iterations)
 
 ### Phase 1: Review
-- Read results TSV + git log
+- Read results TSV + `autoresearch-results/context.json` + git log
 - Run Target to get current error list
 - If error count == 0 → exit loop (SUCCESS)
 
@@ -65,25 +64,26 @@ Within category: easiest first (single-file fixes before cross-file).
 - Record error type and which error was fixed
 
 ### Phase 4: Commit
-- Stage and commit: `experiment: fix {error_type} — {description}`
+- Stage only scoped files and commit: `experiment: fix {error_type} — {description}`. Never stage `autoresearch-results/` or `.codex-autoresearch/`.
 
 ### Phase 5: Verify
-- Run Target → count errors → compute delta
+- Run `autoresearch verify --command "{target command}"` → count errors → compute delta
 - Expected: error count decreased by 1 or more
 
 ### Phase 6: Guard
-- If Guard set → run Guard. If fails → revert.
+- If Guard set → run `autoresearch guard --command "{guard command}"`.
 
 ### Phase 7: Decide
+- Run `autoresearch decide --decision auto --metric {error_count} --commit {sha} --description "{description}"`.
 - **keep** — error count decreased AND guard passes
 - **keep (reworked)** — fix needed adjustment, second attempt worked
-- **discard** — error count same/increased → `git revert HEAD --no-edit`
-- **crash** — target/guard command failed → revert
+- **discard** — error count same/increased or guard failed → binary reverts the experiment commit
+- **crash** — target/guard command failed → binary reverts the experiment commit
 - **hook-blocked** — git hook blocked the commit
-- **metric-error** — target output not parseable → revert
+- **metric-error** — target output not parseable → binary reverts the experiment commit
 
 ### Phase 8: Log
-Append row: iteration, timestamp, error_type, error_fixed, commit/-, metric (error count), delta, guard, status, description
+Let `autoresearch decide` append the results TSV row and update state/escalation JSON.
 
 ### Eval Checkpoint
 If --evals: check if current_iteration % interval == 0 → run checkpoint analysis.
@@ -106,5 +106,5 @@ If --evals present:
 
 ## Chain Handoff
 
-After completion, write handoff.json to output directory: version "2.1.0", source "fix", timestamp, status (COMPLETE|USER_INTERRUPT|BOUNDED|ERROR), results_tsv path, findings = unfixed errors, config{target, scope, guard}.
+After completion, write `autoresearch-results/handoff.json`: version "2.1.0", source "fix", timestamp, status (COMPLETE|USER_INTERRUPT|BOUNDED|ERROR), results_tsv path, findings = unfixed errors, config{target, scope, guard}.
 Invoke next target in --chain order. Propagate --evals flag.

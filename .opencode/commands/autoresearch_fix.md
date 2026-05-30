@@ -29,12 +29,14 @@ If Target and Scope both missing:
 
 ## Establish Baseline (Iteration 0)
 
-1. Run Target → count errors (metric = error count, direction = lower_is_better)
-2. Create output directory, write TSV header + baseline
+1. Run `autoresearch init --verify "{target command}" --direction lower`.
+2. Let the binary create `autoresearch-results/`, `results.tsv`, `state.json`, `context.json`, and `.codex-autoresearch/pointer.json`.
+3. Use the returned baseline error count as the metric.
 
 ## Iteration Loop (until zero errors or max_iterations)
 
 ### Phase 1: Review
+- Read results TSV + `autoresearch-results/context.json` + git log
 - Run Target to get current error list
 - If error count == 0 → exit loop (SUCCESS)
 
@@ -45,20 +47,21 @@ Order: crash/fatal → test failures → type errors → lint → warnings.
 - Pick highest-priority error, make ONE focused fix
 
 ### Phase 4: Commit
-`git commit -m "experiment: fix {error_type} — {description}"`
+Stage only scoped files and commit: `git commit -m "experiment: fix {error_type} — {description}"`. Never stage `autoresearch-results/` or `.codex-autoresearch/`.
 
 ### Phase 5: Verify
-Run Target → count errors → compute delta.
+Run `autoresearch verify --command "{target command}"` → count errors → compute delta.
 
 ### Phase 6: Guard
-If Guard set → run Guard. If fails → revert.
+If Guard set → run `autoresearch guard --command "{guard command}"`.
 
 ### Phase 7: Decide
+Run `autoresearch decide --decision auto --metric {error_count} --commit {sha} --description "{description}"`.
 - **keep** — error count decreased AND guard passes
-- **discard** — error count same/increased → revert
+- **discard** — error count same/increased or guard failed → binary reverts the experiment commit
 
 ### Phase 8: Log
-Append row to TSV.
+Let `autoresearch decide` append the results TSV row and update state/escalation JSON.
 
 ## Summary
 
