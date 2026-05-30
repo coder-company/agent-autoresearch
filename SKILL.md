@@ -114,6 +114,7 @@ Optional:
 | `autoresearch resume` | Detect resumable prior run |
 | `autoresearch runtime start --dry-run` | Persist background launch/runtime artifacts; omit `--dry-run` to spawn detached Codex |
 | `autoresearch runtime status` | Show saved runtime state |
+| `autoresearch runtime supervise --after-run` | Recommend `relaunch`, `stop`, or `needs_human` after a detached turn |
 | `autoresearch runtime stop` | Mark a background runtime stopped |
 | `autoresearch lessons --search "query" --last 5` | Query lessons for strategy |
 | `autoresearch evals [path]` | Analyze results: trends, plateaus |

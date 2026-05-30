@@ -123,7 +123,7 @@ All under `autoresearch-results/` (never committed):
 | `lessons.md` | Cross-run learning (positive + negative + strategic) |
 | `handoff.json` | Chain handoff to downstream commands |
 | `launch.json` | Background runtime launch manifest |
-| `runtime.json` | Background runtime status |
+| `runtime.json` | Background runtime status and supervisor recommendation |
 | `runtime.log` | Background runtime log |
 
 Additionally `.codex-autoresearch/pointer.json` points tools to the canonical context artifact and must stay uncommitted.

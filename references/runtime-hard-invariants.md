@@ -9,7 +9,7 @@ Use this file as the primary execution checklist during active runs. Keep it sho
 3. Treat every completed experiment as unfinished until it is logged before the next one starts.
 4. Do not emit placeholder progress/status messages when there is no new experiment, no new verification result, and no new blocker.
 5. Use the native `autoresearch` binary for authoritative TSV/JSON updates, keep/stop gating, and row/state semantics.
-6. All normal run artifacts are workspace-owned under `autoresearch-results/`: `results.tsv`, `state.json`, `context.json`, and `lessons.md`; background also uses `launch.json`, `runtime.json`, and `runtime.log`.
+6. All normal run artifacts are workspace-owned under `autoresearch-results/`: `results.tsv`, `state.json`, `context.json`, and `lessons.md`; background also uses `launch.json`, `runtime.json`, and `runtime.log`, with supervisor recommendations persisted in `runtime.json`.
 7. Stop only on goal reached, manual stop, configured iteration cap, a true blocker, or the documented soft-blocker handoff after strategy exhaustion.
 8. After any context compaction event, re-read `core-principles.md`, this file, and the selected mode workflow before the next iteration.
 9. Every 10 iterations, run the Protocol Fingerprint Check. If any item fails, re-read the loaded runtime docs before continuing.
@@ -22,6 +22,7 @@ Verify you can still recall:
 - log every completed experiment before the next one starts,
 - the `autoresearch` binary owns authoritative TSV/JSON updates and keep/stop gating,
 - artifact paths come from `workspace_root` + `autoresearch-results/` and the repo-local pointer, never from repo-root artifact guessing,
+- background relaunch/stop/needs_human decisions come from `autoresearch runtime supervise`,
 - the current stop conditions for this run,
 - the current rollback strategy in use,
 - the active pivot/refine escalation thresholds when they matter,

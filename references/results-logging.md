@@ -25,6 +25,8 @@ context.json
 `autoresearch runtime start` writes `launch.json`, `runtime.json`, and `runtime.log`.
 `autoresearch runtime status` reads and refreshes `runtime.json`; `autoresearch runtime stop`
 marks the runtime stopped and terminates the recorded process when one is running.
+`autoresearch runtime supervise --after-run` stores the latest supervisor recommendation in
+`runtime.json`: `relaunch`, `stop`, or `needs_human`, including restart and stagnation counters.
 
 ### `context.json` Schema
 
@@ -222,7 +224,9 @@ Use the `autoresearch` binary for stateful artifact updates. Do not hand-edit TS
 - `# exec state handled internally`
   Prints the deterministic exec scratch-state path under `/tmp` and cleans it up on `--cleanup`.
 - `autoresearch status ...`
-  Computes whether the runtime control plane should relaunch, stop, or ask for human help after a finished turn.
+  Prints the current run state and persisted config from `state.json`.
+- `autoresearch runtime supervise ...`
+  Persists the background supervisor recommendation in `runtime.json`. It stops on completion, iteration cap, acceptance criteria, or simple stop conditions; returns `needs_human` for blocked, soft-blocked, or stagnant runs; otherwise recommends `relaunch`.
 
 In exec mode, the runtime keeps JSON state in scratch storage by default and must clean that scratch state before exiting.
 
