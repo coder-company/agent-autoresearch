@@ -42,8 +42,6 @@ adapt_opencode() {
         -e 's|name: autoresearch:probe|name: autoresearch_probe|g' \
         -e 's|name: autoresearch:evals|name: autoresearch_evals|g' \
         -e 's|name: autoresearch:improve|name: autoresearch_improve|g' \
-        -e 's|Bounded by default (500 iterations)|Bounded by default (25 iterations)|g' \
-        -e 's|default: 500|default: 25|g' \
         -e 's|AskUserQuestion|question|g' \
         "$1"
 }
