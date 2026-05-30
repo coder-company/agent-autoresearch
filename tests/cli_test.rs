@@ -259,6 +259,58 @@ fn test_evals_defaults_to_repo_root_results_from_subdir() {
 }
 
 #[test]
+fn test_evals_defaults_to_workspace_from_repo_pointer() {
+    let workspace = TempDir::new().unwrap();
+    init_git_fixture(&workspace);
+    let workspace_root = workspace.path().to_str().unwrap();
+
+    let primary = TempDir::new().unwrap();
+    init_git_fixture(&primary);
+    let primary_root = primary.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--workspace-root",
+            workspace_root,
+            "--primary-repo",
+            primary_root,
+            "--cwd",
+            workspace_root,
+        ])
+        .assert()
+        .success();
+
+    let tsv_path = workspace.path().join("autoresearch-results/results.tsv");
+    {
+        let mut file = std::fs::OpenOptions::new()
+            .append(true)
+            .open(&tsv_path)
+            .unwrap();
+        writeln!(file, "1\tbcd2345\t55\t+5\tpass\tkeep\timprovement").unwrap();
+    }
+
+    cmd()
+        .current_dir(primary.path())
+        .args(["evals", "--format", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"keeps\": 1"));
+
+    let summary = std::fs::read_to_string(
+        workspace
+            .path()
+            .join("autoresearch-results/evals-summary.json"),
+    )
+    .unwrap();
+    assert!(summary.contains("\"keeps\": 1"));
+}
+
+#[test]
 fn test_evals_text_format() {
     let dir = TempDir::new().unwrap();
     let tsv_path = dir.path().join("results.tsv");

@@ -2597,15 +2597,8 @@ fn pointer_results_workspace(repo: &Path) -> Option<PathBuf> {
 }
 
 fn default_results_tsv(cwd: &Path) -> Option<PathBuf> {
-    let cwd_default = cwd.join("autoresearch-results/results.tsv");
-    if cwd_default.exists() {
-        return Some(cwd_default);
-    }
-    GitRepo::open(cwd)
-        .ok()
-        .and_then(|repo| repo.workdir())
-        .map(|root| root.join("autoresearch-results/results.tsv"))
-        .filter(|path| path.exists())
+    let workspace = resolve_results_workspace(Some(cwd.to_path_buf()));
+    Some(workspace.join("autoresearch-results/results.tsv")).filter(|path| path.exists())
 }
 
 fn parse_decide_metric(
