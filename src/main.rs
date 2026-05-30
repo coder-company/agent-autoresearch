@@ -540,6 +540,12 @@ fn cmd_init(
 
     // Verify git repo
     let git = GitRepo::open(&workspace).context("autoresearch requires a git repository")?;
+    if let WorktreeStatus::Dirty(files) = git.worktree_status()? {
+        anyhow::bail!(
+            "init preflight blocked: unexpected worktree changes before launch: {}",
+            files.join(", ")
+        );
+    }
     let head = git.head_short()?;
 
     // Measure baseline

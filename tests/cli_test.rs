@@ -678,6 +678,34 @@ fn test_init_persists_runtime_config() {
 }
 
 #[test]
+fn test_init_blocks_unexpected_dirty_worktree() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    std::fs::write(dir.path().join("notes.txt"), "user drift\n").unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("init preflight blocked"))
+        .stderr(predicate::str::contains(
+            "unexpected worktree changes before launch: notes.txt",
+        ));
+
+    assert!(!dir.path().join("autoresearch-results/results.tsv").exists());
+}
+
+#[test]
 fn test_resume_reports_baseline_as_resumable() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
