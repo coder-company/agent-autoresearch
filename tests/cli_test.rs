@@ -545,6 +545,111 @@ fn test_runtime_supervise_stops_at_iteration_cap() {
         .stdout(predicate::str::contains("\"should_continue\": false"));
 }
 
+#[test]
+fn test_runtime_supervise_stops_on_acceptance_criteria() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--acceptance-criteria",
+            r#"[{"metric_key":"metric","operator":">=","target":"1"}]"#,
+            "--run-mode",
+            "background",
+            "--workspace-root",
+            root,
+            "--primary-repo",
+            root,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["runtime", "start", "--dry-run", "--cwd", root])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["runtime", "supervise", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"stop\""))
+        .stdout(predicate::str::contains(
+            "\"reason\": \"acceptance_criteria\"",
+        ))
+        .stdout(predicate::str::contains("\"terminal_reason\": \"goal_reached\""));
+}
+
+#[test]
+fn test_runtime_supervise_detects_stagnation() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--run-mode",
+            "background",
+            "--workspace-root",
+            root,
+            "--primary-repo",
+            root,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["runtime", "start", "--dry-run", "--cwd", root])
+        .assert()
+        .success();
+
+    for _ in 0..2 {
+        cmd()
+            .args([
+                "runtime",
+                "supervise",
+                "--after-run",
+                "--max-stagnation",
+                "2",
+                "--cwd",
+                root,
+            ])
+            .assert()
+            .success();
+    }
+
+    cmd()
+        .args([
+            "runtime",
+            "supervise",
+            "--after-run",
+            "--max-stagnation",
+            "2",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"needs_human\""))
+        .stdout(predicate::str::contains("\"reason\": \"stagnated\""))
+        .stdout(predicate::str::contains("\"status\": \"needs_human\""));
+}
+
 fn init_git_fixture(dir: &TempDir) {
     let path = dir.path();
     std::process::Command::new("git")
