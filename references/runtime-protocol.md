@@ -43,7 +43,7 @@ iteration	commit	metric	delta	guard	status	description
 
 ## Verify Contract
 
-The verify command MUST output a single number on its final non-empty line.
+By default the verify command MUST output a single number on its final non-empty line.
 
 ```bash
 # Good
@@ -57,6 +57,41 @@ grep -rc ':any' src/ | awk -F: '{s+=$2}END{print s}'
 # Bad (multiple lines of text, no clear number)
 npm test
 ```
+
+For multi-metric runs, initialize with `--format metrics_json --key <primary_metric_key>`.
+The verify command must print a JSON object on its final non-empty line:
+
+```json
+{"score": 60, "failures": 0}
+```
+
+`autoresearch verify` returns the primary metric plus the full metrics map. `results.tsv`
+records only the primary metric.
+
+## Criteria Gates
+
+Use `--acceptance-criteria` for terminal success checks and
+`--required-keep-criteria` for conditions that must be true before a trial can
+be retained as `keep`.
+
+```bash
+autoresearch init \
+  --verify "cat metrics.json" \
+  --format metrics_json \
+  --key score \
+  --required-keep-criteria '[{"metric_key":"failures","operator":"==","target":"0"}]'
+```
+
+Criterion objects use `metric_key`, `operator`, and `target`. Supported
+operators are `<`, `<=`, `>`, `>=`, and `==`. During closeout, pass the full
+trial metrics to `decide`:
+
+```bash
+autoresearch decide --metric 60 --metrics-json '{"score":60,"failures":0}'
+```
+
+If a numerically improved trial fails `required_keep_criteria`, `decide`
+downgrades it to `discard` and applies the configured rollback.
 
 ## Guard Contract
 

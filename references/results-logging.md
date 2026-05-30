@@ -135,7 +135,7 @@ When `verify_format=scalar`, the verify command must emit a single numeric metri
 
 When `verify_format=metrics_json`, the verify command must print a JSON object as its final non-empty output line. That JSON object is the metrics map used by the helpers. It must include `primary_metric_key` plus every metric referenced by `acceptance_criteria` and `required_keep_criteria`. Helpers must not synthesize missing metrics from the scalar primary metric in this mode.
 
-`results.tsv` records only the primary metric. Structured metrics and acceptance states live in `state.json`.
+`results.tsv` records only the primary metric. `autoresearch verify` returns the full metrics map for agent/runtime use. `autoresearch decide --metrics-json '<json>'` evaluates configured criteria during closeout and reports `acceptance` / `required_keep` in its JSON output.
 
 ## Structured Labels For Keep / Stop Gating
 
