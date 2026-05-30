@@ -1,14 +1,19 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
+use regex::Regex;
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::str::FromStr;
 
 use super::config::RunConfig;
+use super::criteria::evaluate_criteria;
 use super::results::{ensure_results_dir_protected, results_dir};
-use super::state::RunState;
+use super::state::{RunPhase, RunState, StopReason};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LaunchManifest {
@@ -39,6 +44,20 @@ pub struct RuntimeSnapshot {
     pub runtime_path: String,
     pub log_path: String,
     pub last_error: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub supervisor: Option<SupervisorStatus>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SupervisorStatus {
+    pub decision: String,
+    pub reason: String,
+    pub terminal_reason: String,
+    pub should_continue: bool,
+    pub restart_count: u32,
+    pub stagnation_count: u32,
+    pub last_signature: String,
+    pub checked_at: String,
 }
 
 #[derive(Debug, Clone)]
@@ -137,6 +156,7 @@ pub fn start_runtime(
             runtime_path: paths.runtime_path.display().to_string(),
             log_path: paths.log_path.display().to_string(),
             last_error: None,
+            supervisor: None,
         };
         write_runtime_snapshot(&paths.runtime_path, &snapshot)?;
         return Ok((manifest, snapshot));
@@ -177,6 +197,7 @@ pub fn start_runtime(
         runtime_path: paths.runtime_path.display().to_string(),
         log_path: paths.log_path.display().to_string(),
         last_error: None,
+        supervisor: None,
     };
     write_runtime_snapshot(&paths.runtime_path, &snapshot)?;
     Ok((manifest, snapshot))
@@ -200,6 +221,52 @@ pub fn runtime_status(workspace: &Path) -> Result<RuntimeSnapshot> {
         }
     }
     Ok(snapshot)
+}
+
+pub fn supervise_runtime(
+    workspace: &Path,
+    after_run: bool,
+    max_stagnation: u32,
+) -> Result<(RuntimeSnapshot, SupervisorStatus)> {
+    let paths = paths(workspace);
+    let mut snapshot = runtime_status(workspace)?;
+    let state = read_state(&paths.state_path)?;
+    let previous = snapshot.supervisor.clone();
+    let signature = progress_signature(&state);
+
+    let mut restart_count = previous.as_ref().map_or(0, |status| status.restart_count);
+    let mut stagnation_count = previous.as_ref().map_or(0, |status| status.stagnation_count);
+    if after_run {
+        if previous
+            .as_ref()
+            .is_some_and(|status| status.last_signature == signature)
+        {
+            stagnation_count += 1;
+        } else {
+            stagnation_count = 0;
+        }
+    }
+
+    let (decision, reason, terminal_reason) =
+        supervisor_decision(&state, stagnation_count, max_stagnation);
+    if after_run && decision == "relaunch" {
+        restart_count += 1;
+    }
+
+    let status = SupervisorStatus {
+        should_continue: decision == "relaunch",
+        decision,
+        reason,
+        terminal_reason,
+        restart_count,
+        stagnation_count,
+        last_signature: signature,
+        checked_at: Utc::now().to_rfc3339(),
+    };
+
+    snapshot.supervisor = Some(status.clone());
+    write_runtime_snapshot(&paths.runtime_path, &snapshot)?;
+    Ok((snapshot, status))
 }
 
 pub fn stop_runtime(workspace: &Path) -> Result<RuntimeSnapshot> {
@@ -240,6 +307,149 @@ fn runtime_prompt(state: &RunState) -> String {
     format!(
         "$autoresearch loop\nGoal: {goal}\nVerify: {verify}\nResume from autoresearch-results/state.json and continue autonomously until the configured stop condition, iteration cap, blocker, or user stop request.\n"
     )
+}
+
+fn supervisor_decision(
+    state: &RunState,
+    stagnation_count: u32,
+    max_stagnation: u32,
+) -> (String, String, String) {
+    match &state.phase {
+        RunPhase::Complete { reason } => {
+            return (
+                "stop".to_string(),
+                "run_complete".to_string(),
+                stop_reason_label(reason).to_string(),
+            );
+        }
+        RunPhase::Blocked { .. } => {
+            return (
+                "needs_human".to_string(),
+                "blocked".to_string(),
+                "blocked".to_string(),
+            );
+        }
+        _ => {}
+    }
+
+    if state.pivot_count >= 3 {
+        return (
+            "needs_human".to_string(),
+            "soft_blocked".to_string(),
+            "soft_blocker".to_string(),
+        );
+    }
+
+    if stagnation_count >= max_stagnation {
+        return (
+            "needs_human".to_string(),
+            "stagnated".to_string(),
+            "stagnated".to_string(),
+        );
+    }
+
+    if state
+        .config
+        .as_ref()
+        .and_then(|config| config.iterations)
+        .is_some_and(|cap| state.iteration >= cap)
+    {
+        return (
+            "stop".to_string(),
+            "iteration_cap".to_string(),
+            "iteration_cap".to_string(),
+        );
+    }
+
+    if acceptance_satisfied(state) {
+        return (
+            "stop".to_string(),
+            "acceptance_criteria".to_string(),
+            "goal_reached".to_string(),
+        );
+    }
+
+    if simple_stop_condition_satisfied(state) {
+        return (
+            "stop".to_string(),
+            "stop_condition".to_string(),
+            "goal_reached".to_string(),
+        );
+    }
+
+    (
+        "relaunch".to_string(),
+        "non_terminal".to_string(),
+        "none".to_string(),
+    )
+}
+
+fn acceptance_satisfied(state: &RunState) -> bool {
+    let Some(config) = &state.config else {
+        return false;
+    };
+    if config.acceptance_criteria.is_empty() {
+        return false;
+    }
+    let primary_key = config.primary_metric_key.as_deref().unwrap_or("metric");
+    let mut metrics = BTreeMap::new();
+    metrics.insert(primary_key.to_string(), state.current_metric);
+    metrics.insert("metric".to_string(), state.current_metric);
+    evaluate_criteria(&config.acceptance_criteria, &metrics).satisfied
+}
+
+fn simple_stop_condition_satisfied(state: &RunState) -> bool {
+    let Some(config) = &state.config else {
+        return false;
+    };
+    let Some(stop_condition) = &config.stop_condition else {
+        return false;
+    };
+    let Ok(pattern) = Regex::new(r"(<=|>=|==|<|>)?\s*(-?(?:\d+(?:\.\d+)?|\.\d+))") else {
+        return false;
+    };
+    let Some(captures) = pattern.captures(stop_condition) else {
+        return false;
+    };
+    let operator = captures.get(1).map(|m| m.as_str());
+    let Some(target) = captures
+        .get(2)
+        .and_then(|m| Decimal::from_str(m.as_str()).ok())
+    else {
+        return false;
+    };
+
+    match operator {
+        Some("<") => state.current_metric < target,
+        Some("<=") => state.current_metric <= target,
+        Some(">") => state.current_metric > target,
+        Some(">=") => state.current_metric >= target,
+        Some("==") => state.current_metric == target,
+        _ => match config.direction {
+            super::config::Direction::Lower => state.current_metric <= target,
+            super::config::Direction::Higher => state.current_metric >= target,
+        },
+    }
+}
+
+fn progress_signature(state: &RunState) -> String {
+    serde_json::json!({
+        "iteration": state.iteration,
+        "last_status": state.last_status.as_str(),
+        "last_trial_commit": state.last_trial_commit,
+        "last_trial_metric": state.last_trial_metric.map(|metric| metric.to_string()),
+    })
+    .to_string()
+}
+
+fn stop_reason_label(reason: &StopReason) -> &'static str {
+    match reason {
+        StopReason::GoalReached => "goal_reached",
+        StopReason::IterationCap => "iteration_cap",
+        StopReason::UserInterrupt => "user_interrupt",
+        StopReason::SoftBlocker => "soft_blocker",
+        StopReason::HardBlocker(_) => "hard_blocker",
+    }
 }
 
 fn codex_args(execution_policy: &str) -> Result<Vec<String>> {

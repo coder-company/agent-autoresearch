@@ -302,6 +302,18 @@ enum RuntimeCommands {
         #[arg(long)]
         cwd: Option<PathBuf>,
     },
+    /// Recommend relaunch, stop, or needs_human from runtime/state artifacts
+    Supervise {
+        /// Treat this check as happening after a detached Codex turn finished
+        #[arg(long)]
+        after_run: bool,
+        /// Consecutive no-progress exits tolerated before needs_human
+        #[arg(long, default_value_t = 3)]
+        max_stagnation: u32,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
     /// Stop the recorded runtime process when one is running
     Stop {
         /// Working directory
@@ -1220,6 +1232,25 @@ fn cmd_runtime(command: RuntimeCommands) -> Result<()> {
             let workspace = resolve_cwd(cwd);
             let snapshot = runtime::runtime_status(&workspace)?;
             println!("{}", serde_json::to_string_pretty(&snapshot)?);
+        }
+        RuntimeCommands::Supervise {
+            after_run,
+            max_stagnation,
+            cwd,
+        } => {
+            let workspace = resolve_cwd(cwd);
+            let (snapshot, supervisor) =
+                runtime::supervise_runtime(&workspace, after_run, max_stagnation)?;
+            let out = serde_json::json!({
+                "decision": supervisor.decision,
+                "reason": supervisor.reason,
+                "terminal_reason": supervisor.terminal_reason,
+                "should_continue": supervisor.should_continue,
+                "restart_count": supervisor.restart_count,
+                "stagnation_count": supervisor.stagnation_count,
+                "runtime": snapshot,
+            });
+            println!("{}", serde_json::to_string_pretty(&out)?);
         }
         RuntimeCommands::Stop { cwd } => {
             let workspace = resolve_cwd(cwd);

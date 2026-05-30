@@ -449,6 +449,101 @@ fn test_runtime_start_status_stop_dry_run() {
         .stdout(predicate::str::contains("\"status\": \"stopped\""));
 }
 
+#[test]
+fn test_runtime_supervise_relaunches_after_non_terminal_run() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--run-mode",
+            "background",
+            "--workspace-root",
+            root,
+            "--primary-repo",
+            root,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["runtime", "start", "--dry-run", "--cwd", root])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["runtime", "supervise", "--after-run", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"relaunch\""))
+        .stdout(predicate::str::contains("\"restart_count\": 1"))
+        .stdout(predicate::str::contains("\"should_continue\": true"));
+
+    cmd()
+        .args(["runtime", "status", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"supervisor\""))
+        .stdout(predicate::str::contains("\"decision\": \"relaunch\""));
+}
+
+#[test]
+fn test_runtime_supervise_stops_at_iteration_cap() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--iterations",
+            "1",
+            "--run-mode",
+            "background",
+            "--workspace-root",
+            root,
+            "--primary-repo",
+            root,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let state_path = dir.path().join("autoresearch-results/state.json");
+    let mut state: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&state_path).unwrap()).unwrap();
+    state["iteration"] = serde_json::json!(1);
+    std::fs::write(&state_path, serde_json::to_string_pretty(&state).unwrap()).unwrap();
+
+    cmd()
+        .args(["runtime", "start", "--dry-run", "--cwd", root])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["runtime", "supervise", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"stop\""))
+        .stdout(predicate::str::contains(
+            "\"terminal_reason\": \"iteration_cap\"",
+        ))
+        .stdout(predicate::str::contains("\"should_continue\": false"));
+}
+
 fn init_git_fixture(dir: &TempDir) {
     let path = dir.path();
     std::process::Command::new("git")
