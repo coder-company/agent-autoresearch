@@ -22,7 +22,7 @@ lessons.md
 context.json
 ```
 
-`autoresearch runtime run` writes `launch.json`, `runtime.json`, and `runtime.log`, waits for each Codex exec turn to exit, supervises the result, and relaunches while the supervisor returns `relaunch`.
+`autoresearch runtime run` writes `launch.json`, `runtime.json`, and `runtime.log`, waits for each Codex exec turn to exit, supervises the result, and relaunches while the supervisor returns `relaunch`. The launch manifest repeats `repo_targets` from the active run context so detached prompts preserve companion repo scopes.
 `autoresearch runtime start` writes the same launch/runtime files for one manual detached launch.
 It first runs the native health preflight and blocks without writing launch artifacts when blockers are present or canonical `context.json` is missing.
 If the nested `codex exec` process cannot spawn, it writes `runtime.json` with `status=needs_human` and a `spawn_failed` supervisor reason.

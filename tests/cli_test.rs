@@ -3870,6 +3870,76 @@ fn test_runtime_start_status_stop_dry_run() {
         .stdout(predicate::str::contains("\"status\": \"stopped\""));
 }
 
+#[test]
+fn test_runtime_start_manifest_includes_companion_repo_targets() {
+    let workspace = TempDir::new().unwrap();
+    init_git_fixture(&workspace);
+    let workspace_root = workspace.path().to_str().unwrap();
+
+    let companion = TempDir::new().unwrap();
+    init_git_fixture(&companion);
+    commit_file(
+        &companion,
+        "pkg/helper.rs",
+        "pub fn helper() {}\n",
+        "add helper",
+    );
+    let companion_root = companion.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--scope",
+            "src/**/*.rs",
+            "--run-mode",
+            "background",
+            "--workspace-root",
+            workspace_root,
+            "--primary-repo",
+            workspace_root,
+            "--companion-repo-scope",
+            &format!("{companion_root}=pkg/**/*.rs"),
+            "--cwd",
+            workspace_root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "runtime",
+            "start",
+            "--dry-run",
+            "--execution-policy",
+            "workspace_write",
+            "--cwd",
+            workspace_root,
+        ])
+        .assert()
+        .success();
+
+    let launch: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(workspace.path().join("autoresearch-results/launch.json"))
+            .unwrap(),
+    )
+    .unwrap();
+    let targets = launch["repo_targets"].as_array().unwrap();
+    assert_eq!(targets.len(), 2);
+    assert_eq!(targets[0]["role"], "primary");
+    assert_eq!(targets[0]["scope"], "src/**/*.rs");
+    assert_eq!(targets[1]["role"], "companion");
+    assert_eq!(targets[1]["scope"], "pkg/**/*.rs");
+    assert!(launch["prompt"].as_str().unwrap().contains("Repo targets:"));
+    assert!(launch["prompt"]
+        .as_str()
+        .unwrap()
+        .contains("scope=pkg/**/*.rs"));
+}
+
 #[cfg(unix)]
 #[test]
 fn test_runtime_stop_kills_term_ignoring_process() {

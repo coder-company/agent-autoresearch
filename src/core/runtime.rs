@@ -16,6 +16,7 @@ use std::thread;
 use std::time::Duration;
 
 use super::config::RunConfig;
+use super::context::RepoTarget;
 use super::criteria::evaluate_criteria;
 use super::git::{GitRepo, WorktreeStatus};
 use super::health;
@@ -28,6 +29,7 @@ pub struct LaunchManifest {
     pub created_at: String,
     pub workspace_root: String,
     pub primary_repo: String,
+    pub repo_targets: Vec<RepoTarget>,
     pub results_path: String,
     pub state_path: String,
     pub launch_path: String,
@@ -87,6 +89,13 @@ pub fn paths(workspace: &Path) -> RuntimePaths {
     }
 }
 
+fn absolute_path(path: &Path) -> String {
+    path.canonicalize()
+        .unwrap_or_else(|_| PathBuf::from(path))
+        .display()
+        .to_string()
+}
+
 pub fn create_launch_manifest(
     workspace: &Path,
     execution_policy: &str,
@@ -97,17 +106,18 @@ pub fn create_launch_manifest(
     let config = state.config.clone();
     let prompt = runtime_prompt(&state);
     let codex_args = codex_args(execution_policy)?;
+    let repo_targets = launch_repo_targets(workspace, config.as_ref());
+    let primary_repo = repo_targets
+        .first()
+        .map(|target| target.path.clone())
+        .unwrap_or_else(|| absolute_path(workspace));
 
     Ok(LaunchManifest {
         version: 1,
         created_at: Utc::now().to_rfc3339(),
-        workspace_root: workspace.display().to_string(),
-        primary_repo: config
-            .as_ref()
-            .and_then(|config| config.primary_repo.as_ref())
-            .unwrap_or(&workspace.to_path_buf())
-            .display()
-            .to_string(),
+        workspace_root: absolute_path(workspace),
+        primary_repo,
+        repo_targets,
         results_path: paths.results_path.display().to_string(),
         state_path: paths.state_path.display().to_string(),
         launch_path: paths.launch_path.display().to_string(),
@@ -119,6 +129,30 @@ pub fn create_launch_manifest(
         config,
         prompt,
     })
+}
+
+fn launch_repo_targets(workspace: &Path, config: Option<&RunConfig>) -> Vec<RepoTarget> {
+    let primary_path = config
+        .and_then(|config| config.primary_repo.as_deref())
+        .unwrap_or(workspace);
+    let primary_scope = config
+        .map(|config| config.scope.join(","))
+        .filter(|scope| !scope.trim().is_empty())
+        .unwrap_or_else(|| ".".to_string());
+
+    let mut targets = vec![RepoTarget {
+        path: absolute_path(primary_path),
+        scope: primary_scope,
+        role: "primary".to_string(),
+    }];
+    if let Some(config) = config {
+        targets.extend(config.companion_repos.iter().map(|target| RepoTarget {
+            path: absolute_path(&target.path),
+            scope: target.scope.clone(),
+            role: target.role.clone(),
+        }));
+    }
+    targets
 }
 
 pub fn write_launch_manifest(workspace: &Path, manifest: &LaunchManifest) -> Result<RuntimePaths> {
@@ -615,10 +649,46 @@ fn runtime_prompt(state: &RunState) -> String {
         .map(|config| config.verify.as_str())
         .filter(|verify| !verify.trim().is_empty())
         .unwrap_or("<missing verify command>");
+    let repo_targets = runtime_prompt_repo_targets(config);
 
     format!(
-        "$autoresearch loop\nGoal: {goal}\nVerify: {verify}\nResume from autoresearch-results/state.json and continue autonomously until the configured stop condition, iteration cap, blocker, or user stop request.\n"
+        "$autoresearch loop\nGoal: {goal}\nVerify: {verify}{repo_targets}\nResume from autoresearch-results/state.json and continue autonomously until the configured stop condition, iteration cap, blocker, or user stop request.\n"
     )
+}
+
+fn runtime_prompt_repo_targets(config: Option<&RunConfig>) -> String {
+    let Some(config) = config else {
+        return String::new();
+    };
+    if config.companion_repos.is_empty() {
+        return String::new();
+    }
+
+    let primary = config
+        .primary_repo
+        .as_deref()
+        .map(absolute_path)
+        .unwrap_or_else(|| "<workspace>".to_string());
+    let primary_scope = if config.scope.is_empty() {
+        ".".to_string()
+    } else {
+        config.scope.join(",")
+    };
+
+    let mut lines = vec![
+        String::new(),
+        "Repo targets:".to_string(),
+        format!("- primary {primary} scope={primary_scope}"),
+    ];
+    lines.extend(config.companion_repos.iter().map(|target| {
+        format!(
+            "- {} {} scope={}",
+            target.role,
+            absolute_path(&target.path),
+            target.scope
+        )
+    }));
+    lines.join("\n")
 }
 
 fn supervisor_decision(
@@ -889,6 +959,7 @@ mod tests {
             created_at: String::new(),
             workspace_root: String::new(),
             primary_repo: String::new(),
+            repo_targets: Vec::new(),
             results_path: String::new(),
             state_path: String::new(),
             launch_path: String::new(),

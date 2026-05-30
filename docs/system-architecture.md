@@ -63,7 +63,7 @@ removes worker worktrees and branches.
 
 | Artifact | Purpose |
 |----------|---------|
-| `launch.json` | Command, cwd, goal, iteration limit, and stop criteria |
+| `launch.json` | Command, cwd, repo targets, goal, iteration limit, and stop criteria |
 | `runtime.json` | Current status and supervisor recommendation |
 | `runtime.log` | Detached runtime output |
 
