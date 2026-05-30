@@ -12,7 +12,7 @@ to the stronger autoresearch implementations:
   `runtime start/status/supervise/stop`
 - Live log monitoring through `autoresearch watch`
 - Native parallel worker support through `autoresearch parallel prepare`, `run`,
-  `closeout`, and `cleanup`
+  verified `closeout`, and `cleanup`, including worker crash/timeout recording
 - Codex, Claude Code, and OpenCode installation paths
 - Distribution validation for generated command and skill packages
 - Binary smoke tests for installed skill instructions

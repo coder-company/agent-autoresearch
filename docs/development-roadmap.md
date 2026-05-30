@@ -20,8 +20,8 @@
 - [x] Background supervisor relaunch loop that automatically executes recommended relaunches (`autoresearch runtime run`)
 - [x] Parallel batch templates (`autoresearch parallel template`) for editable worker result JSON
 - [x] Parallel worker preparation (`autoresearch parallel prepare`) with branch-backed git worktrees, prompts, manifest, and batch file
-- [x] Parallel worker launch (`autoresearch parallel run`) for prepared `codex exec` workers
-- [x] Parallel batch closeout (`autoresearch parallel closeout`) with worker audit rows and one authoritative retained-state update
+- [x] Parallel worker launch (`autoresearch parallel run`) for prepared `codex exec` workers, including timeout/crash recording
+- [x] Parallel batch closeout (`autoresearch parallel closeout`) with cherry-pick, post-merge verify/guard, fallback, worker audit rows, and one authoritative retained-state update
 - [x] Parallel cleanup (`autoresearch parallel cleanup`) for worker worktrees and branches
 - [x] Experiment branching — each trial on its own git branch
 - [ ] Branch merge strategy selection (fast-forward, squash, rebase)
