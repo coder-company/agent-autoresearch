@@ -2777,6 +2777,10 @@ fn cmd_handoff(
         .get("verify_format")
         .cloned()
         .unwrap_or(serde_json::Value::Null);
+    let primary_metric_key = config_val
+        .get("primary_metric_key")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
     let hypothesis_queue = config_val
         .get("hypothesis_queue")
         .cloned()
@@ -2815,6 +2819,7 @@ fn cmd_handoff(
         "verify": verify,
         "guard": guard,
         "verify_format": verify_format,
+        "primary_metric_key": primary_metric_key,
         "hypothesis_queue": hypothesis_queue,
         "summary": summary,
         "findings": findings_val,
