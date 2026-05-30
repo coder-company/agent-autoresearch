@@ -836,6 +836,9 @@ fn cmd_log(
     let guard = parse_guard_result(Some(guard_str))?;
 
     let status = parse_status(status_str)?;
+    if status == IterationStatus::Keep && commit_val.is_none() {
+        anyhow::bail!("keep log rows require a commit");
+    }
 
     let row = ResultRow {
         iteration,

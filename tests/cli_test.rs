@@ -754,6 +754,48 @@ fn test_log_rejects_invalid_guard_value() {
 }
 
 #[test]
+fn test_log_keep_requires_commit() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "log",
+            "--iteration",
+            "1",
+            "--metric",
+            "55",
+            "--delta",
+            "+5",
+            "--guard",
+            "pass",
+            "--status",
+            "keep",
+            "--description",
+            "missing commit",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("keep log rows require a commit"));
+}
+
+#[test]
 fn test_decide_rejects_invalid_guard_value() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
