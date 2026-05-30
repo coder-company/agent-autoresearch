@@ -344,7 +344,7 @@ pub enum IterationStatus {
     Keep,
     Discard,
     Crash,
-    #[serde(rename = "no-op")]
+    #[serde(rename = "no-op", alias = "noop")]
     NoOp,
     Blocked,
     Pivot,
@@ -367,5 +367,18 @@ impl IterationStatus {
             Self::Search => "search",
             Self::Drift => "drift",
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn iteration_status_accepts_legacy_noop_alias() {
+        let status: IterationStatus = serde_json::from_str("\"noop\"").unwrap();
+
+        assert_eq!(status, IterationStatus::NoOp);
+        assert_eq!(serde_json::to_string(&status).unwrap(), "\"no-op\"");
     }
 }
