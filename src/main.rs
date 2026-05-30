@@ -129,10 +129,10 @@ enum Commands {
         #[arg(long, default_value = "-")]
         commit: String,
         /// Metric value
-        #[arg(long)]
+        #[arg(long, allow_hyphen_values = true)]
         metric: String,
         /// Delta from previous
-        #[arg(long, default_value = "0")]
+        #[arg(long, default_value = "0", allow_hyphen_values = true)]
         delta: String,
         /// Guard result: pass, fail, or skip
         #[arg(long, default_value = "skip")]
@@ -154,7 +154,7 @@ enum Commands {
         #[arg(long, default_value = "auto")]
         decision: String,
         /// Trial metric value
-        #[arg(long)]
+        #[arg(long, allow_hyphen_values = true)]
         metric: String,
         /// Full metrics JSON object for criteria checks
         #[arg(long)]

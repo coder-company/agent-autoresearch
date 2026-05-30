@@ -303,7 +303,8 @@ fn test_progress_lower_direction_trend_improves_on_decrease() {
             "abc1234",
             "--metric",
             "8",
-            "--delta=-2",
+            "--delta",
+            "-2",
             "--guard",
             "pass",
             "--status",
@@ -324,7 +325,8 @@ fn test_progress_lower_direction_trend_improves_on_decrease() {
             "bcd2345",
             "--metric",
             "6",
-            "--delta=-2",
+            "--delta",
+            "-2",
             "--guard",
             "pass",
             "--status",
@@ -342,6 +344,43 @@ fn test_progress_lower_direction_trend_improves_on_decrease() {
         .assert()
         .success()
         .stdout(predicate::str::contains("Trend: improving"));
+}
+
+#[test]
+fn test_decide_accepts_negative_metric_value() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+    write_metric_and_commit(&dir, "0\n");
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "lower",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    write_metric_and_commit(&dir, "-1\n");
+
+    cmd()
+        .args([
+            "decide",
+            "--metric",
+            "-1",
+            "--description",
+            "crossed below zero",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"keep\""));
 }
 
 // ── Health Command ───────────────────────────────────────────────────
