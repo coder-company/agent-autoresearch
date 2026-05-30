@@ -67,7 +67,7 @@ cd agent-autoresearch
 ./install.sh --yes --claude
 ```
 
-セッションを再起動。12個すべてのコマンドが利用可能になります。
+セッションを再起動。13個すべてのコマンドが利用可能になります。
 
 ### Codex CLI
 

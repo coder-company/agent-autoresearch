@@ -67,7 +67,7 @@ cd agent-autoresearch
 ./install.sh --yes --claude
 ```
 
-Reinicie sua sessão. Todos os 12 comandos ficam disponíveis.
+Reinicie sua sessão. Todos os 13 comandos ficam disponíveis.
 
 ### Codex CLI
 

@@ -67,7 +67,7 @@ cd agent-autoresearch
 ./install.sh --yes --claude
 ```
 
-세션을 재시작하세요. 12개 명령어가 모두 사용 가능합니다.
+세션을 재시작하세요. 13개 명령어가 모두 사용 가능합니다.
 
 ### Codex CLI
 

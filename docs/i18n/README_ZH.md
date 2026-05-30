@@ -67,7 +67,7 @@ cd agent-autoresearch
 ./install.sh --yes --claude
 ```
 
-重启会话。全部 12 个命令立即可用。
+重启会话。全部 13 个命令立即可用。
 
 ### Codex CLI
 

@@ -67,7 +67,7 @@ cd agent-autoresearch
 ./install.sh --yes --claude
 ```
 
-Session neu starten. Alle 12 Befehle sind sofort verfügbar.
+Session neu starten. Alle 13 Befehle sind sofort verfügbar.
 
 ### Codex CLI
 
