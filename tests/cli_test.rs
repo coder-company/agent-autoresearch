@@ -4198,8 +4198,9 @@ fn test_runtime_start_blocks_unexpected_dirty_worktree() {
         .failure()
         .stderr(predicate::str::contains("runtime preflight blocked"))
         .stderr(predicate::str::contains(
-            "unexpected worktree changes before launch: notes.txt",
-        ));
+            "unexpected worktree changes before launch in primary repo",
+        ))
+        .stderr(predicate::str::contains("notes.txt"));
 
     assert!(!dir.path().join("autoresearch-results/launch.json").exists());
     assert!(!dir
