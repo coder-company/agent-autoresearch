@@ -381,6 +381,29 @@ fn test_evals_without_baseline_counts_all_rows() {
 }
 
 #[test]
+fn test_evals_rejects_invalid_metric() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: higher").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\toops\t0\t-\tbaseline\tbad metric").unwrap();
+
+    cmd()
+        .args(["evals", tsv_path.to_str().unwrap(), "--format", "json"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "Invalid metric value at iteration 0",
+        ));
+}
+
+#[test]
 fn test_evals_lower_direction_trend_improves_on_decrease() {
     let dir = TempDir::new().unwrap();
     let tsv_path = dir.path().join("results.tsv");
