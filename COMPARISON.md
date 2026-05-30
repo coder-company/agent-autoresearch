@@ -20,13 +20,13 @@ The idea was simple enough that several people generalized it:
 
 | | Karpathy's | uditgoenka | codex-autoresearch | **This** |
 |---|---|---|---|---|
-| What it does | ML training loops | Any metric, 12 commands | Any metric, background mode | Any metric, 12 commands |
+| What it does | ML training loops | Any metric, 12 commands | Any metric, background mode | Any metric, 12 commands + runtime control |
 | Install | Clone + Python | Copy .md files | Skill installer | Single binary |
 | Works with | Standalone | Claude Code | Codex CLI | **Claude Code, Codex, any agent** |
 | Commands | 1 (the loop) | 12 | 4 | **12 + exec mode** |
 | When it gets stuck | You restart | Refine → Pivot → Stop | You restart | **Refine → Pivot → Web Search → Stop** |
 | Remembers across runs | No | Yes (lessons.md) | Yes (cross-run learning) | **Yes (lessons.md)** |
-| Background runs | No | No | Yes (daemon) | Planned (v0.2) |
+| Background runs | No | No | Yes (daemon) | **Yes (`runtime start/status/stop`)** |
 | Parallel experiments | No | No | Yes | Planned (v0.2) |
 
 ---
@@ -43,7 +43,7 @@ The idea was simple enough that several people generalized it:
 - You want to use it with **multiple agents** (Claude Code, Codex, or anything else)
 - You care about **hook speed** — the safety checks fire on every tool call, and they're fast enough to be invisible
 - You want a **single binary** with no Python/Node.js dependency chain
-- You want the full 12-command surface **plus** the escalation system and cross-run learning
+- You want the full 12-command surface **plus** native runtime control, escalation, and cross-run learning
 
 ---
 
@@ -53,7 +53,7 @@ From **Karpathy**: the core philosophy — one metric, one change at a time, mec
 
 From **uditgoenka/autoresearch**: the 12-command surface (debug, fix, security, scenario, predict, learn, reason, probe, evals, ship, plan, improve), the escalation ladder, the lessons log, and structured outputs per mode.
 
-From **codex-autoresearch**: the exec mode for CI/CD, the idea of background runs (on our roadmap), and multi-agent design patterns.
+From **codex-autoresearch**: the exec mode for CI/CD, background runtime control, and multi-agent design patterns.
 
 ---
 
