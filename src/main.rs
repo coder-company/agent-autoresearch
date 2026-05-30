@@ -1311,6 +1311,19 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
         .collect();
     top_keeps.sort_by_key(|entry| std::cmp::Reverse(entry.0));
 
+    let mut top_regressions: Vec<(Decimal, &str)> = metrics
+        .iter()
+        .filter_map(|row| {
+            let regression = match direction {
+                "lower" if row.delta > Decimal::ZERO => row.delta,
+                "higher" if row.delta < Decimal::ZERO => row.delta.abs(),
+                _ => return None,
+            };
+            Some((regression, row.description.as_str()))
+        })
+        .collect();
+    top_regressions.sort_by_key(|entry| std::cmp::Reverse(entry.0));
+
     let efficiency = if total_iterations > 0 {
         (keeps as f64 / total_iterations as f64 * 100.0).round() as u32
     } else {
@@ -1361,6 +1374,9 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 "top_improvements": top_keeps.iter().take(5).map(|(d, desc)| {
                     serde_json::json!({"delta": d.to_string(), "description": desc})
                 }).collect::<Vec<_>>(),
+                "top_regressions": top_regressions.iter().take(5).map(|(d, desc)| {
+                    serde_json::json!({"delta": d.to_string(), "description": desc})
+                }).collect::<Vec<_>>(),
             });
             let json = serde_json::to_string_pretty(&out)?;
             std::fs::write(summary_dir.join("evals-summary.json"), &json)?;
@@ -1386,6 +1402,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 trend,
                 longest_plateau,
                 top_keeps: &top_keeps,
+                top_regressions: &top_regressions,
             });
             std::fs::write(summary_dir.join("evals-summary.md"), &report)?;
             print!("{report}");
@@ -1410,6 +1427,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 trend,
                 longest_plateau,
                 top_keeps: &top_keeps,
+                top_regressions: &top_regressions,
             });
             print!("{report}");
         }
@@ -1474,6 +1492,7 @@ struct EvalsReport<'a> {
     trend: &'a str,
     longest_plateau: u32,
     top_keeps: &'a [(Decimal, &'a str)],
+    top_regressions: &'a [(Decimal, &'a str)],
 }
 
 fn render_evals_markdown(report: EvalsReport<'_>) -> String {
@@ -1530,6 +1549,15 @@ fn render_evals_markdown(report: EvalsReport<'_>) -> String {
         writeln!(out, "### Top Improvements").unwrap();
         writeln!(out).unwrap();
         for (i, (delta, desc)) in report.top_keeps.iter().take(5).enumerate() {
+            writeln!(out, "{}. **{}** - {}", i + 1, delta, desc).unwrap();
+        }
+        writeln!(out).unwrap();
+    }
+
+    if !report.top_regressions.is_empty() {
+        writeln!(out, "### Top Regressions").unwrap();
+        writeln!(out).unwrap();
+        for (i, (delta, desc)) in report.top_regressions.iter().take(5).enumerate() {
             writeln!(out, "{}. **{}** - {}", i + 1, delta, desc).unwrap();
         }
         writeln!(out).unwrap();

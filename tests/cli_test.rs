@@ -223,11 +223,14 @@ fn test_evals_with_sample_tsv() {
         .success()
         .stdout(predicate::str::contains("\"keeps\": 2"))
         .stdout(predicate::str::contains("\"improvement\": \"10\""))
-        .stdout(predicate::str::contains("\"improvement_pct\": \"20.00\""));
+        .stdout(predicate::str::contains("\"improvement_pct\": \"20.00\""))
+        .stdout(predicate::str::contains("\"top_regressions\""))
+        .stdout(predicate::str::contains("refactor broke tests"));
 
     let summary = std::fs::read_to_string(dir.path().join("evals-summary.json")).unwrap();
     assert!(summary.contains("\"keeps\": 2"));
     assert!(summary.contains("\"improvement\": \"10\""));
+    assert!(summary.contains("refactor broke tests"));
 }
 
 #[test]
