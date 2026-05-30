@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$SELF_DIR/.." && pwd)"
+
+for candidate in \
+  "${AUTORESEARCH_BIN:-}" \
+  "$ROOT/target/release/autoresearch" \
+  "$ROOT/target/debug/autoresearch" \
+  "$(command -v autoresearch 2>/dev/null || true)"
+do
+  if [[ -n "${candidate:-}" && -x "$candidate" && "$candidate" != "$0" ]]; then
+    exec "$candidate" "$@"
+  fi
+done
+
+echo "autoresearch binary not found. Run ./install.sh, cargo build --release, or install autoresearch on PATH" >&2
+exit 1

@@ -197,10 +197,11 @@ build_binary() {
         exit 1
     fi
 
-    # Also copy to bin/ for the plugin system
-    mkdir -p "$REPO_DIR/bin"
-    cp "$binary" "$REPO_DIR/bin/autoresearch"
-    chmod +x "$REPO_DIR/bin/autoresearch"
+    # The Claude hook config calls bin/autoresearch. Keep that file as a
+    # tracked wrapper so plugin installs are portable across platforms.
+    if [[ -f "$REPO_DIR/bin/autoresearch" ]]; then
+        chmod +x "$REPO_DIR/bin/autoresearch"
+    fi
 
     local size
     if [[ "$OS" == "macos" ]]; then
@@ -259,6 +260,10 @@ install_claude_plugin() {
     fi
     if [[ ! -f "$REPO_DIR/hooks/hooks.json" ]]; then
         err "Missing hooks/hooks.json — cannot install plugin."
+        return 1
+    fi
+    if [[ ! -x "$REPO_DIR/bin/autoresearch" ]]; then
+        err "Missing executable bin/autoresearch wrapper — cannot install plugin hooks."
         return 1
     fi
 

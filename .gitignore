@@ -1,9 +1,11 @@
 # Build artifacts
 target/
 
-# Binary is built per-platform — ship via GitHub Releases or install.sh
-# Keep bin/ tracked for local development after ./install.sh
-bin/
+# Binary is built per-platform — ship via GitHub Releases or install.sh.
+# Keep the portable hook wrapper tracked; ignore other generated bin artifacts.
+bin/*
+!bin/
+!bin/autoresearch
 
 # Reference repos (not shipped)
 ref/

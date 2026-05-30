@@ -727,6 +727,43 @@ fn test_hooks_config_wires_dev_rules_reminder() {
 }
 
 #[test]
+fn test_hooks_config_entrypoints_exist() {
+    let config: serde_json::Value =
+        serde_json::from_str(include_str!("../hooks/hooks.json")).unwrap();
+    let commands = hook_commands(&config);
+    for command in commands {
+        let Some(path) = command.strip_prefix("${CLAUDE_PLUGIN_ROOT}/") else {
+            continue;
+        };
+        let Some(entrypoint) = path.split_whitespace().next() else {
+            continue;
+        };
+        let entrypoint = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(entrypoint);
+        assert!(
+            entrypoint.exists(),
+            "missing hook entrypoint for command `{command}`"
+        );
+    }
+}
+
+fn hook_commands(value: &serde_json::Value) -> Vec<&str> {
+    match value {
+        serde_json::Value::Object(map) => map
+            .values()
+            .flat_map(|value| {
+                if let Some(command) = value.get("command").and_then(|value| value.as_str()) {
+                    vec![command]
+                } else {
+                    hook_commands(value)
+                }
+            })
+            .collect(),
+        serde_json::Value::Array(items) => items.iter().flat_map(hook_commands).collect(),
+        _ => Vec::new(),
+    }
+}
+
+#[test]
 fn test_dev_rules_reminder_throttles_by_session_id() {
     let dir = tempfile::tempdir().unwrap();
     init_git_repo(dir.path());
