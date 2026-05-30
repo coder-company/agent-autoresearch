@@ -375,8 +375,17 @@ pub fn runtime_status(workspace: &Path) -> Result<RuntimeSnapshot> {
     if !paths.runtime_path.exists() {
         anyhow::bail!("No runtime.json found at {}", paths.runtime_path.display());
     }
-    let mut snapshot: RuntimeSnapshot =
-        serde_json::from_str(&fs::read_to_string(&paths.runtime_path)?)?;
+    let content = fs::read_to_string(&paths.runtime_path)?;
+    let mut snapshot: RuntimeSnapshot = match serde_json::from_str(&content) {
+        Ok(snapshot) => snapshot,
+        Err(err) => {
+            return Ok(needs_human_snapshot(
+                &paths,
+                "invalid_runtime_state",
+                format!("failed to parse {}: {err}", paths.runtime_path.display()),
+            ));
+        }
+    };
     if snapshot.status == "running" {
         if let Some(pid) = snapshot.pid {
             if !process_is_alive(pid) {
@@ -469,6 +478,9 @@ pub fn supervise_runtime(
 pub fn stop_runtime(workspace: &Path) -> Result<RuntimeSnapshot> {
     let paths = paths(workspace);
     let mut snapshot = runtime_status(workspace)?;
+    if snapshot.status == "needs_human" {
+        return Ok(snapshot);
+    }
     if snapshot.status == "running" {
         if let Some(pid) = snapshot.pid {
             terminate_process(pid)?;
@@ -482,6 +494,30 @@ pub fn stop_runtime(workspace: &Path) -> Result<RuntimeSnapshot> {
         &format!("{} runtime stop requested\n", Utc::now().to_rfc3339()),
     )?;
     Ok(snapshot)
+}
+
+fn needs_human_snapshot(paths: &RuntimePaths, reason: &str, error: String) -> RuntimeSnapshot {
+    RuntimeSnapshot {
+        version: 1,
+        status: "needs_human".to_string(),
+        pid: None,
+        started_at: None,
+        stopped_at: None,
+        launch_path: paths.launch_path.display().to_string(),
+        runtime_path: paths.runtime_path.display().to_string(),
+        log_path: paths.log_path.display().to_string(),
+        last_error: Some(error),
+        supervisor: Some(SupervisorStatus {
+            decision: "needs_human".to_string(),
+            reason: reason.to_string(),
+            terminal_reason: reason.to_string(),
+            should_continue: false,
+            restart_count: 0,
+            stagnation_count: 0,
+            last_signature: String::new(),
+            checked_at: Utc::now().to_rfc3339(),
+        }),
+    }
 }
 
 fn mark_restart_cap(

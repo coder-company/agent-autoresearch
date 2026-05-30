@@ -1102,6 +1102,40 @@ fn test_runtime_start_records_spawn_failure() {
 }
 
 #[test]
+fn test_runtime_status_reports_invalid_runtime_state() {
+    let dir = TempDir::new().unwrap();
+    let root = dir.path().to_str().unwrap();
+    let results = dir.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    std::fs::write(results.join("runtime.json"), "{bad json").unwrap();
+
+    cmd()
+        .args(["runtime", "status", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\": \"needs_human\""))
+        .stdout(predicate::str::contains("invalid_runtime_state"))
+        .stdout(predicate::str::contains("failed to parse"));
+}
+
+#[test]
+fn test_runtime_stop_reports_invalid_runtime_state() {
+    let dir = TempDir::new().unwrap();
+    let root = dir.path().to_str().unwrap();
+    let results = dir.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    std::fs::write(results.join("runtime.json"), "{bad json").unwrap();
+
+    cmd()
+        .args(["runtime", "stop", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\": \"needs_human\""))
+        .stdout(predicate::str::contains("invalid_runtime_state"))
+        .stdout(predicate::str::contains("failed to parse"));
+}
+
+#[test]
 fn test_runtime_supervise_relaunches_after_non_terminal_run() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
