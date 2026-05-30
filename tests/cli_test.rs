@@ -5051,6 +5051,94 @@ fn test_parallel_closeout_selects_best_worker() {
 }
 
 #[test]
+fn test_parallel_closeout_falls_back_when_best_worker_conflicts() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+    write_metric_and_commit(&dir, "41\n");
+    commit_file(&dir, "src/shared.txt", "base\n", "shared base");
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "lower",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let commit_a = create_branch_commit(
+        &dir,
+        "conflicting-worker-a",
+        "src/shared.txt",
+        "worker a\n",
+        "worker a conflict",
+    );
+    let commit_b = create_branch_commit(
+        &dir,
+        "fallback-worker-b",
+        "src/fallback.txt",
+        "fallback\n",
+        "worker b fallback",
+    );
+    commit_file(&dir, "src/shared.txt", "main\n", "main conflicting change");
+
+    let batch_path = dir.path().join("autoresearch-results/parallel-batch.json");
+    std::fs::write(
+        &batch_path,
+        format!(
+            r#"[
+  {{"worker_id":"a","metric":"30","guard":"pass","commit":"{commit_a}","description":"best but conflicts","diff_size":3}},
+  {{"worker_id":"b","metric":"35","guard":"pass","commit":"{commit_b}","description":"second best applies","diff_size":4}}
+]"#
+        ),
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "parallel",
+            "closeout",
+            "--batch-file",
+            batch_path.to_str().unwrap(),
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"selected_worker\": \"b\""))
+        .stdout(predicate::str::contains("\"decision\": \"keep\""));
+
+    let retained_commit = git_head_short(&dir);
+    let results =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/results.tsv")).unwrap();
+    assert!(results.contains(
+        "1a\t-\t30\t-11\tpass\tdiscard\t[PARALLEL worker-a] best but conflicts [MERGE failed]"
+    ));
+    assert!(results.contains(&format!(
+        "1\t{retained_commit}\t35\t-6\tpass\tkeep\t[PARALLEL batch] selected worker-b: second best applies"
+    )));
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("src/shared.txt")).unwrap(),
+        "main\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("src/fallback.txt")).unwrap(),
+        "fallback\n"
+    );
+    let status = std::process::Command::new("git")
+        .args(["-C", root, "status", "--short"])
+        .output()
+        .unwrap();
+    assert!(status.status.success());
+    assert_eq!(String::from_utf8_lossy(&status.stdout), "");
+}
+
+#[test]
 fn test_parallel_closeout_discards_when_no_worker_improves() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
@@ -5344,6 +5432,18 @@ fn create_branch_commit(
     let commit = git_output(path, &["rev-parse", "--short", "HEAD"]);
     git_ok(path, &["checkout", current.trim()]);
     commit.trim().to_string()
+}
+
+fn commit_file(dir: &TempDir, file: &str, content: &str, message: &str) -> String {
+    let path = dir.path();
+    let file_path = path.join(file);
+    if let Some(parent) = file_path.parent() {
+        std::fs::create_dir_all(parent).unwrap();
+    }
+    std::fs::write(&file_path, content).unwrap();
+    git_ok(path, &["add", file]);
+    git_ok(path, &["commit", "-m", message]);
+    git_head_short(dir)
 }
 
 fn git_head_short(dir: &TempDir) -> String {

@@ -2578,9 +2578,39 @@ fn cmd_parallel_closeout(
         });
     }
 
-    let winner = select_parallel_winner(&candidates, state.direction);
-    let selected_worker = winner.as_ref().map(|record| record.worker_id.clone());
-    let best_completed = if winner.is_none() {
+    let mut ordered_candidates = candidates.clone();
+    ordered_candidates
+        .sort_by(|left, right| compare_parallel_records(left, right, state.direction));
+    let mut merge_failures = BTreeMap::new();
+    let mut merged_winner = None;
+    for candidate in ordered_candidates {
+        let Some(commit) = candidate.commit.clone() else {
+            merge_failures.insert(candidate.worker_id.clone(), "missing commit".to_string());
+            continue;
+        };
+        match cherry_pick_parallel_commit(workspace, &commit) {
+            Ok(retained_commit) => {
+                merged_winner = Some((candidate, retained_commit));
+                break;
+            }
+            Err(err) => {
+                merge_failures.insert(
+                    candidate.worker_id.clone(),
+                    summarize_error(&err.to_string()),
+                );
+            }
+        }
+    }
+    for record in &mut records {
+        if let Some(reason) = merge_failures.get(&record.worker_id) {
+            record.status = IterationStatus::Discard;
+            record.description = format!("{} [MERGE failed] {reason}", record.description);
+        }
+    }
+    let selected_worker = merged_winner
+        .as_ref()
+        .map(|(record, _)| record.worker_id.clone());
+    let best_completed = if merged_winner.is_none() {
         select_best_completed_worker(&records, state.direction)
     } else {
         None
@@ -2618,16 +2648,8 @@ fn cmd_parallel_closeout(
         ));
     }
 
-    let (main_status, main_metric, main_metrics, main_labels, main_commit, main_guard, main_description) = match winner {
-        Some(winner_record) => {
-            let Some(commit) = winner_record.commit.clone() else {
-                anyhow::bail!(
-                    "worker {} improved the metric but did not report a commit",
-                    winner_record.worker_id
-                );
-            };
-            let retained_commit = cherry_pick_parallel_commit(workspace, &commit)
-                .with_context(|| format!("failed to merge worker-{} commit", winner_record.worker_id))?;
+    let (main_status, main_metric, main_metrics, main_labels, main_commit, main_guard, main_description) = match merged_winner {
+        Some((winner_record, retained_commit)) => {
             (
                 IterationStatus::Keep,
                 winner_record.metric,
@@ -2821,16 +2843,6 @@ fn parse_parallel_metrics_object(value: &serde_json::Value) -> Result<BTreeMap<S
         metrics.insert(key.clone(), metric);
     }
     Ok(metrics)
-}
-
-fn select_parallel_winner(
-    candidates: &[ParallelWorkerRecord],
-    direction: Direction,
-) -> Option<ParallelWorkerRecord> {
-    candidates
-        .iter()
-        .cloned()
-        .min_by(|left, right| compare_parallel_records(left, right, direction))
 }
 
 fn select_best_completed_worker(
@@ -3687,6 +3699,15 @@ fn git_resolve_commit(workspace: &Path, commit: &str) -> Result<Option<String>> 
             String::from_utf8_lossy(&output.stdout)
         ),
     }
+}
+
+fn summarize_error(message: &str) -> String {
+    let mut summary = message.split_whitespace().collect::<Vec<_>>().join(" ");
+    if summary.len() > 180 {
+        summary.truncate(180);
+        summary.push_str("...");
+    }
+    summary
 }
 
 fn parallel_codex_args(execution_policy: &str) -> Result<Vec<String>> {
