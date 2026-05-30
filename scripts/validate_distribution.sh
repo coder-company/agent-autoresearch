@@ -161,6 +161,9 @@ require_grep 'Codex plugin package \+ local marketplace entry' docs/development-
 require_grep 'Claude marketplace/plugin' COMPARISON.md
 require_grep '13-command surface' COMPARISON.md
 require_grep 'Structured metrics' COMPARISON.md
+require_grep '\.agents/skills/autoresearch/' AGENTS.md
+require_grep '\.opencode/' AGENTS.md
+require_grep '\.agents/skills/autoresearch/' docs/changelog.md
 
 check_synced_reference_package "$ROOT/.agents/skills/autoresearch"
 check_synced_reference_package "$ROOT/plugins/autoresearch/skills/autoresearch"

@@ -38,6 +38,18 @@ $skill-installer install https://github.com/coder-company/agent-autoresearch
 
 Then: `$autoresearch`
 
+For a local clone, `./install.sh --yes --codex` copies `.agents/skills/autoresearch/` into your Codex skills directory. Use `./install.sh --yes --codex-plugin` for the local marketplace package at `plugins/autoresearch/`.
+
+### OpenCode
+
+```bash
+git clone https://github.com/coder-company/agent-autoresearch.git
+cd agent-autoresearch
+./install.sh --yes --opencode
+```
+
+Commands install as `/autoresearch` and `/autoresearch_debug`, `/autoresearch_fix`, etc.
+
 ### Manual (any agent)
 
 ```bash
@@ -125,9 +137,13 @@ agent-autoresearch/
 ├── .claude-plugin/plugin.json    ← Claude Code plugin manifest
 ├── hooks/hooks.json              ← Hook definitions
 ├── skills/autoresearch/SKILL.md  ← Claude Code skill
+├── .agents/skills/autoresearch/  ← Codex skill package
+├── .agents/plugins/marketplace.json ← Local Codex marketplace
+├── plugins/autoresearch/         ← Codex plugin package
+├── .opencode/                    ← OpenCode commands and skill package
 ├── commands/autoresearch.md      ← Root command
 ├── commands/autoresearch/*.md    ← Subcommands
-├── SKILL.md                      ← Codex skill (repo root)
+├── SKILL.md                      ← Generic skill entrypoint
 ├── references/                   ← Shared protocol docs
 ├── src/                          ← Rust source
 ├── bin/autoresearch              ← Portable hook wrapper (tracked)
