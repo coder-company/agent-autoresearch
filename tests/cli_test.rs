@@ -320,6 +320,9 @@ fn test_progress_lower_direction_trend_improves_on_decrease() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
     let root = dir.path().to_str().unwrap();
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+    let subdir = subdir.to_str().unwrap();
     write_metric_and_commit(&dir, "10\n");
 
     cmd()
@@ -353,7 +356,7 @@ fn test_progress_lower_direction_trend_improves_on_decrease() {
             "--description",
             "reduce failures",
             "--cwd",
-            root,
+            subdir,
         ])
         .assert()
         .success();
@@ -375,10 +378,11 @@ fn test_progress_lower_direction_trend_improves_on_decrease() {
             "--description",
             "reduce more failures",
             "--cwd",
-            root,
+            subdir,
         ])
         .assert()
         .success();
+    assert!(!dir.path().join("src/autoresearch-results").exists());
 
     cmd()
         .args(["progress", "--cwd", root])
@@ -511,6 +515,9 @@ fn test_decide_accepts_negative_metric_value() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
     let root = dir.path().to_str().unwrap();
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+    let subdir = subdir.to_str().unwrap();
     write_metric_and_commit(&dir, "0\n");
 
     cmd()
@@ -536,11 +543,12 @@ fn test_decide_accepts_negative_metric_value() {
             "--description",
             "crossed below zero",
             "--cwd",
-            root,
+            subdir,
         ])
         .assert()
         .success()
         .stdout(predicate::str::contains("\"decision\": \"keep\""));
+    assert!(!dir.path().join("src/autoresearch-results").exists());
 }
 
 // ── Health Command ───────────────────────────────────────────────────

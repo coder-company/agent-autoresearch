@@ -746,7 +746,7 @@ fn cmd_log(
     description: &str,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
-    let workspace = resolve_cwd(cwd);
+    let workspace = resolve_results_workspace(cwd);
     let results_dir = workspace.join("autoresearch-results");
 
     // Validate iteration sequence to prevent double-counting with cmd_decide
@@ -840,7 +840,7 @@ fn cmd_decide(
     labels: Vec<String>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
-    let workspace = resolve_cwd(cwd);
+    let workspace = resolve_results_workspace(cwd);
     let results_dir = workspace.join("autoresearch-results");
     let state_path = results_dir.join("state.json");
 
