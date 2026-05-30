@@ -2778,6 +2778,7 @@ fn cmd_handoff(
         "config": config_val,
         "chain": chain_targets,
         "next_target": next_target,
+        "chain_continue": should_continue_handoff_chain(status),
     });
 
     std::fs::write(&handoff_path, serde_json::to_string_pretty(&handoff)?)?;
@@ -3024,6 +3025,13 @@ fn parse_handoff_chain_targets(value: Option<&str>) -> Result<Vec<String>> {
     }
 
     Ok(targets)
+}
+
+fn should_continue_handoff_chain(status: &str) -> bool {
+    matches!(
+        status,
+        "COMPLETE" | "GOAL_MET" | "BOUNDED" | "CONVERGED" | "SATURATED" | "DRY_RUN"
+    )
 }
 
 fn collect_results_tsvs_in_dir(dir: &Path, candidates: &mut BTreeSet<PathBuf>) {

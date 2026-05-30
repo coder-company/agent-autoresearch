@@ -1468,6 +1468,7 @@ fn test_handoff_defaults_to_repo_root_results_from_subdir() {
     assert!(handoff.contains("\"scenario\""));
     assert!(handoff.contains("\"fix\""));
     assert!(handoff.contains("\"next_target\": \"scenario\""));
+    assert!(handoff.contains("\"chain_continue\": true"));
     assert!(!subdir.join("autoresearch-results").exists());
 }
 
@@ -1579,6 +1580,32 @@ fn test_handoff_rejects_invalid_chain_target() {
         .stderr(predicate::str::contains(
             "invalid handoff chain target \"mystery\"",
         ));
+}
+
+#[test]
+fn test_handoff_marks_blocked_chain_non_continuable() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+
+    cmd()
+        .args([
+            "handoff",
+            "--source",
+            "debug",
+            "--status",
+            "BLOCKED",
+            "--chain",
+            "fix",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let handoff =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/handoff.json")).unwrap();
+    assert!(handoff.contains("\"next_target\": \"fix\""));
+    assert!(handoff.contains("\"chain_continue\": false"));
 }
 
 #[test]
