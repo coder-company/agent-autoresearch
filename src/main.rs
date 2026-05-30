@@ -3542,10 +3542,18 @@ fn cmd_exec(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
 
 fn cmd_exec_inner(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
     let workspace = resolve_workspace_root(cwd);
+    if iterations == 0 {
+        return exec_hard_error(
+            "invalid_iterations",
+            "exec: --iterations must be greater than zero".to_string(),
+        );
+    }
 
     // Read config from stdin
-    let config: RunConfig = serde_json::from_reader(std::io::stdin().lock())
+    let mut config: RunConfig = serde_json::from_reader(std::io::stdin().lock())
         .context("exec: failed to parse RunConfig from stdin")?;
+    validate_exec_config(&config)?;
+    config.iterations = Some(iterations);
 
     // Extract display values before moving config
     let direction = config.direction;
@@ -3612,6 +3620,22 @@ fn cmd_exec_inner(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
     });
     println!("{}", serde_json::to_string(&out)?);
 
+    Ok(())
+}
+
+fn validate_exec_config(config: &RunConfig) -> Result<()> {
+    if config.goal.trim().is_empty() {
+        anyhow::bail!("exec: missing required field: goal");
+    }
+    if config.scope.is_empty() || config.scope.iter().all(|scope| scope.trim().is_empty()) {
+        anyhow::bail!("exec: missing required field: scope");
+    }
+    if config.metric.trim().is_empty() {
+        anyhow::bail!("exec: missing required field: metric");
+    }
+    if config.verify.trim().is_empty() {
+        anyhow::bail!("exec: missing required field: verify");
+    }
     Ok(())
 }
 

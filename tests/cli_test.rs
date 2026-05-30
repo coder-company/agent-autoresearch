@@ -1864,6 +1864,90 @@ fn test_exec_invalid_config_emits_json_error() {
 }
 
 #[test]
+fn test_exec_rejects_zero_iterations() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let config = serde_json::json!({
+        "goal": "fresh exec",
+        "scope": ["metric.txt"],
+        "metric": "score",
+        "direction": "higher",
+        "verify": "cat metric.txt"
+    });
+
+    cmd()
+        .args([
+            "exec",
+            "--iterations",
+            "0",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .write_stdin(config.to_string())
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("\"code\":\"invalid_iterations\""));
+}
+
+#[test]
+fn test_exec_rejects_empty_required_fields() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let config = serde_json::json!({
+        "goal": "",
+        "scope": [],
+        "metric": "score",
+        "direction": "higher",
+        "verify": "cat metric.txt"
+    });
+
+    cmd()
+        .args([
+            "exec",
+            "--iterations",
+            "1",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .write_stdin(config.to_string())
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("\"code\":\"startup_failed\""))
+        .stderr(predicate::str::contains("missing required field: goal"));
+}
+
+#[test]
+fn test_exec_persists_cli_iteration_cap() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let config = serde_json::json!({
+        "goal": "fresh exec",
+        "scope": ["metric.txt"],
+        "metric": "score",
+        "direction": "higher",
+        "verify": "cat metric.txt"
+    });
+
+    cmd()
+        .args([
+            "exec",
+            "--iterations",
+            "7",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .write_stdin(config.to_string())
+        .assert()
+        .success();
+
+    let state: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(state["config"]["iterations"], 7);
+}
+
+#[test]
 fn test_exec_archives_existing_artifacts_before_fresh_start() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
