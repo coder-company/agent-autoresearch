@@ -52,6 +52,7 @@ Do not commit `autoresearch-results/` or `.codex-autoresearch/`.
 
 - [Getting Started](../guide/getting-started.md)
 - [Examples](EXAMPLES.md)
+- [System Architecture](system-architecture.md)
 - [Core Loop](../guide/autoresearch.md)
 - [Codex](../guide/autoresearch-codex.md)
 - [Examples by Domain](../guide/examples-by-domain.md)
