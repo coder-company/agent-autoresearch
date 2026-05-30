@@ -151,6 +151,8 @@ require_grep 'companion-repo-scope' .agents/skills/autoresearch/SKILL.md
 require_grep 'results\.tsv.*\.prev' references/exec-workflow.md
 require_grep 'lessons\.md.*read-only' references/exec-workflow.md
 require_grep 'multi-repo-smoke' scripts/run_skill_e2e.sh
+require_grep 'runtime-smoke' scripts/run_skill_e2e.sh
+require_grep 'runtime stop requested' scripts/run_skill_e2e.sh
 require_grep 'environment-summary' references/environment-awareness.md
 require_grep 'environment-summary' commands/autoresearch.md
 require_grep 'codex plugin marketplace add \.agents/plugins/marketplace\.json' docs/INSTALL.md

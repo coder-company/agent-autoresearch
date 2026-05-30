@@ -89,6 +89,27 @@ fn multi_repo_skill_e2e_harness_passes() {
 }
 
 #[test]
+fn runtime_skill_e2e_harness_passes() {
+    let root = repo_root();
+    let script = root.join("scripts/run_skill_e2e.sh");
+    let bin = assert_cmd::cargo::cargo_bin("autoresearch");
+
+    let smoke = Command::new(&script)
+        .args(["runtime-smoke", "--clean"])
+        .env("AUTORESEARCH_BIN", bin)
+        .current_dir(&root)
+        .output()
+        .unwrap();
+    assert!(
+        smoke.status.success(),
+        "runtime smoke failed:\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&smoke.stdout),
+        String::from_utf8_lossy(&smoke.stderr)
+    );
+    assert!(String::from_utf8_lossy(&smoke.stdout).contains("runtime smoke: OK"));
+}
+
+#[test]
 fn release_script_updates_agent_package_versions() {
     let root = repo_root();
     let script = std::fs::read_to_string(root.join("scripts/release.sh")).unwrap();

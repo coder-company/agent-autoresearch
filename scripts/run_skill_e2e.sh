@@ -11,6 +11,7 @@ usage() {
 Usage:
   ./scripts/run_skill_e2e.sh binary-smoke [--clean]
   ./scripts/run_skill_e2e.sh multi-repo-smoke [--clean]
+  ./scripts/run_skill_e2e.sh runtime-smoke [--clean]
 
 Modes:
   binary-smoke  Create a disposable git repo and exercise init, decide, status,
@@ -18,6 +19,9 @@ Modes:
   multi-repo-smoke
                 Create primary + companion repos and exercise companion init,
                 health, handoff, and runtime launch metadata.
+  runtime-smoke
+                Create a disposable git repo, start a fake detached Codex
+                runtime, verify status artifacts, and stop it.
 
 Flags:
   --clean       Delete the temp repo after a successful run.
@@ -74,6 +78,25 @@ init_fixture_repo() {
     printf '5\n' > "$repo/metric.txt"
     git -C "$repo" add .
     git -C "$repo" commit -m "baseline" >/dev/null
+}
+
+write_sleeping_fake_codex() {
+    local path="$1"
+    cat > "$path" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" != "exec" ]]; then
+    echo "expected codex exec" >&2
+    exit 64
+fi
+shift
+while [[ $# -gt 0 ]]; do
+    shift
+done
+cat >/dev/null
+sleep 30
+EOF
+    chmod +x "$path"
 }
 
 cleanup_if_requested() {
@@ -181,12 +204,54 @@ run_multi_repo_smoke() {
     cleanup_if_requested "$tmpdir"
 }
 
+run_runtime_smoke() {
+    require_tool git
+
+    local bin tmpdir repo fake_codex start_output status_output stop_output
+    bin="$(autoresearch_bin)"
+    tmpdir="$(mktemp -d)"
+    repo="$tmpdir/repo"
+    fake_codex="$tmpdir/fake-codex"
+
+    init_fixture_repo "$repo"
+    write_sleeping_fake_codex "$fake_codex"
+
+    "$bin" init \
+        --verify "cat metric.txt" \
+        --direction lower \
+        --goal "Exercise background runtime control" \
+        --scope metric.txt \
+        --run-mode background \
+        --cwd "$repo" >/dev/null
+
+    start_output="$("$bin" runtime start \
+        --execution-policy workspace_write \
+        --codex-bin "$fake_codex" \
+        --cwd "$repo")"
+    grep -q '"status": "ok"' <<<"$start_output"
+    grep -q '"status": "running"' "$repo/autoresearch-results/runtime.json"
+    grep -q "\"codex_bin\": \"$fake_codex\"" "$repo/autoresearch-results/launch.json"
+
+    status_output="$("$bin" runtime status --cwd "$repo")"
+    grep -q '"status": "running"' <<<"$status_output"
+
+    stop_output="$("$bin" runtime stop --cwd "$repo")"
+    grep -q '"status": "stopped"' <<<"$stop_output"
+    grep -q 'runtime stop requested' "$repo/autoresearch-results/runtime.log"
+
+    echo "runtime smoke: OK"
+    cleanup_if_requested "$tmpdir"
+}
+
 case "$MODE" in
     binary-smoke)
         run_binary_smoke
         ;;
     multi-repo-smoke)
         run_multi_repo_smoke
+        ;;
+    runtime-smoke)
+        run_runtime_smoke
         ;;
     *)
         echo "Unknown mode: $MODE" >&2
