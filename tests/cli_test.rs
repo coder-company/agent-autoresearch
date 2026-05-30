@@ -2332,6 +2332,68 @@ fn test_parallel_closeout_applies_required_keep_criteria() {
 }
 
 #[test]
+fn test_parallel_closeout_applies_required_keep_labels() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--required-keep-label",
+            "production-path",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let batch_path = dir.path().join("autoresearch-results/parallel-batch.json");
+    std::fs::write(
+        &batch_path,
+        r#"[
+  {"worker_id":"a","metric":"60","guard":"pass","commit":"aaa1111","description":"generic improvement","diff_size":3},
+  {"worker_id":"b","metric":"55","guard":"pass","commit":"bbb2222","description":"production path improvement","labels":["Production-Path"],"diff_size":8}
+]"#,
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "parallel",
+            "closeout",
+            "--batch-file",
+            batch_path.to_str().unwrap(),
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"selected_worker\": \"b\""))
+        .stdout(predicate::str::contains("\"decision\": \"keep\""));
+
+    let results =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/results.tsv")).unwrap();
+    assert!(results.contains(
+        "1a\t-\t60\t+10\tpass\tdiscard\t[PARALLEL worker-a] [KEEP-LABEL miss] missing required labels: production-path generic improvement"
+    ));
+    assert!(results.contains(
+        "1\tbbb2222\t55\t+5\tpass\tkeep\t[PARALLEL batch] selected worker-b: [labels: production-path] production path improvement"
+    ));
+
+    let state: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(state["current_metric"], "55");
+    assert_eq!(state["current_labels"][0], "production-path");
+}
+
+#[test]
 fn test_parallel_closeout_blocks_unexpected_dirty_worktree() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

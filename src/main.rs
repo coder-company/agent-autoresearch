@@ -68,6 +68,9 @@ enum Commands {
         /// Required keep criteria JSON array
         #[arg(long)]
         required_keep_criteria: Option<String>,
+        /// Required label before an improved trial can be retained
+        #[arg(long)]
+        required_keep_label: Vec<String>,
         /// Iteration cap
         #[arg(long)]
         iterations: Option<u32>,
@@ -171,6 +174,9 @@ enum Commands {
         /// Guard result: pass, fail, or skip
         #[arg(long, default_value = "skip")]
         guard: String,
+        /// Structured label attached to this trial
+        #[arg(long)]
+        label: Vec<String>,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -376,6 +382,7 @@ fn main() -> Result<()> {
             guard,
             acceptance_criteria,
             required_keep_criteria,
+            required_keep_label,
             iterations,
             run_tag,
             stop_condition,
@@ -395,6 +402,7 @@ fn main() -> Result<()> {
             guard.as_deref(),
             acceptance_criteria,
             required_keep_criteria,
+            required_keep_label,
             iterations,
             run_tag,
             stop_condition,
@@ -442,6 +450,7 @@ fn main() -> Result<()> {
             description,
             rollback,
             guard,
+            label,
             cwd,
         } => cmd_decide(
             &decision,
@@ -451,6 +460,7 @@ fn main() -> Result<()> {
             &description,
             &rollback,
             &guard,
+            label,
             cwd,
         ),
 
@@ -510,6 +520,7 @@ fn cmd_init(
     guard: Option<&str>,
     acceptance_criteria_raw: Option<String>,
     required_keep_criteria_raw: Option<String>,
+    required_keep_label: Vec<String>,
     iterations: Option<u32>,
     run_tag: Option<String>,
     stop_condition: Option<String>,
@@ -534,6 +545,7 @@ fn cmd_init(
         required_keep_criteria_raw.as_deref(),
         "required_keep_criteria",
     )?;
+    let required_keep_labels = normalize_labels(required_keep_label);
 
     // Safety screen
     verify::screen_command(verify_cmd)?;
@@ -619,6 +631,7 @@ fn cmd_init(
         primary_metric_key: key.map(|k| k.to_string()),
         acceptance_criteria,
         required_keep_criteria,
+        required_keep_labels,
         rollback_strategy,
         run_mode,
         workspace_root,
@@ -626,6 +639,7 @@ fn cmd_init(
     };
     let acceptance_criteria_count = run_config.acceptance_criteria.len();
     let required_keep_criteria_count = run_config.required_keep_criteria.len();
+    let required_keep_labels_count = run_config.required_keep_labels.len();
 
     // Write state.json
     let mut state = RunState::from_baseline(result.metric, head.clone(), Some(run_config));
@@ -648,6 +662,7 @@ fn cmd_init(
         "iterations": iterations,
         "acceptance_criteria_count": acceptance_criteria_count,
         "required_keep_criteria_count": required_keep_criteria_count,
+        "required_keep_labels_count": required_keep_labels_count,
         "run_mode": run_mode.map(|mode| match mode {
             RunMode::Foreground => "foreground",
             RunMode::Background => "background",
@@ -812,6 +827,7 @@ fn cmd_decide(
     description: &str,
     rollback_str: &str,
     guard_str: &str,
+    labels: Vec<String>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let workspace = resolve_cwd(cwd);
@@ -830,31 +846,38 @@ fn cmd_decide(
         .context("No state.json found — run `autoresearch init` first")?;
     let mut state: RunState = serde_json::from_str(&content)?;
     let metric = parse_decide_metric(metric_str, decision, state.current_metric)?;
-    let (primary_metric_key, verify_format, acceptance_criteria, required_keep_criteria) =
-        match state.config.as_ref() {
-            Some(config) => (
-                config
-                    .primary_metric_key
-                    .clone()
-                    .or_else(|| {
-                        if config.metric.trim().is_empty() {
-                            None
-                        } else {
-                            Some(config.metric.clone())
-                        }
-                    })
-                    .unwrap_or_else(|| "metric".to_string()),
-                config.verify_format,
-                config.acceptance_criteria.clone(),
-                config.required_keep_criteria.clone(),
-            ),
-            None => (
-                "metric".to_string(),
-                VerifyFormat::Scalar,
-                Vec::new(),
-                Vec::new(),
-            ),
-        };
+    let (
+        primary_metric_key,
+        verify_format,
+        acceptance_criteria,
+        required_keep_criteria,
+        required_keep_labels,
+    ) = match state.config.as_ref() {
+        Some(config) => (
+            config
+                .primary_metric_key
+                .clone()
+                .or_else(|| {
+                    if config.metric.trim().is_empty() {
+                        None
+                    } else {
+                        Some(config.metric.clone())
+                    }
+                })
+                .unwrap_or_else(|| "metric".to_string()),
+            config.verify_format,
+            config.acceptance_criteria.clone(),
+            config.required_keep_criteria.clone(),
+            config.required_keep_labels.clone(),
+        ),
+        None => (
+            "metric".to_string(),
+            VerifyFormat::Scalar,
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+        ),
+    };
 
     let delta = metric - state.current_metric;
     let requires_trial_metrics = !matches!(decision, "blocked" | "crash" | "no-op");
@@ -873,6 +896,7 @@ fn cmd_decide(
     }
     let acceptance = criteria::evaluate_criteria(&acceptance_criteria, &trial_metrics);
     let required_keep = criteria::evaluate_criteria(&required_keep_criteria, &trial_metrics);
+    let trial_labels = normalize_labels(labels);
     let decision = if decision == "auto" {
         if state.direction.is_improvement(delta) {
             "keep"
@@ -882,13 +906,20 @@ fn cmd_decide(
     } else {
         decision
     };
-    let decision = if decision == "keep" && !required_keep.satisfied {
-        "discard"
-    } else if guard == GuardResult::Fail && decision == "keep" {
-        "discard"
+    let missing_required_keep_labels = if decision == "keep" {
+        missing_required_labels(&required_keep_labels, &trial_labels)
     } else {
-        decision
+        Vec::new()
     };
+    let required_keep_labels_satisfied = missing_required_keep_labels.is_empty();
+    let decision =
+        if decision == "keep" && (!required_keep.satisfied || !required_keep_labels_satisfied) {
+            "discard"
+        } else if guard == GuardResult::Fail && decision == "keep" {
+            "discard"
+        } else {
+            decision
+        };
 
     // Load escalation state
     let esc_path = results_dir.join("escalation.json");
@@ -916,10 +947,11 @@ fn cmd_decide(
 
     let (status, needs_rollback, escalation_action) = match decision {
         "keep" => {
-            state.record_keep_with_metrics(
+            state.record_keep_with_metrics_and_labels(
                 metric,
                 resolved_commit.clone().unwrap(),
                 trial_metrics.clone(),
+                trial_labels.clone(),
             );
             escalation.record_keep();
 
@@ -933,10 +965,11 @@ fn cmd_decide(
             (IterationStatus::Keep, false, None)
         }
         "discard" => {
-            state.record_discard_with_metrics(
+            state.record_discard_with_metrics_and_labels(
                 metric,
                 resolved_commit.clone(),
                 trial_metrics.clone(),
+                trial_labels.clone(),
             );
             let action = escalation.record_discard();
             (IterationStatus::Discard, true, Some(action))
@@ -1015,7 +1048,7 @@ fn cmd_decide(
         delta,
         guard,
         status,
-        description: description.to_string(),
+        description: label_description(description, &trial_labels, &missing_required_keep_labels),
     })?;
 
     // Persist state + escalation
@@ -1047,6 +1080,10 @@ fn cmd_decide(
         "rollback_applied": needs_rollback,
         "acceptance": acceptance,
         "required_keep": required_keep,
+        "required_keep_labels": {
+            "satisfied": required_keep_labels_satisfied,
+            "missing": missing_required_keep_labels,
+        },
         "escalation": escalation_guidance,
     });
     println!("{}", serde_json::to_string_pretty(&out)?);
@@ -1508,6 +1545,8 @@ struct ParallelWorkerInput {
     #[serde(default)]
     metrics: Option<serde_json::Value>,
     #[serde(default)]
+    labels: Vec<String>,
+    #[serde(default)]
     diff_size: Option<u64>,
 }
 
@@ -1518,6 +1557,7 @@ struct ParallelWorkerRecord {
     commit: Option<String>,
     metric: Decimal,
     metrics: Option<BTreeMap<String, Decimal>>,
+    labels: Vec<String>,
     guard: GuardResult,
     status: IterationStatus,
     diff_size: u64,
@@ -1579,24 +1619,31 @@ fn cmd_parallel_closeout(
 
     let next_iteration = state.iteration + 1;
     let current_metric = state.current_metric;
-    let (primary_metric_key, verify_format, required_keep_criteria) = match state.config.as_ref() {
-        Some(config) => (
-            config
-                .primary_metric_key
-                .clone()
-                .or_else(|| {
-                    if config.metric.trim().is_empty() {
-                        None
-                    } else {
-                        Some(config.metric.clone())
-                    }
-                })
-                .unwrap_or_else(|| "metric".to_string()),
-            config.verify_format,
-            config.required_keep_criteria.clone(),
-        ),
-        None => ("metric".to_string(), VerifyFormat::Scalar, Vec::new()),
-    };
+    let (primary_metric_key, verify_format, required_keep_criteria, required_keep_labels) =
+        match state.config.as_ref() {
+            Some(config) => (
+                config
+                    .primary_metric_key
+                    .clone()
+                    .or_else(|| {
+                        if config.metric.trim().is_empty() {
+                            None
+                        } else {
+                            Some(config.metric.clone())
+                        }
+                    })
+                    .unwrap_or_else(|| "metric".to_string()),
+                config.verify_format,
+                config.required_keep_criteria.clone(),
+                config.required_keep_labels.clone(),
+            ),
+            None => (
+                "metric".to_string(),
+                VerifyFormat::Scalar,
+                Vec::new(),
+                Vec::new(),
+            ),
+        };
     let mut records = Vec::with_capacity(batch.len());
     let mut candidates = Vec::new();
 
@@ -1622,28 +1669,36 @@ fn cmd_parallel_closeout(
                 .with_context(|| format!("invalid metrics for worker {}", item.worker_id))?;
                 let required_keep =
                     criteria::evaluate_criteria(&required_keep_criteria, &trial_metrics);
+                let trial_labels = normalize_labels(item.labels);
+                let missing_labels = missing_required_labels(&required_keep_labels, &trial_labels);
                 let mut description = item.description;
                 let status = if guard == GuardResult::Fail {
                     IterationStatus::Discard
                 } else if state.direction.is_improvement(delta) {
-                    if required_keep.satisfied {
+                    if required_keep.satisfied && missing_labels.is_empty() {
                         IterationStatus::Keep
                     } else {
-                        description = format!(
-                            "{description} [KEEP-CRITERIA miss] {}",
-                            required_keep.failures.join("; ")
-                        );
+                        if !required_keep.satisfied {
+                            description = format!(
+                                "{description} [KEEP-CRITERIA miss] {}",
+                                required_keep.failures.join("; ")
+                            );
+                        }
                         IterationStatus::Discard
                     }
                 } else {
                     IterationStatus::Discard
                 };
+                if !trial_labels.is_empty() || !missing_labels.is_empty() {
+                    description = label_description(&description, &trial_labels, &missing_labels);
+                }
                 let record = ParallelWorkerRecord {
                     worker_id: item.worker_id,
                     description,
                     commit: normalize_optional_commit(item.commit),
                     metric,
                     metrics: Some(trial_metrics),
+                    labels: trial_labels,
                     guard,
                     status,
                     diff_size: item.diff_size.unwrap_or(u64::MAX),
@@ -1666,6 +1721,7 @@ fn cmd_parallel_closeout(
             commit: normalize_optional_commit(item.commit),
             metric: current_metric,
             metrics: None,
+            labels: normalize_labels(item.labels),
             guard,
             status,
             diff_size: item.diff_size.unwrap_or(u64::MAX),
@@ -1712,7 +1768,7 @@ fn cmd_parallel_closeout(
         ));
     }
 
-    let (main_status, main_metric, main_metrics, main_commit, main_guard, main_description) = match winner {
+    let (main_status, main_metric, main_metrics, main_labels, main_commit, main_guard, main_description) = match winner {
         Some(winner_record) => {
             let Some(commit) = winner_record.commit.clone() else {
                 anyhow::bail!(
@@ -1724,6 +1780,7 @@ fn cmd_parallel_closeout(
                 IterationStatus::Keep,
                 winner_record.metric,
                 winner_record.metrics.clone(),
+                winner_record.labels.clone(),
                 Some(commit),
                 winner_record.guard,
                 format!(
@@ -1737,6 +1794,7 @@ fn cmd_parallel_closeout(
                 IterationStatus::Discard,
                 best.metric,
                 best.metrics.clone(),
+                best.labels.clone(),
                 best.commit.clone(),
                 best.guard,
                 format!(
@@ -1748,6 +1806,7 @@ fn cmd_parallel_closeout(
                 IterationStatus::Discard,
                 current_metric,
                 None,
+                Vec::new(),
                 None,
                 GuardResult::Skip,
                 "[PARALLEL batch] no worker completed successfully".to_string(),
@@ -1786,9 +1845,18 @@ fn cmd_parallel_closeout(
     match main_status {
         IterationStatus::Keep => {
             if let Some(metrics) = main_metrics.clone() {
-                state.record_keep_with_metrics(main_metric, main_commit.clone().unwrap(), metrics);
+                state.record_keep_with_metrics_and_labels(
+                    main_metric,
+                    main_commit.clone().unwrap(),
+                    metrics,
+                    main_labels.clone(),
+                );
             } else {
-                state.record_keep(main_metric, main_commit.clone().unwrap());
+                state.record_keep_with_labels(
+                    main_metric,
+                    main_commit.clone().unwrap(),
+                    main_labels.clone(),
+                );
             }
             escalation.record_keep();
             let lesson = lessons::extract_keep_lesson(
@@ -1799,9 +1867,14 @@ fn cmd_parallel_closeout(
         }
         IterationStatus::Discard => {
             if let Some(metrics) = main_metrics.clone() {
-                state.record_discard_with_metrics(main_metric, main_commit.clone(), metrics);
+                state.record_discard_with_metrics_and_labels(
+                    main_metric,
+                    main_commit.clone(),
+                    metrics,
+                    main_labels.clone(),
+                );
             } else {
-                state.record_discard(main_metric, main_commit.clone());
+                state.record_discard_with_labels(main_metric, main_commit.clone(), main_labels);
             }
             if escalation.record_discard() == EscalationAction::Pivot {
                 let lesson = lessons::extract_pivot_lesson(
@@ -2281,6 +2354,42 @@ fn retained_trial_metrics(
         .or_insert(metric);
     metrics.entry("metric".to_string()).or_insert(metric);
     metrics
+}
+
+fn normalize_labels(labels: Vec<String>) -> Vec<String> {
+    labels
+        .into_iter()
+        .map(|label| label.trim().to_ascii_lowercase())
+        .filter(|label| !label.is_empty())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
+fn missing_required_labels(required: &[String], labels: &[String]) -> Vec<String> {
+    let present = labels.iter().cloned().collect::<BTreeSet<_>>();
+    required
+        .iter()
+        .map(|label| label.trim().to_ascii_lowercase())
+        .filter(|label| !label.is_empty() && !present.contains(label))
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
+fn label_description(description: &str, labels: &[String], missing_required: &[String]) -> String {
+    let mut parts = Vec::new();
+    if !labels.is_empty() {
+        parts.push(format!("[labels: {}]", labels.join(", ")));
+    }
+    if !missing_required.is_empty() {
+        parts.push(format!(
+            "[KEEP-LABEL miss] missing required labels: {}",
+            missing_required.join(", ")
+        ));
+    }
+    parts.push(description.to_string());
+    parts.join(" ")
 }
 
 fn build_trial_metrics(

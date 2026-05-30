@@ -52,6 +52,10 @@ pub struct RunState {
     pub current_metrics: BTreeMap<String, Decimal>,
     #[serde(default)]
     pub last_trial_metrics: BTreeMap<String, Decimal>,
+    #[serde(default)]
+    pub current_labels: Vec<String>,
+    #[serde(default)]
+    pub last_trial_labels: Vec<String>,
     pub keeps: u32,
     pub discards: u32,
     pub crashes: u32,
@@ -92,6 +96,8 @@ impl RunState {
             last_trial_metric: None,
             current_metrics: initial_metrics.clone(),
             last_trial_metrics: initial_metrics,
+            current_labels: Vec::new(),
+            last_trial_labels: Vec::new(),
             keeps: 0,
             discards: 0,
             crashes: 0,
@@ -114,11 +120,23 @@ impl RunState {
 
     /// Record a keep decision.
     pub fn record_keep(&mut self, metric: Decimal, commit: String) {
+        self.record_keep_with_labels(metric, commit, Vec::new());
+    }
+
+    /// Record a keep decision with structured labels.
+    pub fn record_keep_with_labels(
+        &mut self,
+        metric: Decimal,
+        commit: String,
+        labels: Vec<String>,
+    ) {
         self.iteration += 1;
         self.current_metric = metric;
         self.last_commit = commit.clone();
         self.last_trial_commit = Some(commit);
         self.last_trial_metric = Some(metric);
+        self.current_labels = labels.clone();
+        self.last_trial_labels = labels;
         self.keeps += 1;
         self.consecutive_discards = 0;
         self.last_status = IterationStatus::Keep;
@@ -143,15 +161,37 @@ impl RunState {
         commit: String,
         metrics: BTreeMap<String, Decimal>,
     ) {
-        self.record_keep(metric, commit);
+        self.record_keep_with_metrics_and_labels(metric, commit, metrics, Vec::new());
+    }
+
+    /// Record a keep decision with the full structured metric payload and labels.
+    pub fn record_keep_with_metrics_and_labels(
+        &mut self,
+        metric: Decimal,
+        commit: String,
+        metrics: BTreeMap<String, Decimal>,
+        labels: Vec<String>,
+    ) {
+        self.record_keep_with_labels(metric, commit, labels);
         self.set_current_metrics(metrics);
     }
 
     /// Record a discard decision.
     pub fn record_discard(&mut self, trial_metric: Decimal, trial_commit: Option<String>) {
+        self.record_discard_with_labels(trial_metric, trial_commit, Vec::new());
+    }
+
+    /// Record a discard decision with structured labels from the failed trial.
+    pub fn record_discard_with_labels(
+        &mut self,
+        trial_metric: Decimal,
+        trial_commit: Option<String>,
+        labels: Vec<String>,
+    ) {
         self.iteration += 1;
         self.last_trial_metric = Some(trial_metric);
         self.last_trial_commit = trial_commit;
+        self.last_trial_labels = labels;
         self.discards += 1;
         self.consecutive_discards += 1;
         self.last_status = IterationStatus::Discard;
@@ -171,7 +211,23 @@ impl RunState {
         trial_commit: Option<String>,
         metrics: BTreeMap<String, Decimal>,
     ) {
-        self.record_discard(trial_metric, trial_commit);
+        self.record_discard_with_metrics_and_labels(
+            trial_metric,
+            trial_commit,
+            metrics,
+            Vec::new(),
+        );
+    }
+
+    /// Record a discard decision with the full structured trial metric payload and labels.
+    pub fn record_discard_with_metrics_and_labels(
+        &mut self,
+        trial_metric: Decimal,
+        trial_commit: Option<String>,
+        metrics: BTreeMap<String, Decimal>,
+        labels: Vec<String>,
+    ) {
+        self.record_discard_with_labels(trial_metric, trial_commit, labels);
         self.last_trial_metrics = metrics;
     }
 

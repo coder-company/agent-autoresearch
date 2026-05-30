@@ -88,6 +88,8 @@ pub struct RunConfig {
     #[serde(default)]
     pub required_keep_criteria: Vec<MetricCriterion>,
     #[serde(default)]
+    pub required_keep_labels: Vec<String>,
+    #[serde(default)]
     pub rollback_strategy: RollbackStrategy,
     #[serde(default)]
     pub run_mode: Option<RunMode>,

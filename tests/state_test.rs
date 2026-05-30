@@ -759,6 +759,117 @@ fn test_decide_discards_when_required_keep_criteria_fail() {
     assert!(state_content.contains("\"discards\": 1"));
 }
 
+#[test]
+fn test_decide_discards_without_required_keep_label() {
+    use assert_cmd::Command;
+    use predicates::prelude::*;
+    use tempfile::TempDir;
+
+    let dir = TempDir::new().unwrap();
+    let dir_path = dir.path();
+
+    std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["config", "user.email", "test@test.com"])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["config", "user.name", "Test"])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+    std::fs::write(
+        dir_path.join(".gitignore"),
+        "autoresearch-results/\n.codex-autoresearch/\n",
+    )
+    .unwrap();
+    std::fs::write(dir_path.join("metric.txt"), "50\n").unwrap();
+    std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["commit", "-m", "initial"])
+        .current_dir(dir_path)
+        .output()
+        .unwrap();
+
+    Command::cargo_bin("autoresearch")
+        .unwrap()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--required-keep-label",
+            "production-path",
+            "--cwd",
+            dir_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "\"required_keep_labels_count\": 1",
+        ));
+
+    commit_metric(dir_path, "60\n", "experiment: improve without label");
+
+    Command::cargo_bin("autoresearch")
+        .unwrap()
+        .args([
+            "decide",
+            "--metric",
+            "60",
+            "--description",
+            "score improved without required path label",
+            "--cwd",
+            dir_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"discard\""))
+        .stdout(predicate::str::contains("\"satisfied\": false"))
+        .stdout(predicate::str::contains("production-path"));
+
+    let state_content =
+        std::fs::read_to_string(dir_path.join("autoresearch-results/state.json")).unwrap();
+    assert!(state_content.contains("\"current_metric\": \"50\""));
+    assert!(state_content.contains("\"discards\": 1"));
+    assert!(state_content.contains("\"current_labels\": []"));
+
+    commit_metric(dir_path, "70\n", "experiment: improve with required label");
+
+    Command::cargo_bin("autoresearch")
+        .unwrap()
+        .args([
+            "decide",
+            "--metric",
+            "70",
+            "--label",
+            "Production-Path",
+            "--description",
+            "score improved through required path",
+            "--cwd",
+            dir_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"keep\""))
+        .stdout(predicate::str::contains("\"satisfied\": true"));
+
+    let state_content =
+        std::fs::read_to_string(dir_path.join("autoresearch-results/state.json")).unwrap();
+    assert!(state_content.contains("\"current_metric\": \"70\""));
+    assert!(state_content.contains("\"current_labels\": [\n    \"production-path\"\n  ]"));
+}
+
 fn commit_metric(dir_path: &std::path::Path, value: &str, message: &str) {
     std::fs::write(dir_path.join("metric.txt"), value).unwrap();
     std::process::Command::new("git")
