@@ -22,6 +22,10 @@ lessons.md
 context.json
 ```
 
+`autoresearch runtime start` writes `launch.json`, `runtime.json`, and `runtime.log`.
+`autoresearch runtime status` reads and refreshes `runtime.json`; `autoresearch runtime stop`
+marks the runtime stopped and terminates the recorded process when one is running.
+
 ### `context.json` Schema
 
 `context.json` is the canonical run context written by `autoresearch_workspace.py`. It replaces the former `autoresearch-hook-context.json` and serves as the single source of truth for resume and control-plane helpers to locate the active run's artifacts.

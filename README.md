@@ -171,6 +171,7 @@ Covered in detail in the [guide](guide/):
 
 - **Cross-run learning** — lessons from past runs bias future hypothesis generation
 - **Session resume** — interrupted runs pick up from the last consistent state
+- **Background runtime control** — `autoresearch runtime start/status/stop` manages `launch.json`, `runtime.json`, and `runtime.log`
 - **Chaining** — `debug --fix`, `probe --chain plan`, `predict --chain debug`
 - **CI/CD mode** (`exec`) — non-interactive, JSON output, for automation pipelines
 - **Dual-gate verification** — separate verify (did it improve?) and guard (did anything break?)
@@ -185,7 +186,7 @@ By default the loop favors small, verifiable steps — that's by design. But it 
 It's strongest when the goal and metric are clear — push coverage up, push errors down, push latency lower. For open-ended exploration where the direction itself is uncertain, use `/autoresearch:plan` first, then switch to the loop once you know what to measure.
 
 **How do I stop it?**
-Ctrl+C. Or set `Iterations: N`. The agent commits before verifying, so your last successful state is always in git.
+Foreground: Ctrl+C. Background: `autoresearch runtime stop`. Or set `Iterations: N`. The agent commits before verifying, so your last successful state is always in git.
 
 **Can it resume after interruption?**
 Yes. It resumes from `autoresearch-results/state.json` automatically.

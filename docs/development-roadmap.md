@@ -15,7 +15,8 @@
 
 ## v0.2.0 — Background Mode + Parallel Experiments
 
-- [ ] Background daemon mode (`run_mode: background`)
+- [x] Background runtime artifacts + detached Codex launch control (`autoresearch runtime start/status/stop`)
+- [ ] Background supervisor relaunch loop with stop-condition evaluation
 - [ ] Parallel experiments runtime — run N trials concurrently, keep the best
 - [ ] Experiment branching — each trial on its own git branch
 - [ ] Branch merge strategy selection (fast-forward, squash, rebase)

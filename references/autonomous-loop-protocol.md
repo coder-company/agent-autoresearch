@@ -111,7 +111,7 @@ Do not silently infer every field and start iterating. The user should approve t
 
 - Before the user says "go", require an explicit run-mode choice: **foreground** or **background**.
 - Foreground stays in the same Codex session, uses the official Codex goal as the thread-level continuation anchor when goal tools are available, and calls the shared helper scripts directly.
-- Background calls `autoresearch_runtime_ctl.py launch --repo <primary_repo> --workspace-root <workspace_root>` so the confirmed launch manifest and detached runtime are created in one script-level handoff. Do not create or update official Codex goals for background runs.
+- Background calls `autoresearch runtime start --cwd <workspace_root>` so the confirmed launch manifest and detached runtime files are created in one binary-level handoff. Use `--dry-run` only for tests or operator preflight. Do not create or update official Codex goals for background runs.
 - The launch manifest may describe either a single primary repo or a primary repo plus companion repos with separate scopes.
 - Background runtime cycles launch non-interactive `codex exec` sessions with the generated runtime prompt supplied on stdin. Launch manifests default to `danger_full_access`, so detached sessions normally run with `--dangerously-bypass-approvals-and-sandbox` unless the caller explicitly opts into sandboxed `workspace_write`.
 - If background `codex exec` cannot be launched, or if a stop request cannot actually terminate the detached runner, transition to `needs_human` instead of reporting a misleading idle or stopped state.
@@ -433,7 +433,7 @@ After every PIVOT, extract a lesson per `references/lessons-protocol.md`.
 
 ### Lessons Extraction
 
-After every `keep` decision, `autoresearch_record_iteration.py` appends a positive lesson immediately after the authoritative TSV/JSON update. After every PIVOT, the same helper appends a strategic lesson the same way. At managed-runtime completion, `autoresearch_runtime_ctl.py` appends a summary lesson when no lesson was written in the last 5 iterations of the same run. See `references/lessons-protocol.md` for structure and persistence.
+After every `keep` decision, `autoresearch decide` appends a positive lesson immediately after the authoritative TSV/JSON update. After every PIVOT, append a strategic lesson after the pivot row is persisted. At managed-runtime completion, append a summary lesson when no lesson was written in the last 5 iterations of the same run. See `references/lessons-protocol.md` for structure and persistence.
 
 ## Phase 8.5: Health Check
 
@@ -442,7 +442,7 @@ Health Check runs strictly between Log (Phase 8) and Phase 8.7 (Re-Anchoring). T
 Run health checks per `references/health-check-protocol.md`:
 
 - **Every managed-runtime cycle boundary:** before each detached `codex exec` session (and therefore before every relaunch), run `autoresearch health` for disk space, git state, verify command existence, and TSV/JSON integrity.
-- **Commit safety at the same boundary:** when the managed repos are git-backed, `autoresearch_runtime_ctl.py` also runs `autoresearch_commit_gate.py` with the launch-manifest repo list and per-repo scopes before each detached session. Relaunch is blocked if staged autoresearch artifacts or out-of-scope worktree changes are present in any managed repo.
+- **Commit safety at the same boundary:** when the managed repos are git-backed, run `autoresearch health` plus a scope-aware worktree review before each detached session. Relaunch is blocked if staged autoresearch artifacts or out-of-scope worktree changes are present in any managed repo.
 - **Extended review:** scope integrity, environment drift, verify/guard consistency, and context health when the workflow explicitly schedules the protocol-level extended checks.
 - Log integrity should use the helper-script reconstruction of main rows and retained state, not raw TSV row counts.
 - `autoresearch health` only returns structured `ok / warn / block` findings. Any retries, repairs, or blocker logging must be implemented by the caller.

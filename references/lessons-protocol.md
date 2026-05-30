@@ -10,9 +10,9 @@ autoresearch lessons ...
 
 The protocol-aligned runtime wiring is:
 
-- `autoresearch_record_iteration.py` appends lessons automatically after every `keep` and every `pivot` in interactive modes.
-- `autoresearch_select_parallel_batch.py` appends the same interactive keep lesson when a parallel batch selects a winning worker and records a `keep` main row.
-- `autoresearch_runtime_ctl.py` appends the completion summary lesson when the managed runtime reaches a terminal decision and no lesson has been written in the last 5 iterations of the same run. If no run tag is available, it only suppresses an exact duplicate summary for the current iteration.
+- `autoresearch decide` appends lessons automatically after retained `keep` decisions.
+- Parallel batch closeout should append the same interactive keep lesson when a batch selects a winning worker and records a `keep` main row.
+- Managed runtime completion should append a summary lesson when the run reaches a terminal decision and no lesson has been written in the last 5 iterations of the same run. If no run tag is available, it only suppresses an exact duplicate summary for the current iteration.
 - `exec` mode reads lessons for context but never writes or mutates the lessons file.
 
 ## Lessons File
@@ -45,8 +45,8 @@ Each lesson is a structured entry:
 
 Lesson extraction happens at specific points in the iteration cycle:
 
-- **After `autoresearch_record_iteration.py` persists a KEEP row and JSON state:** Extract a positive lesson.
-- **After `autoresearch_record_iteration.py` persists a PIVOT row and JSON state:** Extract a strategic lesson.
+- **After `autoresearch decide` persists a KEEP row and JSON state:** Extract a positive lesson.
+- **After pivot closeout persists a PIVOT row and JSON state:** Extract a strategic lesson.
 - **At run completion (when the managed runtime reaches a terminal decision):** Extract a summary lesson if none was extracted in the last 5 iterations of the same run. If there is no run tag, suppress only an exact duplicate for the current iteration.
 
 ### After Every Kept Iteration
