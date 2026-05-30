@@ -1472,6 +1472,9 @@ fn test_runtime_start_status_stop_dry_run() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
     let root = dir.path().to_str().unwrap();
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+    let subdir = subdir.to_str().unwrap();
 
     cmd()
         .args([
@@ -1502,7 +1505,7 @@ fn test_runtime_start_status_stop_dry_run() {
             "--codex-bin",
             "codex",
             "--cwd",
-            root,
+            subdir,
         ])
         .assert()
         .success()
@@ -1517,15 +1520,16 @@ fn test_runtime_start_status_stop_dry_run() {
         .join("autoresearch-results/runtime.json")
         .exists());
     assert!(dir.path().join("autoresearch-results/runtime.log").exists());
+    assert!(!dir.path().join("src/autoresearch-results").exists());
 
     cmd()
-        .args(["runtime", "status", "--cwd", root])
+        .args(["runtime", "status", "--cwd", subdir])
         .assert()
         .success()
         .stdout(predicate::str::contains("\"status\": \"ready\""));
 
     cmd()
-        .args(["runtime", "stop", "--cwd", root])
+        .args(["runtime", "stop", "--cwd", subdir])
         .assert()
         .success()
         .stdout(predicate::str::contains("\"status\": \"stopped\""));

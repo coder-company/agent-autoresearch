@@ -1459,7 +1459,7 @@ fn cmd_runtime(command: RuntimeCommands) -> Result<()> {
             dry_run,
             cwd,
         } => {
-            let workspace = resolve_cwd(cwd);
+            let workspace = resolve_results_workspace(cwd);
             let (manifest, snapshot) =
                 runtime::start_runtime(&workspace, &execution_policy, &codex_bin, dry_run)?;
             let out = serde_json::json!({
@@ -1475,7 +1475,7 @@ fn cmd_runtime(command: RuntimeCommands) -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&out)?);
         }
         RuntimeCommands::Status { cwd } => {
-            let workspace = resolve_cwd(cwd);
+            let workspace = resolve_results_workspace(cwd);
             let snapshot = runtime::runtime_status(&workspace)?;
             println!("{}", serde_json::to_string_pretty(&snapshot)?);
         }
@@ -1484,7 +1484,7 @@ fn cmd_runtime(command: RuntimeCommands) -> Result<()> {
             max_stagnation,
             cwd,
         } => {
-            let workspace = resolve_cwd(cwd);
+            let workspace = resolve_results_workspace(cwd);
             let (snapshot, supervisor) =
                 runtime::supervise_runtime(&workspace, after_run, max_stagnation)?;
             let out = serde_json::json!({
@@ -1505,7 +1505,7 @@ fn cmd_runtime(command: RuntimeCommands) -> Result<()> {
             max_stagnation,
             cwd,
         } => {
-            let workspace = resolve_cwd(cwd);
+            let workspace = resolve_results_workspace(cwd);
             let (snapshot, supervisor) = runtime::run_runtime_loop(
                 &workspace,
                 &execution_policy,
@@ -1526,7 +1526,7 @@ fn cmd_runtime(command: RuntimeCommands) -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&out)?);
         }
         RuntimeCommands::Stop { cwd } => {
-            let workspace = resolve_cwd(cwd);
+            let workspace = resolve_results_workspace(cwd);
             let snapshot = runtime::stop_runtime(&workspace)?;
             println!("{}", serde_json::to_string_pretty(&snapshot)?);
         }
