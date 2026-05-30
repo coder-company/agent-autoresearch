@@ -49,6 +49,18 @@ Unit tests live alongside their modules in `src/`. Integration tests live in `te
 
 ---
 
+## Regenerating OpenCode Assets
+
+OpenCode command files are generated from the canonical `commands/` tree:
+
+```bash
+./scripts/transform.sh
+```
+
+The script rewrites `.opencode/commands/` with underscore command names and refreshes `.opencode/skills/autoresearch/SKILL.md`. It does not rewrite `.agents/`; the Codex skill there is maintained directly because it uses `$autoresearch` mention syntax instead of slash commands.
+
+---
+
 ## Project Structure
 
 ```
