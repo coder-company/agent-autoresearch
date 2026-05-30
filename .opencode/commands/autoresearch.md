@@ -26,7 +26,7 @@ Extract from $ARGUMENTS:
 
 ## Setup (if required context missing)
 
-If Goal, Scope, Metric, or Verify missing → ask user:
+If Goal, Scope, Metric, or Verify missing → use question (single batched call):
   Q1 (Goal): "What do you want to improve?"
   Q2 (Scope): "Which files?" — suggest globs from project structure
   Q3 (Metric+Verify): "How to measure? Provide a shell command that outputs a number"
@@ -40,7 +40,7 @@ If ALL provided inline → skip setup, proceed directly.
 3. Check clean working tree (`git status --porcelain`) — warn if dirty
 4. Check for stale lock files, detached HEAD
 5. If Guard set → run Guard to establish guard baseline
-6. Fail fast on any critical issue.
+6. Fail fast on any critical issue. Warn on non-critical.
 
 ## Verify Safety Screen
 
@@ -50,50 +50,103 @@ Before first dry-run, screen Verify command for: rm -rf, fork bombs, pipe-to-she
 
 1. Run `autoresearch init --verify "{verify command}" --direction {higher|lower}` with any verify format, primary metric key, acceptance criteria, and required keep criteria flags.
 2. Let the binary create `autoresearch-results/`, `results.tsv`, `state.json`, `context.json`, and `.codex-autoresearch/pointer.json`.
-3. Use the returned baseline metric and state JSON.
+3. Use the returned baseline metric and state JSON for `/goal`.
 
-## Iteration Loop (each turn)
+## Set /goal
+
+After baseline established, activate the completion condition:
+
+```
+/goal {metric description} {direction} from {baseline} as measured by `{verify command}` with each iteration making one atomic change, committing, verifying, and keeping or reverting. Stop after {iterations} turns of iteration or when goal is reached.
+```
+
+If unbounded: omit "Stop after N turns" clause.
+
+## Iteration Loop (each turn while /goal active)
 
 ### Phase 1: Read (git history as memory)
-- Read last 10-20 lines of results TSV
+- Read last 10-20 lines of results TSV (`autoresearch-results/results.tsv`)
 - Read `autoresearch-results/context.json` when present
-- Run `git log --oneline -10`
+- Run `git log --oneline -10` — see what worked/failed
+- If last iteration was "keep" → run `git diff HEAD~1` to see what improved metric
+- Identify: what worked, what failed, what's untried
 - Consult `autoresearch-results/lessons.md` for strategy insights
 
 ### Phase 2: Ideate
-ONE specific, testable, atomic hypothesis. Different from all previous.
+- Based on review, choose ONE specific, testable hypothesis
+- Hypothesis must be: atomic (one logical change), different from all previous attempts, within scope
+- Priority: exploit last success → try untested idea → simplify → attempt bolder change
+- If 3+ consecutive discards → apply REFINE (adjust within strategy)
+- If 5+ consecutive discards → apply PIVOT (fundamentally different approach)
 
 ### Phase 3: Modify
-ONE focused change within scope.
+- Make ONE focused change to improve the metric
+- Change must be within declared scope
+- Must fit in one sentence description
 
 ### Phase 4: Trial Commit
-`git add -- <files>` then `git commit -m "experiment: {description}"`. Never stage `autoresearch-results/` or `.codex-autoresearch/`.
+- Stage only scoped files: `git add -- <files>`
+- Commit with prefix: `git commit -m "experiment: {description}"`
+- Record commit SHA
+- NEVER stage `autoresearch-results/` or `.codex-autoresearch/` artifacts
 
 ### Phase 5: Verify
-Run `autoresearch verify --format metrics_json --key {primary_metric_key} --command "{verify command}"` for structured metrics, or `autoresearch verify --command "{verify command}"` for scalar metrics.
+- Run `autoresearch verify --format metrics_json --key {primary_metric_key} --command "{verify command}"` for structured metrics, or `autoresearch verify --command "{verify command}"` for scalar metrics
+- Calculate delta from previous retained metric
+- If verify output is unparseable: rerun once. If still unparseable → treat as crash.
 
-### Phase 6: Guard
-If Guard set and metric improved → run Guard. Must exit 0.
+### Phase 6: Guard (if configured)
+- Run Guard command only after metric improvement detected
+- Guard must exit 0 to pass
+- If guard fails → revert regardless of metric improvement
 
 ### Phase 7: Decide
-Run `autoresearch decide --decision auto --metric {metric} --metrics-json '{metrics_json}' --commit {sha} --description "{description}"`.
-- **keep** — improved + guard passed + required keep criteria passed
-- **discard** — flat/regressed, guard failed, or criteria failed → binary reverts the experiment commit
-- **crash** — command errored → binary reverts the experiment commit
+- Run `autoresearch decide --decision auto --metric {metric} --metrics-json '{metrics_json}' --commit {sha} --description "{description}"`
+- **keep** — metric improved in correct direction, guard passed, and required keep criteria passed → commit stays
+- **discard** — metric flat/regressed, guard failed, or criteria failed → binary reverts the experiment commit
+- **crash** — verify/guard command errored → binary reverts the experiment commit
+- **no-op** — no change made this iteration
+
+Simplicity override: gain < 1% AND adds significant complexity → discard.
+Metric unchanged AND code simpler → keep.
 
 ### Phase 8: Log
 Let `autoresearch decide` append the results TSV row and update state/escalation JSON.
 
-### Phase 9: Escalation
-- 3 consecutive discards → REFINE
-- 5 consecutive discards → PIVOT
-- 2 PIVOTs without keep → web search
-- 3 PIVOTs without keep → stop, report blocker
+### Phase 9: Escalation Check
+- 3 consecutive discards → REFINE: adjust parameters, consult lessons
+- 5 consecutive discards → PIVOT: abandon strategy, re-read everything, try fundamentally different approach
+- 2 PIVOTs without keep → web search for external solutions
+- 3 PIVOTs without keep → soft blocker: clear /goal, report that human input needed
+- 1 keep resets ALL escalation counters
 
-## Summary (after completion)
+### Eval Checkpoint (if --evals)
+Interval = floor(iterations / 3), min 1. Fixed 10 if unbounded. Override: --evals-interval N.
+Every {interval} iterations:
+```
+--- Eval Checkpoint (iterations {X}-{Y}) ---
+Metric: {start} → {end} ({delta}) | Kept: {n}/{total} | Trend: {up/flat/down}
+{one-line recommendation}
+---
+```
+If plateau 3+ checkpoints → recommend clearing /goal early.
+
+## Summary (after /goal clears or turns exhausted)
 
 Print: total iterations, kept/discarded/crash counts, starting metric → final metric, improvement %, top 3 most effective changes.
 
 ## Chain Handoff
 
-Write handoff.json. Invoke next target in --chain order. Propagate --evals flag.
+After completion, write handoff.json to output directory:
+```json
+{
+  "version": "0.1.0",
+  "source": "loop",
+  "timestamp": "<ISO>",
+  "status": "COMPLETE|GOAL_MET|BOUNDED|BLOCKED|ERROR",
+  "results_tsv": "autoresearch-results/results.tsv",
+  "findings": [],
+  "config": {"goal": "...", "scope": [...], "metric": "...", "direction": "...", "verify": "..."}
+}
+```
+Invoke next target in --chain order. Propagate --evals flag.
