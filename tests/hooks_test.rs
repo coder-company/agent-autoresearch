@@ -169,6 +169,45 @@ fn test_privacy_block_catches_private_keys() {
 }
 
 #[test]
+fn test_privacy_block_catches_sensitive_paths() {
+    for path in [
+        ".env",
+        ".env.local",
+        "config/credentials.json",
+        "config/.ssh/id_ed25519",
+        ".aws/credentials",
+        "secrets/api_key.txt",
+    ] {
+        let input = serde_json::json!({
+            "tool_name": "Read",
+            "tool_input": {
+                "file_path": path
+            }
+        });
+
+        run_hook("privacy-block", &input.to_string())
+            .success()
+            .stdout(predicate::str::contains("\"decision\":\"block\""));
+    }
+}
+
+#[test]
+fn test_privacy_block_allows_documented_exceptions_and_approved_paths() {
+    for path in [".env.example", ".env.sample", "APPROVED:.env"] {
+        let input = serde_json::json!({
+            "tool_name": "Read",
+            "tool_input": {
+                "file_path": path
+            }
+        });
+
+        run_hook("privacy-block", &input.to_string())
+            .success()
+            .stdout(predicate::str::contains("\"decision\":\"block\"").not());
+    }
+}
+
+#[test]
 fn test_privacy_block_allows_normal_content() {
     let input = serde_json::json!({
         "tool_name": "Write",
