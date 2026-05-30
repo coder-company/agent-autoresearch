@@ -388,6 +388,36 @@ fn test_progress_lower_direction_trend_improves_on_decrease() {
 }
 
 #[test]
+fn test_progress_defaults_to_repo_root_results_from_subdir() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+
+    cmd()
+        .args(["progress", "--cwd", subdir.to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--- Progress (iteration 0) ---"))
+        .stdout(predicate::str::contains("Metric: 50"));
+}
+
+#[test]
 fn test_decide_accepts_negative_metric_value() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

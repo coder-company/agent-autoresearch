@@ -2112,7 +2112,7 @@ fn cmd_resume(cwd: Option<PathBuf>) -> Result<()> {
 // ── Progress ─────────────────────────────────────────────────────────
 
 fn cmd_progress(cwd: Option<PathBuf>) -> Result<()> {
-    let workspace = resolve_cwd(cwd);
+    let workspace = resolve_results_workspace(cwd);
     let results_dir = workspace.join("autoresearch-results");
     let state_path = results_dir.join("state.json");
 
