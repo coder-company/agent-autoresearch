@@ -214,6 +214,39 @@ fn test_scout_block_blocks_out_of_scope_write() {
 }
 
 #[test]
+fn test_scout_block_uses_repo_root_scope_from_subdir() {
+    let dir = tempfile::tempdir().unwrap();
+    init_git_repo(dir.path());
+    write_scope_state(dir.path(), &["src/**/*.rs"]);
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+
+    let allowed = serde_json::json!({
+        "tool_name": "Write",
+        "tool_input": {
+            "file_path": dir.path().join("src/main.rs").to_str().unwrap(),
+            "content": "fn main() {}"
+        }
+    });
+    run_hook_in(&subdir, "scout-block", &allowed.to_string())
+        .success()
+        .stdout(predicate::str::contains("\"decision\":\"block\"").not());
+
+    let blocked = serde_json::json!({
+        "tool_name": "Edit",
+        "tool_input": {
+            "file_path": dir.path().join("README.md").to_str().unwrap(),
+            "old_string": "old",
+            "new_string": "new"
+        }
+    });
+    run_hook_in(&subdir, "scout-block", &blocked.to_string())
+        .success()
+        .stdout(predicate::str::contains("\"decision\":\"block\""))
+        .stdout(predicate::str::contains("outside autoresearch scope"));
+}
+
+#[test]
 fn test_scout_block_blocks_workspace_escape() {
     let dir = tempfile::tempdir().unwrap();
     write_scope_state(dir.path(), &["src/**"]);

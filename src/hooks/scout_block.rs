@@ -1,6 +1,7 @@
 use super::{HookInput, HookResponse};
 use glob::Pattern;
-use std::path::{Component, Path};
+use std::path::{Component, Path, PathBuf};
+use std::process::Command;
 
 const BASELINE_BLOCKED_PATTERNS: &[&str] = &[
     "node_modules/**",
@@ -36,6 +37,7 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
         Ok(path) => path,
         Err(_) => return HookResponse::allow(),
     };
+    let project_root = git_output(&cwd, &["rev-parse", "--show-toplevel"]).unwrap_or(cwd.clone());
 
     let tool = input.tool_name.as_deref().unwrap_or("");
     if matches!(
@@ -43,7 +45,7 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
         "Read" | "Write" | "Edit" | "MultiEdit" | "Glob" | "Grep"
     ) {
         if let Some(target) = target_path(input) {
-            if let Some(relative_target) = normalize_target_path(target, &cwd) {
+            if let Some(relative_target) = normalize_target_path(target, &cwd, &project_root) {
                 if matches_scope(&relative_target, BASELINE_BLOCKED_PATTERNS) {
                     return HookResponse::block(format!(
                         "Blocked {tool}: `{relative_target}` matches generated, vendor, or sensitive path pattern"
@@ -59,7 +61,7 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
             .and_then(|value| value.get("command").or_else(|| value.get("cmd")))
             .and_then(|value| value.as_str())
         {
-            if let Some(blocked_path) = blocked_bash_path(command, &cwd) {
+            if let Some(blocked_path) = blocked_bash_path(command, &cwd, &project_root) {
                 return HookResponse::block(format!(
                     "Blocked Bash: `{blocked_path}` matches generated, vendor, or sensitive path pattern"
                 ));
@@ -67,14 +69,14 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
         }
     }
 
-    let scope = match load_scope(&cwd) {
+    let scope = match load_scope(&project_root) {
         Some(scope) if !scope.is_empty() => scope,
         _ => return HookResponse::allow(),
     };
 
     let compiled_scope: Vec<String> = scope
         .iter()
-        .filter_map(|pattern| normalize_scope_pattern(pattern, &cwd))
+        .filter_map(|pattern| normalize_scope_pattern(pattern, &project_root))
         .collect();
 
     if compiled_scope.is_empty() {
@@ -91,7 +93,7 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
         None => return HookResponse::allow(),
     };
 
-    let relative_target = match normalize_target_path(target, &cwd) {
+    let relative_target = match normalize_target_path(target, &cwd, &project_root) {
         Some(path) => path,
         None => {
             return HookResponse::block(format!(
@@ -140,13 +142,14 @@ fn target_path(input: &HookInput) -> Option<&str> {
         .and_then(|value| value.as_str())
 }
 
-fn normalize_target_path(path: &str, cwd: &Path) -> Option<String> {
+fn normalize_target_path(path: &str, cwd: &Path, project_root: &Path) -> Option<String> {
     let target = Path::new(path);
-    let relative = if target.is_absolute() {
-        target.strip_prefix(cwd).ok()?.to_path_buf()
-    } else {
+    let absolute = if target.is_absolute() {
         target.to_path_buf()
+    } else {
+        cwd.join(target)
     };
+    let relative = absolute.strip_prefix(project_root).ok()?.to_path_buf();
 
     path_to_clean_slash_string(&relative)
 }
@@ -231,7 +234,7 @@ fn pattern_contains_glob(pattern: &str) -> bool {
     pattern.contains('*') || pattern.contains('?') || pattern.contains('[')
 }
 
-fn blocked_bash_path(command: &str, cwd: &Path) -> Option<String> {
+fn blocked_bash_path(command: &str, cwd: &Path, project_root: &Path) -> Option<String> {
     let words = shell_words(command)?;
     let command_index = words.iter().position(|word| !is_env_assignment(word))?;
     let executable = Path::new(&words[command_index])
@@ -246,7 +249,7 @@ fn blocked_bash_path(command: &str, cwd: &Path) -> Option<String> {
         .iter()
         .skip(command_index + 1)
         .filter(|word| !word.starts_with('-') && !matches!(word.as_str(), "|" | "<" | ">" | "2>"))
-        .filter_map(|word| normalize_target_path(word, cwd))
+        .filter_map(|word| normalize_target_path(word, cwd, project_root))
         .find(|path| matches_scope(path, BASELINE_BLOCKED_PATTERNS))
 }
 
@@ -287,6 +290,21 @@ fn shell_words(command: &str) -> Option<Vec<String>> {
         words.push(current);
     }
     Some(words)
+}
+
+fn git_output(cwd: &Path, args: &[&str]) -> Option<PathBuf> {
+    let output = Command::new("git")
+        .args(args)
+        .current_dir(cwd)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    String::from_utf8(output.stdout)
+        .ok()
+        .map(|value| PathBuf::from(value.trim()))
+        .filter(|value| !value.as_os_str().is_empty())
 }
 
 fn is_env_assignment(token: &str) -> bool {
