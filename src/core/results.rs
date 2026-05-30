@@ -160,8 +160,26 @@ impl ResultsLog {
                 continue;
             }
             if line.starts_with("iteration\t") {
+                if saw_header {
+                    anyhow::bail!(
+                        "results.tsv line {} has a duplicate column header",
+                        index + 1
+                    );
+                }
+                if expected_main_iteration != 0 {
+                    anyhow::bail!(
+                        "results.tsv line {} has the column header after data rows",
+                        index + 1
+                    );
+                }
                 saw_header = true;
                 continue;
+            }
+            if !saw_header {
+                anyhow::bail!(
+                    "results.tsv line {} has data before the column header",
+                    index + 1
+                );
             }
 
             let columns = line.split('\t').collect::<Vec<_>>();
@@ -525,6 +543,39 @@ mod tests {
         let err = log.validate().unwrap_err().to_string();
 
         assert!(err.contains("missing the baseline row"));
+    }
+
+    #[test]
+    fn test_validate_rejects_data_before_header() {
+        let dir = tempfile::tempdir().unwrap();
+        let log = ResultsLog::create(dir.path(), Direction::Higher).unwrap();
+        fs::write(
+            log.path(),
+            "0\tbase\t10\t0\t-\tbaseline\tbaseline\niteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n",
+        )
+        .unwrap();
+
+        let err = log.validate().unwrap_err().to_string();
+
+        assert!(err.contains("data before the column header"));
+    }
+
+    #[test]
+    fn test_validate_rejects_duplicate_header() {
+        let dir = tempfile::tempdir().unwrap();
+        let log = ResultsLog::create(dir.path(), Direction::Higher).unwrap();
+        fs::write(
+            log.path(),
+            format!(
+                "{}\n0\tbase\t10\t0\t-\tbaseline\tbaseline\niteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n",
+                tsv_header(Direction::Higher)
+            ),
+        )
+        .unwrap();
+
+        let err = log.validate().unwrap_err().to_string();
+
+        assert!(err.contains("duplicate column header"));
     }
 
     #[test]
