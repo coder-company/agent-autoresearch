@@ -2765,6 +2765,10 @@ fn cmd_handoff(
         .get("direction")
         .cloned()
         .unwrap_or(serde_json::Value::Null);
+    let verify = config_val
+        .get("verify")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
     let hypothesis_queue = config_val
         .get("hypothesis_queue")
         .cloned()
@@ -2800,6 +2804,7 @@ fn cmd_handoff(
         "scope": scope,
         "metric": metric,
         "direction": direction,
+        "verify": verify,
         "hypothesis_queue": hypothesis_queue,
         "summary": summary,
         "findings": findings_val,
