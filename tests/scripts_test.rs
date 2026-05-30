@@ -121,6 +121,7 @@ fn release_script_enforces_release_binary_size() {
     assert!(script.contains("MAX_RELEASE_BINARY_BYTES=$((5 * 1024 * 1024))"));
     assert!(script.contains("wc -c < \"$RELEASE_BINARY\""));
     assert!(script.contains("release binary is too large"));
+    assert!(script.contains("cargo fmt --manifest-path \"$ROOT/Cargo.toml\" -- --check"));
 }
 
 #[test]

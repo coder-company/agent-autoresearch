@@ -25,6 +25,7 @@ Manual steps for cutting a release. For automation, use `./scripts/release.sh <v
 ## Build & Verify
 
 - [ ] `cargo build --release` succeeds
+- [ ] `cargo fmt -- --check` succeeds
 - [ ] Binary size stays below 5MB: `du -h target/release/autoresearch`
 - [ ] Smoke test: `./target/release/autoresearch --version`
 - [ ] Smoke test: `./target/release/autoresearch status --cwd /tmp` (should error cleanly)

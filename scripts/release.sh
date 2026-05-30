@@ -65,16 +65,19 @@ update_skill_version "$ROOT/.agents/skills/autoresearch/SKILL.md"
 echo "[3/8] Syncing generated distributions..."
 "$ROOT/scripts/transform.sh"
 
-# ── 5. Run tests ────────────────────────────────────────────────────
-echo "[4/8] Running tests..."
+# ── 5. Run format check + tests ─────────────────────────────────────
+echo "[4/8] Checking formatting..."
+cargo fmt --manifest-path "$ROOT/Cargo.toml" -- --check
+
+echo "[5/9] Running tests..."
 cargo test --manifest-path "$ROOT/Cargo.toml"
 
 # ── 6. Run clippy ───────────────────────────────────────────────────
-echo "[5/8] Running clippy..."
+echo "[6/9] Running clippy..."
 cargo clippy --manifest-path "$ROOT/Cargo.toml" -- -D warnings
 
 # ── 7. Build release ────────────────────────────────────────────────
-echo "[6/8] Building release binary..."
+echo "[7/9] Building release binary..."
 cargo build --manifest-path "$ROOT/Cargo.toml" --release
 
 MAX_RELEASE_BINARY_BYTES=$((5 * 1024 * 1024))
@@ -89,7 +92,7 @@ BINARY_SIZE=$(du -h "$ROOT/target/release/autoresearch" | cut -f1)
 echo "  Binary size: $BINARY_SIZE"
 
 # ── 8. Update changelog ────────────────────────────────────────────
-echo "[7/8] Adding changelog entry..."
+echo "[8/9] Adding changelog entry..."
 CHANGELOG="$ROOT/docs/changelog.md"
 if [ -f "$CHANGELOG" ]; then
     DATE=$(date +%Y-%m-%d)
@@ -130,7 +133,7 @@ if [ -f "$CHANGELOG" ]; then
 fi
 
 # ── 9. Commit and tag ──────────────────────────────────────────────
-echo "[8/8] Committing and tagging..."
+echo "[9/9] Committing and tagging..."
 git -C "$ROOT" add \
     Cargo.toml \
     Cargo.lock \
