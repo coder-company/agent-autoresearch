@@ -129,6 +129,7 @@ All under `autoresearch-results/` (never committed):
 | `runtime.log` | Background runtime log |
 
 Additionally `.codex-autoresearch/pointer.json` points tools to the canonical context artifact and must stay uncommitted.
+Use `autoresearch watch --lines 20` from another terminal to tail the active results log during long-running sessions.
 
 ## TSV Format
 

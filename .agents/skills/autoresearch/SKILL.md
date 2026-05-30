@@ -36,7 +36,7 @@ The `autoresearch` binary handles mechanical operations:
 - `autoresearch decide` — evaluate keep/discard logic, criteria gates, rollback, and escalation
 - `autoresearch parallel closeout` — select a parallel worker winner, log audit rows, and update retained state once
 - `autoresearch runtime run` — execute the supervised background loop; `start/status/supervise/stop` remain available for manual control
-- `autoresearch status|resume|progress|lessons|evals` — inspect/resume/analyze runs
+- `autoresearch status|resume|progress|watch|lessons|evals` — inspect/resume/monitor/analyze runs
 - `autoresearch hook <name>` — execute lifecycle hooks
 
 ## Core Protocol (Each Turn)

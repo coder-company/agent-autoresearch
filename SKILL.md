@@ -119,6 +119,7 @@ Optional:
 | `autoresearch log --iteration N --status keep --metric X --description "..."` | Append TSV row (alternative to decide) |
 | `autoresearch status` | Show full state JSON |
 | `autoresearch progress` | Formatted progress summary |
+| `autoresearch watch --lines 20` | Tail the active results.tsv for live monitoring |
 | `autoresearch resume` | Detect resumable prior run |
 | `autoresearch runtime run` | Launch Codex exec turns, supervise after each exit, and relaunch until stop or needs_human |
 | `autoresearch runtime start --dry-run` | Persist background launch/runtime artifacts; omit `--dry-run` to spawn detached Codex |
