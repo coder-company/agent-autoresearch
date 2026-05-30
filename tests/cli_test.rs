@@ -1864,6 +1864,55 @@ fn test_exec_invalid_config_emits_json_error() {
 }
 
 #[test]
+fn test_exec_archives_existing_artifacts_before_fresh_start() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let results = dir.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    std::fs::write(results.join("results.tsv"), "old results\n").unwrap();
+    std::fs::write(results.join("state.json"), "old state\n").unwrap();
+    std::fs::write(results.join("context.json"), "old context\n").unwrap();
+    let config = serde_json::json!({
+        "goal": "fresh exec",
+        "scope": ["metric.txt"],
+        "metric": "score",
+        "direction": "higher",
+        "verify": "cat metric.txt"
+    });
+
+    cmd()
+        .args([
+            "exec",
+            "--iterations",
+            "1",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .write_stdin(config.to_string())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"type\":\"started\""));
+
+    assert_eq!(
+        std::fs::read_to_string(results.join("results.tsv.prev")).unwrap(),
+        "old results\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(results.join("state.json.prev")).unwrap(),
+        "old state\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(results.join("context.json.prev")).unwrap(),
+        "old context\n"
+    );
+    let new_results = std::fs::read_to_string(results.join("results.tsv")).unwrap();
+    assert!(new_results.contains("baseline"));
+    assert!(std::fs::read_to_string(results.join("state.json"))
+        .unwrap()
+        .contains("fresh exec"));
+}
+
+#[test]
 fn test_decide_accepts_negative_metric_value() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

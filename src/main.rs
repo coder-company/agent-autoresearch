@@ -3577,6 +3577,7 @@ fn cmd_exec_inner(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
 
     // Init artifacts + protect from git staging
     let results_dir = ensure_results_dir_protected(&workspace)?;
+    archive_existing_exec_artifacts(&results_dir)?;
 
     let log = ResultsLog::create(&results_dir, direction)?;
     log.append(&ResultRow {
@@ -3624,6 +3625,36 @@ fn exec_hard_error(code: &str, reason: String) -> Result<()> {
     });
     eprintln!("{}", serde_json::to_string(&out)?);
     std::process::exit(2);
+}
+
+fn archive_existing_exec_artifacts(results_dir: &Path) -> Result<()> {
+    for name in ["results.tsv", "state.json", "context.json"] {
+        archive_existing_file(&results_dir.join(name))?;
+    }
+    Ok(())
+}
+
+fn archive_existing_file(path: &Path) -> Result<()> {
+    if !path.exists() {
+        return Ok(());
+    }
+    let prev_path = path.with_extension(format!(
+        "{}.prev",
+        path.extension()
+            .and_then(|extension| extension.to_str())
+            .unwrap_or("")
+    ));
+    if prev_path.exists() {
+        std::fs::remove_file(&prev_path)
+            .with_context(|| format!("failed to replace {}", prev_path.display()))?;
+    }
+    std::fs::rename(path, &prev_path).with_context(|| {
+        format!(
+            "failed to archive {} to {}",
+            path.display(),
+            prev_path.display()
+        )
+    })
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
