@@ -21,6 +21,10 @@ const BASELINE_BLOCKED_PATTERNS: &[&str] = &[
     "*.log",
 ];
 
+const PATH_READING_COMMANDS: &[&str] = &[
+    "cat", "less", "more", "head", "tail", "sed", "awk", "grep", "rg", "find", "ls",
+];
+
 /// Block tool calls that attempt to read/write outside declared scope during an active run.
 pub fn run(input: Option<&HookInput>) -> HookResponse {
     let input = match input {
@@ -45,6 +49,20 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
                         "Blocked {tool}: `{relative_target}` matches generated, vendor, or sensitive path pattern"
                     ));
                 }
+            }
+        }
+    }
+    if tool == "Bash" {
+        if let Some(command) = input
+            .tool_input
+            .as_ref()
+            .and_then(|value| value.get("command").or_else(|| value.get("cmd")))
+            .and_then(|value| value.as_str())
+        {
+            if let Some(blocked_path) = blocked_bash_path(command, &cwd) {
+                return HookResponse::block(format!(
+                    "Blocked Bash: `{blocked_path}` matches generated, vendor, or sensitive path pattern"
+                ));
             }
         }
     }
@@ -211,4 +229,74 @@ fn pattern_matches_path(pattern: &str, path: &str) -> bool {
 
 fn pattern_contains_glob(pattern: &str) -> bool {
     pattern.contains('*') || pattern.contains('?') || pattern.contains('[')
+}
+
+fn blocked_bash_path(command: &str, cwd: &Path) -> Option<String> {
+    let words = shell_words(command)?;
+    let command_index = words.iter().position(|word| !is_env_assignment(word))?;
+    let executable = Path::new(&words[command_index])
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or(&words[command_index]);
+    if !PATH_READING_COMMANDS.contains(&executable) {
+        return None;
+    }
+
+    words
+        .iter()
+        .skip(command_index + 1)
+        .filter(|word| !word.starts_with('-') && !matches!(word.as_str(), "|" | "<" | ">" | "2>"))
+        .filter_map(|word| normalize_target_path(word, cwd))
+        .find(|path| matches_scope(path, BASELINE_BLOCKED_PATTERNS))
+}
+
+fn shell_words(command: &str) -> Option<Vec<String>> {
+    let mut words = Vec::new();
+    let mut current = String::new();
+    let mut quote = None;
+    let mut escaped = false;
+
+    for ch in command.chars() {
+        if escaped {
+            current.push(ch);
+            escaped = false;
+            continue;
+        }
+
+        match quote {
+            Some('\'') if ch == '\'' => quote = None,
+            Some('"') if ch == '"' => quote = None,
+            Some('\'') => current.push(ch),
+            Some(_) if ch == '\\' => escaped = true,
+            Some(_) => current.push(ch),
+            None if ch.is_whitespace() => {
+                if !current.is_empty() {
+                    words.push(std::mem::take(&mut current));
+                }
+            }
+            None if ch == '\'' || ch == '"' => quote = Some(ch),
+            None if ch == '\\' => escaped = true,
+            None => current.push(ch),
+        }
+    }
+
+    if quote.is_some() || escaped {
+        return None;
+    }
+    if !current.is_empty() {
+        words.push(current);
+    }
+    Some(words)
+}
+
+fn is_env_assignment(token: &str) -> bool {
+    let Some((name, _value)) = token.split_once('=') else {
+        return false;
+    };
+    let mut chars = name.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    (first == '_' || first.is_ascii_alphabetic())
+        && chars.all(|ch| ch == '_' || ch.is_ascii_alphanumeric())
 }

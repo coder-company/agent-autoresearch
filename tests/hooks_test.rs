@@ -100,6 +100,48 @@ fn test_scout_block_blocks_generated_vendor_and_sensitive_paths() {
 }
 
 #[test]
+fn test_scout_block_blocks_bash_reads_of_ignored_paths() {
+    for command in [
+        "cat node_modules/foo/bar.js",
+        "cat .git/HEAD",
+        "grep TODO coverage/index.html",
+        "RUST_LOG=debug rg token .aws/credentials",
+    ] {
+        let input = serde_json::json!({
+            "tool_name": "Bash",
+            "tool_input": {
+                "command": command
+            }
+        });
+
+        run_hook("scout-block", &input.to_string())
+            .success()
+            .stdout(predicate::str::contains("\"decision\":\"block\""));
+    }
+}
+
+#[test]
+fn test_scout_block_allows_bash_build_commands_and_plain_text() {
+    for command in [
+        "npm test",
+        "cargo test",
+        "python script.py",
+        "echo 'testing node_modules string'",
+    ] {
+        let input = serde_json::json!({
+            "tool_name": "Bash",
+            "tool_input": {
+                "command": command
+            }
+        });
+
+        run_hook("scout-block", &input.to_string())
+            .success()
+            .stdout(predicate::str::contains("\"decision\":\"block\"").not());
+    }
+}
+
+#[test]
 fn test_scout_block_allows_in_scope_write() {
     let dir = tempfile::tempdir().unwrap();
     write_scope_state(dir.path(), &["src/**/*.rs"]);
