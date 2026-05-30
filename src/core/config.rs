@@ -55,6 +55,14 @@ pub enum RollbackStrategy {
     Revert,
 }
 
+/// A numeric metric criterion used for acceptance and required keep gates.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MetricCriterion {
+    pub metric_key: String,
+    pub operator: String,
+    pub target: rust_decimal::Decimal,
+}
+
 /// Complete run configuration for the autoresearch loop.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunConfig {
@@ -75,6 +83,10 @@ pub struct RunConfig {
     pub verify_format: VerifyFormat,
     #[serde(default)]
     pub primary_metric_key: Option<String>,
+    #[serde(default)]
+    pub acceptance_criteria: Vec<MetricCriterion>,
+    #[serde(default)]
+    pub required_keep_criteria: Vec<MetricCriterion>,
     #[serde(default)]
     pub rollback_strategy: RollbackStrategy,
     #[serde(default)]

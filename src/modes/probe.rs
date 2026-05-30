@@ -199,6 +199,8 @@ mod tests {
             stop_condition: None,
             verify_format: Default::default(),
             primary_metric_key: None,
+            acceptance_criteria: Vec::new(),
+            required_keep_criteria: Vec::new(),
             rollback_strategy: Default::default(),
             run_mode: None,
             workspace_root: None,

@@ -456,6 +456,8 @@ fn cmd_init(
         stop_condition,
         verify_format: fmt,
         primary_metric_key: key.map(|k| k.to_string()),
+        acceptance_criteria: Vec::new(),
+        required_keep_criteria: Vec::new(),
         rollback_strategy,
         run_mode,
         workspace_root,

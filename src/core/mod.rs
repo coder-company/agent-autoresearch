@@ -1,4 +1,5 @@
 pub mod config;
+pub mod criteria;
 pub mod git;
 pub mod health;
 pub mod metrics;
