@@ -21,7 +21,7 @@ Here `<skill-root>` means the directory containing the loaded `SKILL.md`.
 
 ### Every Managed-Runtime Cycle Boundary (Lightweight)
 
-Run before each detached Codex session. In a runtime-managed loop, this means the checks fire before the first launch and again before every relaunch:
+Run before each detached Codex session. `autoresearch runtime start` performs this native preflight before writing launch/runtime artifacts, and a runtime-managed loop should repeat the same check before every relaunch:
 
 | Check | How | Failure Action |
 |-------|-----|----------------|
