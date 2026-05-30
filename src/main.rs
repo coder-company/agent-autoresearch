@@ -1246,6 +1246,25 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 }
         })
         .count();
+    let mut longest_keep_streak = 0u32;
+    let mut current_keep_streak = 0u32;
+    let mut longest_failure_streak = 0u32;
+    let mut current_failure_streak = 0u32;
+    for row in &metrics {
+        if is_keep_status(&row.status) {
+            current_keep_streak += 1;
+            longest_keep_streak = longest_keep_streak.max(current_keep_streak);
+        } else if row.status != "baseline" {
+            current_keep_streak = 0;
+        }
+
+        if row.status == "discard" || is_failure_status(&row.status) {
+            current_failure_streak += 1;
+            longest_failure_streak = longest_failure_streak.max(current_failure_streak);
+        } else if row.status != "baseline" {
+            current_failure_streak = 0;
+        }
+    }
     let baseline = metrics.first().map(|row| row.metric).unwrap_or_default();
     let final_metric = metrics.last().map(|row| row.metric).unwrap_or_default();
     let improvement = if direction == "higher" {
@@ -1329,6 +1348,8 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 "crashes": crashes,
                 "guard_failures": guard_failures,
                 "guard_failed_improvements": guard_failed_improvements,
+                "longest_keep_streak": longest_keep_streak,
+                "longest_failure_streak": longest_failure_streak,
                 "baseline": baseline.to_string(),
                 "final": final_metric.to_string(),
                 "best": best.to_string(),
@@ -1354,6 +1375,8 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 crashes,
                 guard_failures,
                 guard_failed_improvements,
+                longest_keep_streak,
+                longest_failure_streak,
                 efficiency,
                 baseline,
                 final_metric,
@@ -1376,6 +1399,8 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 crashes,
                 guard_failures,
                 guard_failed_improvements,
+                longest_keep_streak,
+                longest_failure_streak,
                 efficiency,
                 baseline,
                 final_metric,
@@ -1438,6 +1463,8 @@ struct EvalsReport<'a> {
     crashes: usize,
     guard_failures: usize,
     guard_failed_improvements: usize,
+    longest_keep_streak: u32,
+    longest_failure_streak: u32,
     efficiency: u32,
     baseline: Decimal,
     final_metric: Decimal,
@@ -1465,6 +1492,18 @@ fn render_evals_markdown(report: EvalsReport<'_>) -> String {
         out,
         "| Improved but guard failed | {} |",
         report.guard_failed_improvements
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "| Longest keep streak | {} |",
+        report.longest_keep_streak
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "| Longest failure streak | {} |",
+        report.longest_failure_streak
     )
     .unwrap();
     writeln!(out, "| Efficiency | {}% |", report.efficiency).unwrap();

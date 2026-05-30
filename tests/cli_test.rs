@@ -462,6 +462,33 @@ fn test_evals_reports_guard_failures() {
 }
 
 #[test]
+fn test_evals_reports_keep_and_failure_streaks() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: higher").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t50\t0\t-\tbaseline\tinitial").unwrap();
+    writeln!(file, "1\tbcd2345\t55\t+5\tpass\tkeep\tfirst win").unwrap();
+    writeln!(file, "2\tcde3456\t60\t+5\tpass\tkeep\tsecond win").unwrap();
+    writeln!(file, "3\t-\t58\t-2\t-\tdiscard\tmiss").unwrap();
+    writeln!(file, "4\t-\t58\t0\t-\tmetric-error\tbad output").unwrap();
+    writeln!(file, "5\tdef4567\t61\t+1\tpass\tkeep\trecovered").unwrap();
+
+    cmd()
+        .args(["evals", tsv_path.to_str().unwrap(), "--format", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"longest_keep_streak\": 2"))
+        .stdout(predicate::str::contains("\"longest_failure_streak\": 2"));
+}
+
+#[test]
 fn test_evals_rejects_invalid_metric() {
     let dir = TempDir::new().unwrap();
     let tsv_path = dir.path().join("results.tsv");
