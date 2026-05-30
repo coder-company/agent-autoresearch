@@ -778,6 +778,9 @@ fn test_stop_check_uses_repo_root_state_from_subdir() {
 #[test]
 fn test_session_end_emits_terminal_notification() {
     let dir = tempfile::tempdir().unwrap();
+    init_git_repo(dir.path());
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
     let results = dir.path().join("autoresearch-results");
     std::fs::create_dir_all(&results).unwrap();
     std::fs::write(
@@ -786,10 +789,13 @@ fn test_session_end_emits_terminal_notification() {
     )
     .unwrap();
 
-    run_hook_in(dir.path(), "session-end", "{}")
+    run_hook_in(&subdir, "session-end", "{}")
         .success()
         .stdout(predicate::str::contains("\"terminalSequence\""))
         .stdout(predicate::str::contains("Session completed"))
+        .stdout(predicate::str::contains(
+            dir.path().file_name().unwrap().to_str().unwrap(),
+        ))
         .stdout(predicate::str::contains("1 iterations, metric: 10"));
 }
 
