@@ -517,6 +517,53 @@ fn test_evals_lower_direction_trend_improves_on_decrease() {
 }
 
 #[test]
+fn test_evals_accepts_direction_aliases() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: lower_is_better").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t10\t0\t-\tbaseline\tinitial state").unwrap();
+    writeln!(file, "1\tbcd2345\t8\t-2\tpass\tkeep\treduce failures").unwrap();
+    writeln!(file, "2\tcde3456\t6\t-2\tpass\tkeep\treduce more failures").unwrap();
+
+    cmd()
+        .args(["evals", tsv_path.to_str().unwrap(), "--format", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"direction\": \"lower\""))
+        .stdout(predicate::str::contains("\"trend\": \"improving\""));
+}
+
+#[test]
+fn test_evals_rejects_invalid_direction() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: sideways").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t10\t0\t-\tbaseline\tinitial state").unwrap();
+
+    cmd()
+        .args(["evals", tsv_path.to_str().unwrap(), "--format", "json"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "Invalid metric_direction: sideways",
+        ));
+}
+
+#[test]
 fn test_progress_lower_direction_trend_improves_on_decrease() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

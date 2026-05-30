@@ -1174,12 +1174,13 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
         .with_context(|| format!("Cannot read {}", tsv_path.display()))?;
 
     // Parse direction from header
-    let direction = content
-        .lines()
-        .find(|l| l.starts_with("# metric_direction:"))
-        .and_then(|l| l.split(':').nth(1))
-        .map(|s| s.trim())
-        .unwrap_or("higher");
+    let direction = parse_evals_direction(
+        content
+            .lines()
+            .find(|l| l.starts_with("# metric_direction:"))
+            .and_then(|l| l.split(':').nth(1))
+            .map(|s| s.trim()),
+    )?;
 
     // Parse data rows
     let rows: Vec<&str> = content
@@ -1357,6 +1358,15 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn parse_evals_direction(value: Option<&str>) -> Result<&'static str> {
+    match value {
+        Some("higher" | "higher_is_better") => Ok("higher"),
+        Some("lower" | "lower_is_better") => Ok("lower"),
+        Some(other) => anyhow::bail!("Invalid metric_direction: {other}"),
+        None => anyhow::bail!("results TSV is missing # metric_direction header"),
+    }
 }
 
 struct EvalsReport<'a> {
