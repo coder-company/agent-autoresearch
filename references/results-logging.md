@@ -24,6 +24,7 @@ context.json
 
 `autoresearch runtime start` writes `launch.json`, `runtime.json`, and `runtime.log`.
 It first runs the native health preflight and blocks without writing launch artifacts when blockers are present or canonical `context.json` is missing.
+If the nested `codex exec` process cannot spawn, it writes `runtime.json` with `status=needs_human` and a `spawn_failed` supervisor reason.
 `autoresearch runtime status` reads and refreshes `runtime.json`; `autoresearch runtime stop`
 marks the runtime stopped and terminates the recorded process when one is running.
 `autoresearch runtime supervise --after-run` stores the latest supervisor recommendation in

@@ -115,7 +115,7 @@ Do not silently infer every field and start iterating. The user should approve t
 - The launch manifest may describe either a single primary repo or a primary repo plus companion repos with separate scopes.
 - Background runtime cycles launch non-interactive `codex exec` sessions with the generated runtime prompt supplied on stdin. Launch manifests default to `danger_full_access`, so detached sessions normally run with `--dangerously-bypass-approvals-and-sandbox` unless the caller explicitly opts into sandboxed `workspace_write`.
 - After each detached turn, call `autoresearch runtime supervise --after-run` to decide whether to relaunch, stop, or ask for human help. It persists restart/stagnation counters in `runtime.json`.
-- If background `codex exec` cannot be launched, or if a stop request cannot actually terminate the detached runner, transition to `needs_human` instead of reporting a misleading idle or stopped state.
+- If background `codex exec` cannot be launched, `runtime start` writes `runtime.json` with `status=needs_human` and `reason=spawn_failed`. If a stop request cannot actually terminate the detached runner, transition to `needs_human` instead of reporting a misleading idle or stopped state.
 - After launch, do not pause for clarification, confirmation, or permission. If ambiguity appears mid-loop, apply best practices, log the reasoning, and keep iterating.
 
 Exec-mode exception:
