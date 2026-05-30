@@ -858,6 +858,14 @@ fn cmd_decide(
     let delta = metric - state.current_metric;
     let trial_metrics =
         build_trial_metrics(metric, metrics_json, &primary_metric_key, verify_format)?;
+    if verify_format == VerifyFormat::MetricsJson {
+        ensure_metrics_json_keys(
+            &trial_metrics,
+            &primary_metric_key,
+            &acceptance_criteria,
+            &required_keep_criteria,
+        )?;
+    }
     let acceptance = criteria::evaluate_criteria(&acceptance_criteria, &trial_metrics);
     let required_keep = criteria::evaluate_criteria(&required_keep_criteria, &trial_metrics);
     let decision = if decision == "auto" {

@@ -924,6 +924,66 @@ fn test_init_metrics_json_requires_criteria_keys() {
 }
 
 #[test]
+fn test_decide_metrics_json_requires_criteria_keys() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    std::fs::write(
+        dir.path().join("metrics.json"),
+        r#"{"score":50,"accuracy":0.8}"#,
+    )
+    .unwrap();
+    std::process::Command::new("git")
+        .args(["add", "metrics.json"])
+        .current_dir(dir.path())
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["commit", "-m", "add metrics"])
+        .current_dir(dir.path())
+        .output()
+        .unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metrics.json",
+            "--format",
+            "metrics_json",
+            "--key",
+            "score",
+            "--direction",
+            "higher",
+            "--acceptance-criteria",
+            r#"[{"metric_key":"accuracy","operator":">=","target":"0.9"}]"#,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "decide",
+            "--metric",
+            "60",
+            "--metrics-json",
+            r#"{"score":60}"#,
+            "--description",
+            "missing acceptance metric",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "verify_format=metrics_json requires metrics keys: accuracy",
+        ));
+}
+
+#[test]
 fn test_resume_reports_baseline_as_resumable() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
