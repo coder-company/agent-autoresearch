@@ -71,6 +71,14 @@ Validate the generated and maintained distributions without rewriting files:
 
 This checks required package files, Codex metadata, `$autoresearch` invocation examples, and closed/synced reference links in `.agents/` and `.opencode/`.
 
+Run the lightweight end-to-end binary smoke:
+
+```bash
+./scripts/run_skill_e2e.sh binary-smoke --clean
+```
+
+This creates a disposable git repo and exercises `init`, `decide`, `status`, `watch`, and `evals` through the built `autoresearch` binary.
+
 ---
 
 ## Project Structure
