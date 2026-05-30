@@ -132,3 +132,18 @@ fn contributor_gate_enforces_release_binary_size() {
     assert!(script.contains("wc -c < \"$RELEASE_BINARY\""));
     assert!(script.contains("Release binary is too large"));
 }
+
+#[test]
+fn ci_workflow_runs_full_contributor_gate_with_operational_guards() {
+    let root = repo_root();
+    let workflow = std::fs::read_to_string(root.join(".github/workflows/ci.yml")).unwrap();
+
+    assert!(workflow.contains("workflow_dispatch:"));
+    assert!(workflow.contains("permissions:\n  contents: read"));
+    assert!(workflow.contains("concurrency:"));
+    assert!(workflow.contains("cancel-in-progress: true"));
+    assert!(workflow.contains("timeout-minutes: 25"));
+    assert!(workflow.contains("actions/cache@v4"));
+    assert!(workflow.contains("bash -n \"$script\""));
+    assert!(workflow.contains("./scripts/run_contributor_gate.sh"));
+}
