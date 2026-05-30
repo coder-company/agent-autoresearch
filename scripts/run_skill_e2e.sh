@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+MODE="${1:-}"
+KEEP_TEMP=1
+
+usage() {
+    cat <<'EOF'
+Usage:
+  ./scripts/run_skill_e2e.sh binary-smoke [--clean]
+
+Modes:
+  binary-smoke  Create a disposable git repo and exercise init, decide, status,
+                watch, and evals through the autoresearch binary.
+
+Flags:
+  --clean       Delete the temp repo after a successful run.
+EOF
+}
+
+if [[ -z "$MODE" ]]; then
+    usage
+    exit 1
+fi
+shift || true
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --clean)
+            KEEP_TEMP=0
+            ;;
+        *)
+            echo "Unknown flag: $1" >&2
+            usage
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+require_tool() {
+    if ! command -v "$1" >/dev/null 2>&1; then
+        echo "Missing required tool: $1" >&2
+        exit 1
+    fi
+}
+
+autoresearch_bin() {
+    if [[ -n "${AUTORESEARCH_BIN:-}" ]]; then
+        printf '%s\n' "$AUTORESEARCH_BIN"
+        return
+    fi
+
+    local bin="$ROOT/target/debug/autoresearch"
+    if [[ ! -x "$bin" ]]; then
+        cargo build --manifest-path "$ROOT/Cargo.toml" >/dev/null
+    fi
+    printf '%s\n' "$bin"
+}
+
+init_fixture_repo() {
+    local repo="$1"
+    mkdir -p "$repo"
+    git -C "$repo" init -b main >/dev/null
+    git -C "$repo" config user.name e2e-bot
+    git -C "$repo" config user.email e2e@example.com
+    printf 'autoresearch-results/\n.codex-autoresearch/\n' > "$repo/.gitignore"
+    printf '5\n' > "$repo/metric.txt"
+    git -C "$repo" add .
+    git -C "$repo" commit -m "baseline" >/dev/null
+}
+
+cleanup_if_requested() {
+    local tmpdir="$1"
+    if [[ "$KEEP_TEMP" -eq 0 ]]; then
+        rm -rf "$tmpdir"
+    else
+        echo "Temp repo kept at: $tmpdir"
+    fi
+}
+
+run_binary_smoke() {
+    require_tool git
+
+    local bin tmpdir repo trial_commit
+    bin="$(autoresearch_bin)"
+    tmpdir="$(mktemp -d)"
+    repo="$tmpdir/repo"
+
+    init_fixture_repo "$repo"
+
+    "$bin" init \
+        --verify "cat metric.txt" \
+        --direction lower \
+        --goal "Reduce marker count" \
+        --scope metric.txt \
+        --cwd "$repo" >/dev/null
+
+    printf '4\n' > "$repo/metric.txt"
+    git -C "$repo" add metric.txt
+    git -C "$repo" commit -m "experiment: reduce marker count" >/dev/null
+    trial_commit="$(git -C "$repo" rev-parse --short HEAD)"
+
+    "$bin" decide \
+        --decision auto \
+        --metric 4 \
+        --commit "$trial_commit" \
+        --description "reduced marker count" \
+        --cwd "$repo" >/dev/null
+
+    "$bin" status --cwd "$repo" >/dev/null
+    "$bin" watch --once --lines 2 --cwd "$repo" | grep -q 'reduced marker count'
+    (cd "$repo" && "$bin" evals --format json) | grep -q '"keeps": 1'
+    grep -q $'1\t' "$repo/autoresearch-results/results.tsv"
+    grep -q 'reduced marker count' "$repo/autoresearch-results/results.tsv"
+
+    echo "binary smoke: OK"
+    cleanup_if_requested "$tmpdir"
+}
+
+case "$MODE" in
+    binary-smoke)
+        run_binary_smoke
+        ;;
+    *)
+        echo "Unknown mode: $MODE" >&2
+        usage
+        exit 1
+        ;;
+esac
