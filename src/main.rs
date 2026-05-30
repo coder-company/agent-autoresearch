@@ -705,12 +705,19 @@ fn cmd_init(
 }
 
 fn existing_core_run_artifacts(workspace: &Path) -> Vec<String> {
-    ["results.tsv", "state.json", "context.json"]
-        .into_iter()
-        .map(|name| workspace.join("autoresearch-results").join(name))
-        .filter(|path| path.exists())
-        .map(|path| display_workspace_path(workspace, &path))
-        .collect()
+    [
+        "results.tsv",
+        "state.json",
+        "context.json",
+        "launch.json",
+        "runtime.json",
+        "runtime.log",
+    ]
+    .into_iter()
+    .map(|name| workspace.join("autoresearch-results").join(name))
+    .filter(|path| path.exists())
+    .map(|path| display_workspace_path(workspace, &path))
+    .collect()
 }
 
 fn legacy_run_artifacts(workspace: &Path) -> Vec<String> {

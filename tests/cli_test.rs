@@ -1374,6 +1374,39 @@ fn test_init_blocks_existing_context_artifact() {
 }
 
 #[test]
+fn test_init_blocks_existing_runtime_artifact() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    let results = dir.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    std::fs::write(results.join("runtime.json"), "{}\n").unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("init preflight blocked"))
+        .stderr(predicate::str::contains(
+            "existing autoresearch run artifacts found",
+        ))
+        .stderr(predicate::str::contains(
+            "autoresearch-results/runtime.json",
+        ));
+
+    assert!(!results.join("results.tsv").exists());
+}
+
+#[test]
 fn test_init_blocks_legacy_run_artifacts() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
