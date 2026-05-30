@@ -2,7 +2,8 @@
 set -euo pipefail
 
 # ── Autoresearch Installer ────────────────────────────────────────────
-# Builds the Rust binary and optionally installs for Claude Code / Codex.
+# Builds the Rust binary and optionally installs for Claude Code, OpenCode,
+# or Codex.
 #
 # Usage:
 #   ./install.sh                # Interactive guided install
@@ -179,6 +180,50 @@ install_claude_plugin() {
     esac
 }
 
+# ── OpenCode Assets ───────────────────────────────────────────────────
+
+install_opencode_assets() {
+    header "OpenCode Assets"
+
+    if [[ ! -d "$REPO_DIR/.opencode/skills/autoresearch" ]]; then
+        err "Missing .opencode/skills/autoresearch — cannot install OpenCode assets."
+        return 1
+    fi
+
+    read -rp "  Install OpenCode assets? [Y/n] " answer
+    case "${answer:-Y}" in
+        [Yy]*)
+            local target_root
+            if [[ -d ".opencode" ]]; then
+                target_root=".opencode"
+            elif [[ -n "${OPENCODE_CONFIG_DIR:-}" ]]; then
+                target_root="$OPENCODE_CONFIG_DIR"
+            elif [[ -n "${XDG_CONFIG_HOME:-}" ]]; then
+                target_root="$XDG_CONFIG_HOME/opencode"
+            else
+                target_root="$HOME/.config/opencode"
+            fi
+
+            read -rp "  OpenCode config path [$target_root]: " opencode_dir
+            opencode_dir="${opencode_dir:-$target_root}"
+
+            mkdir -p "$opencode_dir/skills" "$opencode_dir/commands" "$opencode_dir/agents"
+            rm -rf "$opencode_dir/skills/autoresearch"
+            cp -R "$REPO_DIR/.opencode/skills/autoresearch" "$opencode_dir/skills/autoresearch"
+            cp "$REPO_DIR"/.opencode/commands/autoresearch*.md "$opencode_dir/commands/"
+            if [[ -d "$REPO_DIR/.opencode/agents" ]]; then
+                cp "$REPO_DIR"/.opencode/agents/*.md "$opencode_dir/agents/" 2>/dev/null || true
+            fi
+
+            success "OpenCode assets installed to $opencode_dir"
+            echo "  Use: /autoresearch or /autoresearch_debug"
+            ;;
+        *)
+            info "Skipping OpenCode assets install."
+            ;;
+    esac
+}
+
 # ── Codex Skill ───────────────────────────────────────────────────────
 
 install_codex_skill() {
@@ -231,7 +276,8 @@ show_help() {
     echo "  3. Builds the release binary"
     echo "  4. Copies binary to ~/.local/bin/ (or custom path)"
     echo "  5. Optionally installs Claude Code plugin"
-    echo "  6. Optionally installs Codex skill"
+    echo "  6. Optionally installs OpenCode assets"
+    echo "  7. Optionally installs Codex skill"
     echo ""
     echo "Requirements: bash, git, curl (for rustup install)"
     exit 0
@@ -254,6 +300,7 @@ main() {
     build_binary
     install_binary
     install_claude_plugin
+    install_opencode_assets
     install_codex_skill
 
     echo ""
