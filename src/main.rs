@@ -6,6 +6,7 @@ use std::str::FromStr;
 
 use autoresearch::core::config::{Direction, RollbackStrategy, RunConfig, VerifyFormat};
 use autoresearch::core::git::{GitRepo, WorktreeStatus};
+use autoresearch::core::health;
 use autoresearch::core::results::{
     ensure_results_dir_protected, GuardResult, ResultRow, ResultsLog,
 };
@@ -150,6 +151,19 @@ enum Commands {
 
     /// Show current run status from state.json
     Status {
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
+    /// Check runtime health: git state, artifacts, disk, and verify command
+    Health {
+        /// Verify command to check; defaults to state.json config when present
+        #[arg(long)]
+        verify: Option<String>,
+        /// Minimum free disk space in MB
+        #[arg(long, default_value_t = 500)]
+        min_free_mb: u64,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -301,6 +315,12 @@ fn main() -> Result<()> {
         Commands::Evals { path, format } => cmd_evals(path, &format),
 
         Commands::Status { cwd } => cmd_status(cwd),
+
+        Commands::Health {
+            verify,
+            min_free_mb,
+            cwd,
+        } => cmd_health(verify.as_deref(), min_free_mb, cwd),
 
         Commands::Screen { command } => cmd_screen(&command),
 
@@ -958,6 +978,19 @@ fn cmd_status(cwd: Option<PathBuf>) -> Result<()> {
         "recent_rows": tail,
     });
     println!("{}", serde_json::to_string_pretty(&out)?);
+    Ok(())
+}
+
+// ── Health ────────────────────────────────────────────────────────────
+
+fn cmd_health(verify: Option<&str>, min_free_mb: u64, cwd: Option<PathBuf>) -> Result<()> {
+    let workspace = resolve_cwd(cwd);
+    let report = health::run_health_check(&workspace, verify, min_free_mb)?;
+    let has_blockers = report.has_blockers();
+    println!("{}", serde_json::to_string_pretty(&report)?);
+    if has_blockers {
+        std::process::exit(2);
+    }
     Ok(())
 }
 

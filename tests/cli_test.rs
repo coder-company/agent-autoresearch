@@ -141,3 +141,103 @@ fn test_evals_text_format() {
         .assert()
         .success();
 }
+
+// ── Health Command ───────────────────────────────────────────────────
+
+#[test]
+fn test_health_ok_after_init() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "health",
+            "--verify",
+            "cat metric.txt",
+            "--min-free-mb",
+            "1",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"ok\""));
+}
+
+#[test]
+fn test_health_blocks_missing_verify_command() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "health",
+            "--verify",
+            "definitely_missing_autoresearch_cmd --version",
+            "--min-free-mb",
+            "1",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .code(2)
+        .stdout(predicate::str::contains("\"decision\": \"block\""))
+        .stdout(predicate::str::contains("verify_command_missing"));
+}
+
+fn init_git_fixture(dir: &TempDir) {
+    let path = dir.path();
+    std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["config", "user.email", "test@test.com"])
+        .current_dir(path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["config", "user.name", "Test"])
+        .current_dir(path)
+        .output()
+        .unwrap();
+    std::fs::write(path.join(".gitignore"), "autoresearch-results/\n").unwrap();
+    std::fs::write(path.join("metric.txt"), "50\n").unwrap();
+    std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["commit", "-m", "initial"])
+        .current_dir(path)
+        .output()
+        .unwrap();
+}
