@@ -48,6 +48,35 @@ adapt_opencode() {
         "$1"
 }
 
+check_reference_links() {
+    local base_dir="$1"
+    shift
+
+    local missing=0
+    local file ref
+    for file in "$@"; do
+        [[ -f "$file" ]] || continue
+        while IFS= read -r ref; do
+            [[ -z "$ref" ]] && continue
+            if [[ ! -f "$base_dir/$ref" ]]; then
+                echo "Missing reference in ${file#"$ROOT"/}: $ref" >&2
+                missing=1
+            fi
+        done < <(grep -Eho 'references/[A-Za-z0-9_.-]+\.md' "$file" | sort -u)
+    done
+
+    if [[ "$missing" -ne 0 ]]; then
+        exit 1
+    fi
+}
+
+check_reference_links "$ROOT" \
+    "$ROOT/SKILL.md" \
+    "$ROOT"/skills/autoresearch/SKILL.md \
+    "$ROOT"/commands/autoresearch.md \
+    "$ROOT"/commands/autoresearch/*.md \
+    "$ROOT"/references/*.md
+
 # Commands: colon → underscore rename
 rm -rf "$ROOT/.opencode/commands"
 mkdir -p "$ROOT/.opencode/commands"
@@ -68,11 +97,19 @@ for f in "$ROOT/references/"*.md; do
     adapt_opencode "$f" > "$ROOT/.opencode/skills/autoresearch/references/$(basename "$f")"
 done
 
+check_reference_links "$ROOT/.opencode/skills/autoresearch" \
+    "$ROOT"/.opencode/skills/autoresearch/SKILL.md \
+    "$ROOT"/.opencode/skills/autoresearch/references/*.md
+
 opencode_count=$(find "$ROOT/.opencode" -type f | wc -l)
 
 # ── .agents distribution ────────────────────────────────────────────
 
 echo "Checking .agents/ distribution..."
+
+check_reference_links "$ROOT/.agents/skills/autoresearch" \
+    "$ROOT"/.agents/skills/autoresearch/SKILL.md \
+    "$ROOT"/.agents/skills/autoresearch/references/*.md
 
 agents_count=$(find "$ROOT/.agents" -type f | wc -l)
 
