@@ -1,5 +1,6 @@
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 use super::config::{Direction, RunConfig};
 
@@ -47,6 +48,10 @@ pub struct RunState {
     pub last_commit: String,
     pub last_trial_commit: Option<String>,
     pub last_trial_metric: Option<Decimal>,
+    #[serde(default)]
+    pub current_metrics: BTreeMap<String, Decimal>,
+    #[serde(default)]
+    pub last_trial_metrics: BTreeMap<String, Decimal>,
     pub keeps: u32,
     pub discards: u32,
     pub crashes: u32,
@@ -75,6 +80,7 @@ impl RunState {
             .as_ref()
             .map(|c| c.direction)
             .unwrap_or(Direction::Higher);
+        let initial_metrics = initial_metric_map(metric, config.as_ref());
         Self {
             iteration: 0,
             baseline_metric: metric,
@@ -84,6 +90,8 @@ impl RunState {
             last_commit: commit,
             last_trial_commit: None,
             last_trial_metric: None,
+            current_metrics: initial_metrics.clone(),
+            last_trial_metrics: initial_metrics,
             keeps: 0,
             discards: 0,
             crashes: 0,
@@ -96,6 +104,12 @@ impl RunState {
             direction,
             config,
         }
+    }
+
+    /// Replace retained and last-trial metrics with a structured measurement.
+    pub fn set_current_metrics(&mut self, metrics: BTreeMap<String, Decimal>) {
+        self.current_metrics = metrics.clone();
+        self.last_trial_metrics = metrics;
     }
 
     /// Record a keep decision.
@@ -193,6 +207,18 @@ impl RunState {
             Direction::Lower => metric < self.best_metric,
         }
     }
+}
+
+fn initial_metric_map(metric: Decimal, config: Option<&RunConfig>) -> BTreeMap<String, Decimal> {
+    let mut metrics = BTreeMap::from([("metric".to_string(), metric)]);
+    if let Some(primary_key) = config
+        .and_then(|config| config.primary_metric_key.as_ref())
+        .map(|key| key.trim())
+        .filter(|key| !key.is_empty())
+    {
+        metrics.insert(primary_key.to_string(), metric);
+    }
+    metrics
 }
 
 /// Status of a single iteration.

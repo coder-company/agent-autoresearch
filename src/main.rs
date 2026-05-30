@@ -628,7 +628,10 @@ fn cmd_init(
     let required_keep_criteria_count = run_config.required_keep_criteria.len();
 
     // Write state.json
-    let state = RunState::from_baseline(result.metric, head.clone(), Some(run_config));
+    let mut state = RunState::from_baseline(result.metric, head.clone(), Some(run_config));
+    if let Some(metrics) = result.metrics.clone() {
+        state.set_current_metrics(metrics);
+    }
     let state_json = serde_json::to_string_pretty(&state)?;
     std::fs::write(results_dir.join("state.json"), &state_json)?;
     let context_path = context::write_context(&workspace, state.config.as_ref())?;
@@ -2191,7 +2194,10 @@ fn cmd_exec(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
         description: "initial state".to_string(),
     })?;
 
-    let state = RunState::from_baseline(result.metric, head.clone(), Some(config));
+    let mut state = RunState::from_baseline(result.metric, head.clone(), Some(config));
+    if let Some(metrics) = result.metrics.clone() {
+        state.set_current_metrics(metrics);
+    }
     std::fs::write(
         results_dir.join("state.json"),
         serde_json::to_string_pretty(&state)?,
