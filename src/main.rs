@@ -876,6 +876,9 @@ fn cmd_log(
             IterationStatus::Blocked => {
                 state.record_blocked(description.to_string());
             }
+            IterationStatus::Drift => {
+                state.record_drift(metric);
+            }
             _ => {} // baseline, pivot, refine, search — state updated by decide
         }
 

@@ -269,6 +269,28 @@ impl RunState {
         self.phase = RunPhase::Blocked { reason };
     }
 
+    /// Record metric drift during resume or health recovery.
+    pub fn record_drift(&mut self, metric: Decimal) {
+        self.iteration += 1;
+        self.current_metric = metric;
+        self.last_trial_metric = Some(metric);
+        self.last_trial_commit = None;
+        self.set_current_metrics(initial_metric_map(metric, self.config.as_ref()));
+        self.last_status = IterationStatus::Drift;
+
+        if self.is_new_best(metric, self.direction) {
+            self.best_metric = metric;
+            self.best_iteration = self.iteration;
+        }
+
+        self.phase = RunPhase::Iterating {
+            iteration: self.iteration,
+            current_metric: self.current_metric,
+            best_metric: self.best_metric,
+            best_iteration: self.best_iteration,
+        };
+    }
+
     /// Mark run complete.
     pub fn complete(&mut self, reason: StopReason) {
         self.phase = RunPhase::Complete { reason };

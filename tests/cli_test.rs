@@ -661,6 +661,59 @@ fn test_progress_lower_direction_trend_improves_on_decrease() {
 }
 
 #[test]
+fn test_log_drift_recalibrates_state() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "log",
+            "--iteration",
+            "1",
+            "--commit",
+            "-",
+            "--metric",
+            "45",
+            "--delta",
+            "-5",
+            "--guard",
+            "-",
+            "--status",
+            "drift",
+            "--description",
+            "recalibrated after resume",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let state: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(state["iteration"], 1);
+    assert_eq!(state["current_metric"], "45");
+    assert_eq!(state["current_metrics"]["metric"], "45");
+    assert_eq!(state["last_trial_metric"], "45");
+    assert_eq!(state["last_status"], "drift");
+}
+
+#[test]
 fn test_progress_defaults_to_repo_root_results_from_subdir() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
