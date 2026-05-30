@@ -1,6 +1,20 @@
 {
-  "name": "autoresearch",
-  "version": "0.1.0",
-  "description": "Autonomous goal-directed iteration for Codex CLI",
-  "repository": "https://github.com/coder-company/agent-autoresearch"
+  "name": "autoresearch-local",
+  "interface": {
+    "displayName": "Autoresearch Local Plugins"
+  },
+  "plugins": [
+    {
+      "name": "autoresearch",
+      "source": {
+        "source": "local",
+        "path": "./plugins/autoresearch"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
 }

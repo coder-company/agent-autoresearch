@@ -55,6 +55,7 @@ required_paths=(
     SKILL.md
     agents/openai.yaml
     agents/skill-openai.yaml
+    .agents/plugins/marketplace.json
     .agents/skills/autoresearch/agents/openai.yaml
     commands/autoresearch.md
     hooks/hooks.json
@@ -88,6 +89,8 @@ require_grep '^\s*display_name: "Autoresearch"' agents/openai.yaml
 require_grep '^\s*allow_implicit_invocation:\s*false\s*$' agents/openai.yaml
 require_grep '\$autoresearch' agents/openai.yaml
 require_grep 'exec' agents/openai.yaml
+require_grep '"path": "\./plugins/autoresearch"' .agents/plugins/marketplace.json
+require_grep '"installation": "AVAILABLE"' .agents/plugins/marketplace.json
 cmp -s "$ROOT/agents/skill-openai.yaml" "$ROOT/.agents/skills/autoresearch/agents/openai.yaml" \
     || fail ".agents/skills/autoresearch/agents/openai.yaml drifted from agents/skill-openai.yaml"
 if grep -Eq '^(name|description|model|tools):' "$ROOT/.agents/skills/autoresearch/agents/openai.yaml"; then

@@ -147,3 +147,23 @@ fn codex_plugin_packages_synced_skill() {
         "Codex plugin skill drifted from .agents skill package"
     );
 }
+
+#[test]
+fn codex_marketplace_points_to_plugin_package() {
+    let root = repo_root();
+    let marketplace_path = root.join(".agents/plugins/marketplace.json");
+    let marketplace: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&marketplace_path).unwrap()).unwrap();
+    let plugins = marketplace["plugins"].as_array().unwrap();
+    let autoresearch = plugins
+        .iter()
+        .find(|plugin| plugin["name"] == "autoresearch")
+        .expect("marketplace should list autoresearch plugin");
+
+    assert_eq!(autoresearch["source"]["source"], "local");
+    assert_eq!(autoresearch["source"]["path"], "./plugins/autoresearch");
+    assert_eq!(autoresearch["policy"]["installation"], "AVAILABLE");
+    assert!(root
+        .join("plugins/autoresearch/.codex-plugin/plugin.json")
+        .is_file());
+}
