@@ -62,3 +62,33 @@ pub use reason::ReasonMode;
 pub use scenario::ScenarioMode;
 pub use security::SecurityMode;
 pub use ship::ShipMode;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::config::Mode;
+
+    #[test]
+    fn mode_descriptions_match_catalog_defaults() {
+        let descriptions = [
+            (Mode::Loop, LoopMode.describe()),
+            (Mode::Plan, PlanMode.describe()),
+            (Mode::Debug, DebugMode.describe()),
+            (Mode::Fix, FixMode.describe()),
+            (Mode::Security, SecurityMode.describe()),
+            (Mode::Ship, ShipMode.describe()),
+            (Mode::Scenario, ScenarioMode.describe()),
+            (Mode::Predict, PredictMode.describe()),
+            (Mode::Learn, LearnMode.describe()),
+            (Mode::Reason, ReasonMode.describe()),
+            (Mode::Probe, ProbeMode.describe()),
+            (Mode::Improve, ImproveMode.describe()),
+            (Mode::Evals, EvalsMode.describe()),
+        ];
+
+        for (mode, description) in descriptions {
+            assert_eq!(description.name, mode.as_str());
+            assert_eq!(description.default_iterations, mode.default_iterations());
+        }
+    }
+}
