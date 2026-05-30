@@ -584,6 +584,14 @@ fn cmd_init(
             staged_artifacts.join(", ")
         );
     }
+    let legacy_artifacts = legacy_run_artifacts(&workspace);
+    if !legacy_artifacts.is_empty() {
+        anyhow::bail!(
+            "init preflight blocked: legacy autoresearch artifacts found: {}. \
+             This version uses workspace-owned autoresearch-results/.",
+            legacy_artifacts.join(", ")
+        );
+    }
     if let WorktreeStatus::Dirty(files) = git.worktree_status()? {
         anyhow::bail!(
             "init preflight blocked: unexpected worktree changes before launch: {}",
@@ -703,6 +711,21 @@ fn existing_core_run_artifacts(workspace: &Path) -> Vec<String> {
         .filter(|path| path.exists())
         .map(|path| display_workspace_path(workspace, &path))
         .collect()
+}
+
+fn legacy_run_artifacts(workspace: &Path) -> Vec<String> {
+    [
+        "research-results.tsv",
+        "autoresearch-state.json",
+        "autoresearch-launch.json",
+        "autoresearch-runtime.json",
+        "autoresearch-runtime.log",
+    ]
+    .into_iter()
+    .map(|name| workspace.join(name))
+    .filter(|path| path.exists())
+    .map(|path| display_workspace_path(workspace, &path))
+    .collect()
 }
 
 fn display_workspace_path(workspace: &Path, path: &Path) -> String {

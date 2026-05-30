@@ -1341,6 +1341,36 @@ fn test_init_blocks_existing_run_artifacts() {
 }
 
 #[test]
+fn test_init_blocks_legacy_run_artifacts() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    std::fs::write(dir.path().join("research-results.tsv"), "old run\n").unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("init preflight blocked"))
+        .stderr(predicate::str::contains(
+            "legacy autoresearch artifacts found",
+        ))
+        .stderr(predicate::str::contains("research-results.tsv"))
+        .stderr(predicate::str::contains("autoresearch-results"));
+
+    assert!(!dir.path().join("autoresearch-results/results.tsv").exists());
+}
+
+#[test]
 fn test_init_metrics_json_requires_criteria_keys() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
