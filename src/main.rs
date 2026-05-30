@@ -1234,6 +1234,16 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
         .count();
     let baseline = metrics.first().map(|row| row.metric).unwrap_or_default();
     let final_metric = metrics.last().map(|row| row.metric).unwrap_or_default();
+    let improvement = if direction == "higher" {
+        final_metric - baseline
+    } else {
+        baseline - final_metric
+    };
+    let improvement_pct = (baseline != Decimal::ZERO).then(|| {
+        ((improvement / baseline.abs()) * Decimal::from(100))
+            .round_dp(2)
+            .to_string()
+    });
     let best = if direction == "higher" {
         metrics
             .iter()
@@ -1306,6 +1316,8 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 "baseline": baseline.to_string(),
                 "final": final_metric.to_string(),
                 "best": best.to_string(),
+                "improvement": improvement.to_string(),
+                "improvement_pct": improvement_pct.as_deref(),
                 "efficiency_pct": efficiency,
                 "longest_plateau": longest_plateau,
                 "trend": trend,
@@ -1328,6 +1340,8 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 baseline,
                 final_metric,
                 best,
+                improvement,
+                improvement_pct: improvement_pct.as_deref(),
                 trend,
                 longest_plateau,
                 top_keeps: &top_keeps,
@@ -1346,6 +1360,8 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 baseline,
                 final_metric,
                 best,
+                improvement,
+                improvement_pct: improvement_pct.as_deref(),
                 trend,
                 longest_plateau,
                 top_keeps: &top_keeps,
@@ -1404,6 +1420,8 @@ struct EvalsReport<'a> {
     baseline: Decimal,
     final_metric: Decimal,
     best: Decimal,
+    improvement: Decimal,
+    improvement_pct: Option<&'a str>,
     trend: &'a str,
     longest_plateau: u32,
     top_keeps: &'a [(Decimal, &'a str)],
@@ -1424,6 +1442,13 @@ fn render_evals_markdown(report: EvalsReport<'_>) -> String {
     writeln!(out, "| Baseline | {} |", report.baseline).unwrap();
     writeln!(out, "| Final | {} |", report.final_metric).unwrap();
     writeln!(out, "| Best | {} |", report.best).unwrap();
+    writeln!(
+        out,
+        "| Improvement | {} ({}) |",
+        report.improvement,
+        format_optional_percent(report.improvement_pct)
+    )
+    .unwrap();
     writeln!(out, "| Trend | {} |", report.trend).unwrap();
     writeln!(
         out,
@@ -1485,6 +1510,12 @@ fn render_evals_markdown(report: EvalsReport<'_>) -> String {
         .unwrap();
     }
     out
+}
+
+fn format_optional_percent(value: Option<&str>) -> String {
+    value
+        .map(|pct| format!("{pct}%"))
+        .unwrap_or_else(|| "n/a".to_string())
 }
 
 // ── Status ────────────────────────────────────────────────────────────

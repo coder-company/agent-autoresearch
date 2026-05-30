@@ -221,10 +221,13 @@ fn test_evals_with_sample_tsv() {
         .args(["evals", tsv_path.to_str().unwrap(), "--format", "json"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"keeps\": 2"));
+        .stdout(predicate::str::contains("\"keeps\": 2"))
+        .stdout(predicate::str::contains("\"improvement\": \"10\""))
+        .stdout(predicate::str::contains("\"improvement_pct\": \"20.00\""));
 
     let summary = std::fs::read_to_string(dir.path().join("evals-summary.json")).unwrap();
     assert!(summary.contains("\"keeps\": 2"));
+    assert!(summary.contains("\"improvement\": \"10\""));
 }
 
 #[test]
@@ -671,7 +674,9 @@ fn test_evals_lower_direction_trend_improves_on_decrease() {
         .args(["evals", tsv_path.to_str().unwrap(), "--format", "json"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"trend\": \"improving\""));
+        .stdout(predicate::str::contains("\"trend\": \"improving\""))
+        .stdout(predicate::str::contains("\"improvement\": \"4\""))
+        .stdout(predicate::str::contains("\"improvement_pct\": \"40.00\""));
 }
 
 #[test]
