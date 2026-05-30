@@ -12,6 +12,7 @@ use autoresearch::core::health;
 use autoresearch::core::results::{
     ensure_results_dir_protected, GuardResult, ResultRow, ResultsLog,
 };
+use autoresearch::core::runtime;
 use autoresearch::core::state::{IterationStatus, RunPhase, RunState};
 use autoresearch::core::verify;
 use autoresearch::escalation::lessons::{self, LessonsLog};
@@ -201,6 +202,12 @@ enum Commands {
         cwd: Option<PathBuf>,
     },
 
+    /// Manage background runtime artifacts and detached Codex sessions
+    Runtime {
+        #[command(subcommand)]
+        command: RuntimeCommands,
+    },
+
     /// Screen a command for dangerous patterns
     Screen {
         /// Command to screen
@@ -265,6 +272,37 @@ enum Commands {
         /// Maximum iterations (required in exec mode)
         #[arg(long)]
         iterations: u32,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+}
+
+#[derive(Subcommand)]
+enum RuntimeCommands {
+    /// Create launch/runtime artifacts and optionally spawn `codex exec`
+    Start {
+        /// Execution policy for nested Codex sessions
+        #[arg(long, default_value = "danger_full_access")]
+        execution_policy: String,
+        /// Codex binary to launch
+        #[arg(long, default_value = "codex")]
+        codex_bin: String,
+        /// Write launch/runtime artifacts without spawning Codex
+        #[arg(long)]
+        dry_run: bool,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+    /// Read runtime.json and report status
+    Status {
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+    /// Stop the recorded runtime process when one is running
+    Stop {
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -373,6 +411,8 @@ fn main() -> Result<()> {
             min_free_mb,
             cwd,
         } => cmd_health(verify.as_deref(), min_free_mb, cwd),
+
+        Commands::Runtime { command } => cmd_runtime(command),
 
         Commands::Screen { command } => cmd_screen(&command),
 
@@ -1137,6 +1177,45 @@ fn cmd_health(verify: Option<&str>, min_free_mb: u64, cwd: Option<PathBuf>) -> R
     println!("{}", serde_json::to_string_pretty(&report)?);
     if has_blockers {
         std::process::exit(2);
+    }
+    Ok(())
+}
+
+// ── Runtime ───────────────────────────────────────────────────────────
+
+fn cmd_runtime(command: RuntimeCommands) -> Result<()> {
+    match command {
+        RuntimeCommands::Start {
+            execution_policy,
+            codex_bin,
+            dry_run,
+            cwd,
+        } => {
+            let workspace = resolve_cwd(cwd);
+            let (manifest, snapshot) =
+                runtime::start_runtime(&workspace, &execution_policy, &codex_bin, dry_run)?;
+            let out = serde_json::json!({
+                "status": "ok",
+                "runtime": snapshot,
+                "launch": {
+                    "path": manifest.launch_path,
+                    "execution_policy": manifest.execution_policy,
+                    "codex_bin": manifest.codex_bin,
+                    "codex_args": manifest.codex_args,
+                }
+            });
+            println!("{}", serde_json::to_string_pretty(&out)?);
+        }
+        RuntimeCommands::Status { cwd } => {
+            let workspace = resolve_cwd(cwd);
+            let snapshot = runtime::runtime_status(&workspace)?;
+            println!("{}", serde_json::to_string_pretty(&snapshot)?);
+        }
+        RuntimeCommands::Stop { cwd } => {
+            let workspace = resolve_cwd(cwd);
+            let snapshot = runtime::stop_runtime(&workspace)?;
+            println!("{}", serde_json::to_string_pretty(&snapshot)?);
+        }
     }
     Ok(())
 }

@@ -334,6 +334,70 @@ fn test_resume_reports_baseline_as_resumable() {
         .stdout(predicate::str::contains("\"recommendation\": \"resume\""));
 }
 
+#[test]
+fn test_runtime_start_status_stop_dry_run() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--run-mode",
+            "background",
+            "--workspace-root",
+            root,
+            "--primary-repo",
+            root,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "runtime",
+            "start",
+            "--dry-run",
+            "--execution-policy",
+            "workspace_write",
+            "--codex-bin",
+            "codex",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\": \"ready\""))
+        .stdout(predicate::str::contains(
+            "\"execution_policy\": \"workspace_write\"",
+        ));
+
+    assert!(dir.path().join("autoresearch-results/launch.json").exists());
+    assert!(dir
+        .path()
+        .join("autoresearch-results/runtime.json")
+        .exists());
+    assert!(dir.path().join("autoresearch-results/runtime.log").exists());
+
+    cmd()
+        .args(["runtime", "status", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\": \"ready\""));
+
+    cmd()
+        .args(["runtime", "stop", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\": \"stopped\""));
+}
+
 fn init_git_fixture(dir: &TempDir) {
     let path = dir.path();
     std::process::Command::new("git")
