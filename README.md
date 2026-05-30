@@ -60,6 +60,8 @@ Each improvement stacks. Each failure reverts. Everything is logged.
 
 > **Codex users:** `$skill-installer install https://github.com/coder-company/agent-autoresearch`, then `$autoresearch`.
 >
+> **OpenCode users:** clone the repo and run `./install.sh`; choose the OpenCode assets step. Commands install as `/autoresearch` and `/autoresearch_debug`, `/autoresearch_fix`, etc.
+>
 > **From source:** `git clone` + `./install.sh`. See [Getting Started](guide/getting-started.md).
 
 ## How It Works

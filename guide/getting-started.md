@@ -20,6 +20,17 @@ Restart your session. You're done.
 $skill-installer install https://github.com/coder-company/agent-autoresearch
 ```
 
+**OpenCode:**
+
+```bash
+git clone https://github.com/coder-company/agent-autoresearch.git
+cd agent-autoresearch
+./install.sh
+```
+
+Choose the OpenCode assets step. Commands are installed with underscore names such as
+`/autoresearch_debug`, `/autoresearch_fix`, and `/autoresearch_security`.
+
 **From source:**
 
 ```bash
