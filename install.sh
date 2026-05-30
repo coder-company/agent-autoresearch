@@ -355,8 +355,8 @@ install_codex_skill() {
                 skill_dir="${skill_dir:-$target_dir}"
             fi
 
+            rm -rf "$skill_dir"
             mkdir -p "$skill_dir"
-            rm -rf "$skill_dir/autoresearch"
 
             # Copy skill files
             cp "$REPO_DIR/SKILL.md" "$skill_dir/SKILL.md"
