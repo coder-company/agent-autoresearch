@@ -1842,6 +1842,28 @@ fn test_exec_defaults_to_repo_root_from_subdir() {
 }
 
 #[test]
+fn test_exec_invalid_config_emits_json_error() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+
+    cmd()
+        .args([
+            "exec",
+            "--iterations",
+            "1",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .write_stdin("{}")
+        .assert()
+        .code(2)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains("\"type\":\"error\""))
+        .stderr(predicate::str::contains("\"code\":\"startup_failed\""))
+        .stderr(predicate::str::contains("\"exit_code\":2"));
+}
+
+#[test]
 fn test_decide_accepts_negative_metric_value() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

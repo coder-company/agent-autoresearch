@@ -3534,6 +3534,13 @@ fn handoff_context_values(results_dir: &Path) -> Result<(serde_json::Value, serd
 // ── Exec ─────────────────────────────────────────────────────────────
 
 fn cmd_exec(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
+    match cmd_exec_inner(iterations, cwd) {
+        Ok(()) => Ok(()),
+        Err(err) => exec_hard_error("startup_failed", err.to_string()),
+    }
+}
+
+fn cmd_exec_inner(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
     let workspace = resolve_workspace_root(cwd);
 
     // Read config from stdin
@@ -3548,10 +3555,7 @@ fn cmd_exec(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
 
     // Screen
     if let Err(e) = verify::screen_command(&verify_cmd) {
-        let out =
-            serde_json::json!({"type":"error","code":"unsafe_command","reason":e.to_string()});
-        println!("{}", serde_json::to_string(&out)?);
-        std::process::exit(2);
+        return exec_hard_error("unsafe_command", e.to_string());
     }
 
     // Git check
@@ -3559,9 +3563,10 @@ fn cmd_exec(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
     match git.worktree_status()? {
         WorktreeStatus::Clean | WorktreeStatus::OnlyArtifacts => {}
         WorktreeStatus::Dirty(files) => {
-            let out = serde_json::json!({"type":"error","code":"dirty_worktree","files":files});
-            println!("{}", serde_json::to_string(&out)?);
-            std::process::exit(2);
+            return exec_hard_error(
+                "dirty_worktree",
+                format!("unexpected worktree changes: {}", files.join(", ")),
+            );
         }
     }
 
@@ -3608,6 +3613,17 @@ fn cmd_exec(iterations: u32, cwd: Option<PathBuf>) -> Result<()> {
     println!("{}", serde_json::to_string(&out)?);
 
     Ok(())
+}
+
+fn exec_hard_error(code: &str, reason: String) -> Result<()> {
+    let out = serde_json::json!({
+        "type": "error",
+        "code": code,
+        "error": reason,
+        "exit_code": 2,
+    });
+    eprintln!("{}", serde_json::to_string(&out)?);
+    std::process::exit(2);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
