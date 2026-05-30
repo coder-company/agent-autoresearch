@@ -10,6 +10,7 @@
 - [x] Exec mode for CI/CD
 - [x] 11 hook handlers
 - [x] Claude Code plugin + Codex skill
+- [x] Codex plugin package + local marketplace entry
 - [x] Escalation protocol (refine → pivot → search → stop)
 - [x] Lessons log with search
 
