@@ -153,6 +153,7 @@ impl ResultsLog {
     pub fn validate(&self) -> Result<()> {
         let content = fs::read_to_string(&self.path).context("Failed to read results TSV")?;
         let mut saw_header = false;
+        let mut expected_main_iteration = 0u32;
 
         for (index, line) in content.lines().enumerate() {
             if line.is_empty() || line.starts_with('#') {
@@ -170,6 +171,17 @@ impl ResultsLog {
                     index + 1,
                     columns.len()
                 );
+            }
+            if let Ok(iteration) = columns[0].parse::<u32>() {
+                if iteration != expected_main_iteration {
+                    anyhow::bail!(
+                        "results.tsv line {} has main iteration {}; expected {}",
+                        index + 1,
+                        iteration,
+                        expected_main_iteration
+                    );
+                }
+                expected_main_iteration += 1;
             }
             columns[2]
                 .parse::<Decimal>()
@@ -432,5 +444,24 @@ mod tests {
         .unwrap();
 
         assert_eq!(log.count().unwrap(), 2);
+        log.validate().unwrap();
+    }
+
+    #[test]
+    fn test_validate_requires_contiguous_main_iterations() {
+        let dir = tempfile::tempdir().unwrap();
+        let log = ResultsLog::create(dir.path(), Direction::Higher).unwrap();
+        fs::write(
+            log.path(),
+            format!(
+                "{}\n0\tbase\t10\t0\t-\tbaseline\tbaseline\n2\tabc1234\t11\t+1\tpass\tkeep\tskipped one\n",
+                tsv_header(Direction::Higher)
+            ),
+        )
+        .unwrap();
+
+        let err = log.validate().unwrap_err().to_string();
+
+        assert!(err.contains("main iteration 2; expected 1"));
     }
 }
