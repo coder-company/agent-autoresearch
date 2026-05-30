@@ -2797,6 +2797,10 @@ fn cmd_handoff(
         .get("required_keep_criteria")
         .cloned()
         .unwrap_or(serde_json::Value::Null);
+    let required_keep_labels = config_val
+        .get("required_keep_labels")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
     let hypothesis_queue = config_val
         .get("hypothesis_queue")
         .cloned()
@@ -2840,6 +2844,7 @@ fn cmd_handoff(
         "stop_condition": stop_condition,
         "acceptance_criteria": acceptance_criteria,
         "required_keep_criteria": required_keep_criteria,
+        "required_keep_labels": required_keep_labels,
         "hypothesis_queue": hypothesis_queue,
         "summary": summary,
         "findings": findings_val,
