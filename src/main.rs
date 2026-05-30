@@ -2205,10 +2205,9 @@ fn build_trial_metrics(
 ) -> Result<BTreeMap<String, Decimal>> {
     match metrics_json {
         Some(raw) => autoresearch::core::metrics::parse_json_metrics_map(raw),
-        None if verify_format == VerifyFormat::MetricsJson => Ok(BTreeMap::from([(
-            primary_metric_key.to_string(),
-            primary_metric,
-        )])),
+        None if verify_format == VerifyFormat::MetricsJson => {
+            anyhow::bail!("verify_format=metrics_json requires --metrics-json")
+        }
         None => Ok(BTreeMap::from([(
             primary_metric_key.to_string(),
             primary_metric,

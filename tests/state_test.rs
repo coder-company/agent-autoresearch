@@ -685,6 +685,23 @@ fn test_decide_discards_when_required_keep_criteria_fail() {
             "\"required_keep_criteria_count\": 1",
         ));
 
+    Command::cargo_bin("autoresearch")
+        .unwrap()
+        .args([
+            "decide",
+            "--metric",
+            "60",
+            "--description",
+            "missing metrics json",
+            "--cwd",
+            dir_path.to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "verify_format=metrics_json requires --metrics-json",
+        ));
+
     std::fs::write(
         dir_path.join("metrics.json"),
         r#"{"score":60,"failures":2}"#,
