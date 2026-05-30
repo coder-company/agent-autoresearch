@@ -1394,6 +1394,13 @@ fn cmd_parallel_closeout(
             .join(", ");
         anyhow::bail!("parallel batch preflight blocked: {codes}");
     }
+    let git = GitRepo::open(workspace)?;
+    if let WorktreeStatus::Dirty(files) = git.worktree_status()? {
+        anyhow::bail!(
+            "parallel batch preflight blocked: unexpected worktree changes before parallel batch: {}",
+            files.join(", ")
+        );
+    }
 
     let mut state: RunState = serde_json::from_str(
         &std::fs::read_to_string(&state_path)

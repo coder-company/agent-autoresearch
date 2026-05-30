@@ -220,6 +220,7 @@ iteration	commit	metric	delta	guard	status	description
 - Worker rows (`5a`, `5b`, `5c`) are audit detail.
 - The integer main row (`5`) is the authoritative retained-state update for the whole batch.
 - Close out completed batches through `autoresearch parallel closeout --batch-file <workers.json> --cwd <workspace_root>`. Do not write worker/main rows by hand.
+- Closeout runs health and worktree preflight first. It accepts clean worktrees and autoresearch-owned artifact changes, but blocks unexpected dirty files before appending any rows.
 
 The batch file is a JSON array of worker objects:
 

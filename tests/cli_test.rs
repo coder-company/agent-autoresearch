@@ -963,7 +963,7 @@ fn test_parallel_closeout_selects_best_worker() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
     let root = dir.path().to_str().unwrap();
-    std::fs::write(dir.path().join("metric.txt"), "41\n").unwrap();
+    write_metric_and_commit(&dir, "41\n");
 
     cmd()
         .args([
@@ -978,7 +978,7 @@ fn test_parallel_closeout_selects_best_worker() {
         .assert()
         .success();
 
-    let batch_path = dir.path().join("parallel-batch.json");
+    let batch_path = dir.path().join("autoresearch-results/parallel-batch.json");
     std::fs::write(
         &batch_path,
         r#"[
@@ -1039,7 +1039,7 @@ fn test_parallel_closeout_discards_when_no_worker_improves() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
     let root = dir.path().to_str().unwrap();
-    std::fs::write(dir.path().join("metric.txt"), "10\n").unwrap();
+    write_metric_and_commit(&dir, "10\n");
 
     cmd()
         .args([
@@ -1054,7 +1054,7 @@ fn test_parallel_closeout_discards_when_no_worker_improves() {
         .assert()
         .success();
 
-    let batch_path = dir.path().join("parallel-batch.json");
+    let batch_path = dir.path().join("autoresearch-results/parallel-batch.json");
     std::fs::write(
         &batch_path,
         r#"[
@@ -1091,6 +1091,71 @@ fn test_parallel_closeout_discards_when_no_worker_improves() {
     assert!(state.contains("\"iteration\": 1"));
     assert!(state.contains("\"current_metric\": \"10\""));
     assert!(state.contains("\"last_trial_metric\": \"9\""));
+}
+
+#[test]
+fn test_parallel_closeout_blocks_unexpected_dirty_worktree() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "lower",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    std::fs::write(dir.path().join("notes.txt"), "user drift\n").unwrap();
+    let batch_path = dir.path().join("autoresearch-results/parallel-batch.json");
+    std::fs::write(
+        &batch_path,
+        r#"[
+  {"worker_id":"a","metric":"38","guard":"pass","commit":"abc1234","description":"narrowed auth types"}
+]"#,
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "parallel",
+            "closeout",
+            "--batch-file",
+            batch_path.to_str().unwrap(),
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("parallel batch preflight blocked"))
+        .stderr(predicate::str::contains(
+            "unexpected worktree changes before parallel batch: notes.txt",
+        ));
+
+    let results =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/results.tsv")).unwrap();
+    assert!(!results.contains("[PARALLEL batch]"));
+}
+
+fn write_metric_and_commit(dir: &TempDir, metric: &str) {
+    let path = dir.path();
+    std::fs::write(path.join("metric.txt"), metric).unwrap();
+    std::process::Command::new("git")
+        .args(["add", "metric.txt"])
+        .current_dir(path)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["commit", "-m", "set metric"])
+        .current_dir(path)
+        .output()
+        .unwrap();
 }
 
 fn init_git_fixture(dir: &TempDir) {
