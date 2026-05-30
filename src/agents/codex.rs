@@ -79,7 +79,7 @@ tools:
         properties:
           mode:
             type: string
-            enum: [loop, plan, debug, fix, security, ship, scenario, predict, learn, reason, probe, exec]
+            enum: [loop, plan, debug, fix, security, ship, scenario, predict, learn, reason, probe, improve, evals, exec]
           goal:
             type: string
           scope:
@@ -88,5 +88,22 @@ tools:
             type: integer
         required: [mode]
 "#
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CodexAdapter;
+
+    #[test]
+    fn agent_yaml_advertises_all_modes() {
+        let yaml = CodexAdapter::agent_yaml();
+
+        for mode in [
+            "loop", "plan", "debug", "fix", "security", "ship", "scenario", "predict", "learn",
+            "reason", "probe", "improve", "evals", "exec",
+        ] {
+            assert!(yaml.contains(mode), "missing mode {mode}");
+        }
     }
 }
