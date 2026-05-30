@@ -394,11 +394,20 @@ pub fn runtime_status(workspace: &Path) -> Result<RuntimeSnapshot> {
         }
     };
     if snapshot.status == "running" {
-        if let Some(pid) = snapshot.pid {
-            if !process_is_alive(pid) {
+        match snapshot.pid {
+            Some(pid) if !process_is_alive(pid) => {
                 snapshot.status = "stopped".to_string();
                 snapshot.stopped_at = Some(Utc::now().to_rfc3339());
                 snapshot.last_error = Some("process is no longer running".to_string());
+                write_runtime_snapshot(&paths.runtime_path, &snapshot)?;
+            }
+            Some(_) => {}
+            None => {
+                snapshot = needs_human_snapshot(
+                    &paths,
+                    "invalid_runtime_state",
+                    "runtime.json status is running but pid is missing".to_string(),
+                );
                 write_runtime_snapshot(&paths.runtime_path, &snapshot)?;
             }
         }

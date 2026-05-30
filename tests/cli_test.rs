@@ -2724,6 +2724,38 @@ fn test_runtime_status_reports_invalid_runtime_state() {
 }
 
 #[test]
+fn test_runtime_status_reports_running_without_pid_as_invalid() {
+    let dir = TempDir::new().unwrap();
+    let root = dir.path().to_str().unwrap();
+    let results = dir.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    std::fs::write(
+        results.join("runtime.json"),
+        serde_json::json!({
+            "version": 1,
+            "status": "running",
+            "pid": null,
+            "started_at": "2026-05-30T00:00:00Z",
+            "stopped_at": null,
+            "launch_path": results.join("launch.json").display().to_string(),
+            "runtime_path": results.join("runtime.json").display().to_string(),
+            "log_path": results.join("runtime.log").display().to_string(),
+            "last_error": null
+        })
+        .to_string(),
+    )
+    .unwrap();
+
+    cmd()
+        .args(["runtime", "status", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\": \"needs_human\""))
+        .stdout(predicate::str::contains("invalid_runtime_state"))
+        .stdout(predicate::str::contains("pid is missing"));
+}
+
+#[test]
 fn test_runtime_stop_reports_invalid_runtime_state() {
     let dir = TempDir::new().unwrap();
     let root = dir.path().to_str().unwrap();
