@@ -8,7 +8,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo fmt --check
-      - run: cargo clippy -- -D warnings
-      - run: cargo test
-      - run: cargo build --release
+      - run: ./scripts/run_contributor_gate.sh

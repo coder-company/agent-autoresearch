@@ -9,8 +9,14 @@ cd "$ROOT"
 echo "==> cargo fmt -- --check"
 cargo fmt -- --check
 
+echo "==> cargo clippy -- -D warnings"
+cargo clippy -- -D warnings
+
 echo "==> cargo test"
 cargo test
+
+echo "==> cargo build --release"
+cargo build --release
 
 echo "==> bash -n install.sh"
 bash -n install.sh
