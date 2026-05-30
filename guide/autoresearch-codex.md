@@ -1,0 +1,115 @@
+# Autoresearch for Codex
+
+Codex uses the same protocol and binary-backed closeout as the Claude and OpenCode distributions. The entry point is the Codex skill mention syntax:
+
+```text
+$autoresearch
+```
+
+Mode names are passed as keywords:
+
+| Task | Codex invocation |
+|------|------------------|
+| Core loop | `$autoresearch` |
+| Planning wizard | `$autoresearch plan` |
+| Debug | `$autoresearch debug` |
+| Fix errors | `$autoresearch fix` |
+| Security audit | `$autoresearch security` |
+| Ship workflow | `$autoresearch ship` |
+| Scenario exploration | `$autoresearch scenario` |
+| Results analysis | `$autoresearch evals` |
+
+## Install
+
+Recommended skill install:
+
+```text
+$skill-installer install https://github.com/coder-company/agent-autoresearch
+```
+
+From a local clone:
+
+```bash
+git clone https://github.com/coder-company/agent-autoresearch.git
+cd agent-autoresearch
+./install.sh --yes --codex
+```
+
+The installer copies the maintained Codex skill package from `.agents/skills/autoresearch/` and refuses unsafe install targets before replacing the skill directory.
+
+## First Run
+
+```text
+$autoresearch
+I want to reduce the number of TypeScript any types
+```
+
+Codex scans the repo, proposes a metric and verify command, then waits for a clear launch confirmation. After you say "go", it should stop asking setup questions and iterate against the confirmed metric.
+
+## Foreground vs Background
+
+Foreground runs stay in the current Codex session. This is best when you want to watch decisions closely.
+
+Background runs are managed by the binary runtime:
+
+```bash
+autoresearch runtime run --cwd /path/to/workspace
+autoresearch runtime status --cwd /path/to/workspace
+autoresearch runtime stop --cwd /path/to/workspace
+```
+
+`runtime run` preflights health, launches non-interactive Codex turns, supervises each exit, and relaunches until the supervisor returns `stop` or `needs_human`.
+
+## Monitoring
+
+Use these from another terminal:
+
+```bash
+autoresearch progress --cwd /path/to/workspace
+autoresearch watch --lines 20 --cwd /path/to/workspace
+autoresearch lessons --last 5 --cwd /path/to/workspace
+```
+
+`watch` tails the active `autoresearch-results/results.tsv` file. Add `--once` for a single snapshot.
+
+## Artifact Contract
+
+Codex uses the same workspace-owned artifacts as other agents:
+
+```text
+autoresearch-results/
+  results.tsv
+  state.json
+  context.json
+  lessons.md
+  launch.json
+  runtime.json
+  runtime.log
+```
+
+Never stage `autoresearch-results/` or `.codex-autoresearch/`. They are run memory, not source.
+
+## Common Commands
+
+```text
+$autoresearch debug
+Symptom: Checkout intermittently returns 503
+Iterations: 15
+
+$autoresearch fix
+Verify: npm test
+Iterations: 20
+
+$autoresearch security
+Scope: src/api/**/*.ts
+Depth: deep
+
+$autoresearch evals
+```
+
+## Related Guides
+
+- [Getting Started](getting-started.md)
+- [Core Loop](autoresearch.md)
+- [Advanced Patterns](advanced-patterns.md)
+- [Chains & Combinations](chains-and-combinations.md)

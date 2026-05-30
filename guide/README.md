@@ -5,6 +5,7 @@ Practical documentation for every command and pattern.
 ## Getting Started
 
 - [Getting Started](getting-started.md) — Install, first run, what to expect
+- [Codex](autoresearch-codex.md) — `$autoresearch` syntax, background runtime, monitoring
 
 ## Command Guides
 
