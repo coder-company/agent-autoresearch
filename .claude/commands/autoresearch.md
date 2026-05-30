@@ -13,8 +13,12 @@ Extract from $ARGUMENTS:
 - `Scope:` or `--scope` — file globs
 - `Metric:` — what to measure
 - `Direction:` — higher_is_better (default) or lower_is_better
-- `Verify:` — shell command that outputs a number on its final non-empty line
+- `Verify:` — shell command that outputs a scalar number or final-line JSON metrics object
+- `Verify format:` — `scalar` (default) or `metrics_json`
+- `Primary metric key:` — required when `Verify format` is `metrics_json`
 - `Guard:` — optional safety command (must exit 0)
+- `Acceptance criteria:` — optional metric thresholds for stopping
+- `Required keep criteria:` — optional metric thresholds that every keep must satisfy
 - `Iterations:` or `--iterations` — integer N for bounded mode (default: 25). "unlimited" for unbounded.
 - `--evals` — enable mid-loop checkpoints
 - `--evals-interval N` — checkpoint frequency override
@@ -32,10 +36,11 @@ If ALL provided inline → skip setup, proceed directly.
 ## Precondition Checks
 
 1. Verify git repo exists (`git rev-parse --git-dir`)
-2. Check clean working tree (`git status --porcelain`) — warn if dirty
-3. Check for stale lock files, detached HEAD
-4. If Guard set → run Guard to establish guard baseline
-5. Fail fast on any critical issue. Warn on non-critical.
+2. Run `autoresearch health` when prior artifacts exist, before resume, or before unattended/background execution
+3. Check clean working tree (`git status --porcelain`) — warn if dirty
+4. Check for stale lock files, detached HEAD
+5. If Guard set → run Guard to establish guard baseline
+6. Fail fast on any critical issue. Warn on non-critical.
 
 ## Verify Safety Screen
 
@@ -43,12 +48,9 @@ Before first dry-run, screen Verify command for: rm -rf, fork bombs, pipe-to-she
 
 ## Establish Baseline (Iteration 0)
 
-1. Run Verify command → extract numeric metric from final non-empty line
-2. Record as iteration 0 in TSV
-3. Create output directory: `autoresearch-results/`
-4. Write TSV header: `# metric_direction: {direction}\niteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription`
-5. Write baseline row: `0\t{commit}\t{metric}\t0\t-\tbaseline\tinitial state`
-6. Write state.json with baseline snapshot
+1. Run `autoresearch init --verify "{verify command}" --direction {higher|lower}` with any verify format, primary metric key, acceptance criteria, and required keep criteria flags.
+2. Let the binary create `autoresearch-results/`, `results.tsv`, `state.json`, `context.json`, and `.codex-autoresearch/pointer.json`.
+3. Use the returned baseline metric and state JSON for `/goal`.
 
 ## Set /goal
 
@@ -64,6 +66,7 @@ If unbounded: omit "Stop after N turns" clause.
 
 ### Phase 1: Read (git history as memory)
 - Read last 10-20 lines of results TSV (`autoresearch-results/results.tsv`)
+- Read `autoresearch-results/context.json` when present
 - Run `git log --oneline -10` — see what worked/failed
 - If last iteration was "keep" → run `git diff HEAD~1` to see what improved metric
 - Identify: what worked, what failed, what's untried
@@ -85,10 +88,10 @@ If unbounded: omit "Stop after N turns" clause.
 - Stage only scoped files: `git add -- <files>`
 - Commit with prefix: `git commit -m "experiment: {description}"`
 - Record commit SHA
-- NEVER stage autoresearch-results/ artifacts
+- NEVER stage `autoresearch-results/` or `.codex-autoresearch/` artifacts
 
 ### Phase 5: Verify
-- Run Verify command → extract new metric value from final non-empty line
+- Run `autoresearch verify --format metrics_json --key {primary_metric_key} --command "{verify command}"` for structured metrics, or `autoresearch verify --command "{verify command}"` for scalar metrics
 - Calculate delta from previous retained metric
 - If verify output is unparseable: rerun once. If still unparseable → treat as crash.
 
@@ -98,18 +101,17 @@ If unbounded: omit "Stop after N turns" clause.
 - If guard fails → revert regardless of metric improvement
 
 ### Phase 7: Decide
-- **keep** — metric improved in correct direction, guard passed → commit stays
-- **discard** — metric flat or regressed → `git revert HEAD --no-edit`
-- **discard (guard)** — metric improved but guard failed → `git revert HEAD --no-edit`
-- **crash** — verify/guard command errored → `git revert HEAD --no-edit`
+- Run `autoresearch decide --decision auto --metric {metric} --metrics-json '{metrics_json}' --commit {sha} --description "{description}"`
+- **keep** — metric improved in correct direction, guard passed, and required keep criteria passed → commit stays
+- **discard** — metric flat/regressed, guard failed, or criteria failed → binary reverts the experiment commit
+- **crash** — verify/guard command errored → binary reverts the experiment commit
 - **no-op** — no change made this iteration
 
 Simplicity override: gain < 1% AND adds significant complexity → discard.
 Metric unchanged AND code simpler → keep.
 
 ### Phase 8: Log
-Append row to results TSV: iteration, commit/-, metric, delta, guard (pass/fail/-), status, description.
-Update state.json with current metric, best metric, keeps/discards counts.
+Let `autoresearch decide` append the results TSV row and update state/escalation JSON.
 
 ### Phase 9: Escalation Check
 - 3 consecutive discards → REFINE: adjust parameters, consult lessons
