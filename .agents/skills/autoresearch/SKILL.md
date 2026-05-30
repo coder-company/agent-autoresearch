@@ -25,20 +25,24 @@ Invoke via `$autoresearch` mention syntax. Modes are passed as keywords:
 - Never push, publish, or deploy without explicit user approval.
 - Bounded by default (25 iterations). Override with `Iterations: unlimited`.
 - All results logged to `autoresearch-results/` directory.
-- Never stage `autoresearch-results/` artifacts in experiment commits.
+- Never stage `autoresearch-results/` or `.codex-autoresearch/` artifacts in experiment commits.
 
 ## Binary Operations
 
 The `autoresearch` binary handles mechanical operations:
-- `autoresearch verify` — run verify command, parse metric
-- `autoresearch decide` — evaluate keep/discard logic
+- `autoresearch init` — initialize results directory, baseline, config, and canonical context
+- `autoresearch health` — preflight git/artifact/disk/verify/context state
+- `autoresearch verify` — run verify command, parse metric or metrics JSON
+- `autoresearch decide` — evaluate keep/discard logic, criteria gates, rollback, and escalation
+- `autoresearch runtime start/status/stop` — control detached background runs
+- `autoresearch status|resume|progress|lessons|evals` — inspect/resume/analyze runs
 - `autoresearch hook <name>` — execute lifecycle hooks
-- `autoresearch init` — initialize results directory and baseline
 
 ## Core Protocol (Each Turn)
 
 ### Phase 1: Read (git history as memory)
 - Read last 10-20 lines of `autoresearch-results/results.tsv`
+- Read `autoresearch-results/context.json` when present
 - Run `git log --oneline -10`
 - Consult `autoresearch-results/lessons.md` for strategy insights
 
@@ -55,18 +59,19 @@ git commit -m "experiment: <what changed and why>"
 ```
 
 ### Phase 5: Verify
-Run verify command. Final non-empty line = metric value.
+Run `autoresearch verify --format metrics_json --key <metric>` for structured output, or `autoresearch verify --command "<cmd>"` for scalar output.
 
 ### Phase 6: Guard (if configured)
 Run only after metric improvement. Must exit 0.
 
 ### Phase 7: Decide
-- **keep** — improved + guard passed → commit stays
-- **discard** — flat/regressed OR guard failed → `git revert HEAD --no-edit`
-- **crash** — command errored → `git revert HEAD --no-edit`
+- Prefer `autoresearch decide --decision auto --metric <value> --metrics-json '<json>' --commit <sha>`.
+- **keep** — improved + guard passed + required keep criteria passed → commit stays
+- **discard** — flat/regressed OR guard/criteria failed → binary reverts the experiment commit
+- **crash** — command errored → binary reverts the experiment commit
 
 ### Phase 8: Log
-Append to `autoresearch-results/results.tsv`.
+Use the binary decision/log command to append `autoresearch-results/results.tsv` and update state.
 
 ### Phase 9: Escalation
 - 3 consecutive discards → REFINE
@@ -82,7 +87,7 @@ Append to `autoresearch-results/results.tsv`.
 4. **Automatic rollback** — `git revert HEAD --no-edit` on failure.
 5. **Simplicity wins** — equal metric + less code = KEEP.
 6. **Git is memory** — experiments committed, failures reverted, TSV logs all.
-7. **Never stage artifacts** — `autoresearch-results/` stays uncommitted.
+7. **Never stage artifacts** — `autoresearch-results/` and `.codex-autoresearch/` stay uncommitted.
 8. **When stuck, escalate** — REFINE → PIVOT → Web Search → Stop.
 
 ## References

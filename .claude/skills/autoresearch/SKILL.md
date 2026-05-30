@@ -11,7 +11,7 @@ version: 0.1.0
 - Bounded by default (25 iterations). Override with `Iterations: unlimited`.
 - All results logged to `autoresearch-results/` directory.
 - Chain handoff via `handoff.json`. Evals reads `results.tsv`.
-- Never stage `autoresearch-results/` artifacts in experiment commits.
+- Never stage `autoresearch-results/` or `.codex-autoresearch/` artifacts in experiment commits.
 
 ## /goal Integration
 
@@ -43,6 +43,7 @@ This skill uses Claude Code's `/goal` command as the native continuation engine.
 
 ### Phase 1: Read (git history as memory)
 - Read last 10-20 lines of `autoresearch-results/results.tsv`
+- Read `autoresearch-results/context.json` when present
 - Run `git log --oneline -10` — see what worked/failed
 - If last iteration was "keep" → run `git diff HEAD~1`
 - Consult `autoresearch-results/lessons.md` for strategy insights
@@ -64,10 +65,10 @@ ONE focused change within scope. Must fit in one sentence.
 git add -- <scoped-files-only>
 git commit -m "experiment: <what changed and why>"
 ```
-NEVER stage autoresearch-results/ artifacts.
+NEVER stage autoresearch-results/ or .codex-autoresearch/ artifacts.
 
 ### Phase 5: Verify
-Run verify command. Final non-empty line = metric value.
+Run `autoresearch verify --format metrics_json --key <metric>` for structured output, or `autoresearch verify --command "<cmd>"` for scalar output.
 If unparseable: rerun once. Still unparseable → crash.
 
 ### Phase 6: Guard (if configured)
@@ -75,15 +76,16 @@ Run only after metric improvement. Must exit 0.
 If fails → revert regardless of improvement.
 
 ### Phase 7: Decide
-- **keep** — improved + guard passed → commit stays
-- **discard** — flat/regressed OR guard failed → `git revert HEAD --no-edit`
-- **crash** — command errored → `git revert HEAD --no-edit`
+- Prefer `autoresearch decide --decision auto --metric <value> --metrics-json '<json>' --commit <sha>`.
+- **keep** — improved + guard passed + required keep criteria passed → commit stays
+- **discard** — flat/regressed OR guard/criteria failed → binary reverts the experiment commit
+- **crash** — command errored → binary reverts the experiment commit
 
 Simplicity override: gain < 1% + added complexity = discard.
 Metric unchanged + simpler code = keep.
 
 ### Phase 8: Log
-Append to `autoresearch-results/results.tsv`:
+The binary decision/log command appends to `autoresearch-results/results.tsv`:
 ```
 {iteration}\t{commit|-}\t{metric}\t{delta}\t{guard}\t{status}\t{description}
 ```
@@ -104,7 +106,7 @@ Update `autoresearch-results/state.json`.
 4. **Automatic rollback** — `git revert HEAD --no-edit` on failure.
 5. **Simplicity wins** — equal metric + less code = KEEP.
 6. **Git is memory** — experiments committed, failures reverted, TSV logs all.
-7. **Never stage artifacts** — `autoresearch-results/` stays uncommitted.
+7. **Never stage artifacts** — `autoresearch-results/` and `.codex-autoresearch/` stay uncommitted.
 8. **When stuck, escalate** — REFINE → PIVOT → Web Search → Stop.
 9. **Never ask after launch** — once /goal is set, keep iterating. Apply best practices on ambiguity.
 10. **Progress every 5 iterations** — report baseline vs current vs best.
@@ -117,8 +119,14 @@ All under `autoresearch-results/` (never committed):
 |---|---|
 | `results.tsv` | Every iteration: metric, delta, status, description |
 | `state.json` | Machine-readable resume snapshot |
+| `context.json` | Canonical run config, repo, baseline, and artifact pointers |
 | `lessons.md` | Cross-run learning (positive + negative + strategic) |
 | `handoff.json` | Chain handoff to downstream commands |
+| `launch.json` | Background runtime launch manifest |
+| `runtime.json` | Background runtime status |
+| `runtime.log` | Background runtime log |
+
+Additionally `.codex-autoresearch/pointer.json` points tools to the canonical context artifact and must stay uncommitted.
 
 ## TSV Format
 

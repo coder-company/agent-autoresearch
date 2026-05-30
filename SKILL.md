@@ -16,16 +16,17 @@ Autonomous goal-directed iteration. Modify → Verify → Keep/Discard → Repea
 3. Load `references/interaction-wizard.md` for every new interactive launch.
 4. Load `references/session-resume.md` if prior artifacts are detected.
 5. Use the bundled binary (`bin/autoresearch`) for all mechanical operations.
+6. Run `autoresearch health` before unattended/background launch or resume.
 
 ## Core Loop
 
-1. Read context: `git log --oneline -10`, last 10 rows of `autoresearch-results/results.tsv`, `autoresearch-results/lessons.md`.
+1. Read context: `git log --oneline -10`, last 10 rows of `autoresearch-results/results.tsv`, `autoresearch-results/lessons.md`, and `autoresearch-results/context.json` when present.
 2. Define ONE specific, testable hypothesis.
 3. Make ONE focused change within scope.
 4. Trial commit: `git add -- <scoped-files>; git commit -m "experiment: <desc>"`
-5. Verify: `autoresearch verify --command "<cmd>"`
+5. Verify: `autoresearch verify --format metrics_json --key "<metric-key>" --command "<cmd>"` when the command emits structured metrics; otherwise use `autoresearch verify --command "<cmd>"`.
 6. Guard (if configured): `autoresearch guard --command "<cmd>"`
-7. Decide: `autoresearch decide --decision <keep|discard|crash> --metric <val> --commit <sha> --description "<text>"`
+7. Decide: `autoresearch decide --decision auto --metric <val> --metrics-json '<json>' --commit <sha> --description "<text>"`
 8. Repeat.
 
 ## Modes
@@ -64,7 +65,7 @@ When model-visible goal tools are available:
 
 - For new interactive runs, require an explicit choice: **foreground** or **background**
 - **Foreground**: loop runs in current session, goal tools used when available
-- **Background**: launch manifest persisted, detached runtime continues overnight
+- **Background**: `autoresearch runtime start` writes the launch manifest and starts detached continuation
 - They are mutually exclusive — never both active against same artifacts
 
 ## Hard Rules
@@ -74,7 +75,7 @@ When model-visible goal tools are available:
 3. **One change per iteration.** Atomic experiments create causality.
 4. **Mechanical verification only.** Run the command, parse the number. No "looks good."
 5. **Automatic rollback.** `autoresearch decide --decision discard` handles `git revert HEAD --no-edit`.
-6. **Never stage artifacts.** `autoresearch-results/` stays uncommitted.
+6. **Never stage artifacts.** `autoresearch-results/` and `.codex-autoresearch/` stay uncommitted.
 7. **Simplicity wins.** <1% gain + complexity = discard. Flat metric + simpler code = keep.
 8. **When stuck, escalate.** 3 discards → REFINE. 5 → PIVOT. 3 PIVOTs → stop and report.
 9. **Never push/deploy without explicit pre-approval** during the wizard phase.
@@ -94,19 +95,26 @@ Optional:
 - `Guard` — command that must exit 0 (regression check)
 - `Iterations` — turn cap (default: unlimited)
 - `Run tag` — human-readable run identifier
+- `Acceptance criteria` — metric thresholds to report goal readiness
+- `Required keep criteria` — metric thresholds that must pass before a keep decision
 
 ## Binary CLI Reference
 
 | Command | Purpose |
 |---------|---------|
-| `autoresearch init --verify "..." --direction higher` | Measure baseline, create artifacts |
-| `autoresearch verify --command "..."` | Run verify → JSON `{metric, exit_code, duration_ms}` |
+| `autoresearch init --verify "..." --direction higher --acceptance-criteria "coverage >= 90"` | Measure baseline, create artifacts, save run config/context |
+| `autoresearch health` | Preflight git/artifact/disk/verify/context state before launch or resume |
+| `autoresearch verify --command "..."` | Run verify → JSON `{metric, metrics, exit_code, duration_ms}` |
+| `autoresearch verify --format metrics_json --key coverage --command "..."` | Parse structured metrics and select the optimization key |
 | `autoresearch guard --command "..."` | Run guard → JSON `{passed, duration_ms}` |
-| `autoresearch decide --decision keep\|discard\|crash --metric X --description "..."` | Apply decision, revert if needed, track escalation |
+| `autoresearch decide --decision auto --metric X --metrics-json '{...}' --description "..."` | Evaluate keep/discard, criteria gates, rollback, and escalation |
 | `autoresearch log --iteration N --status keep --metric X --description "..."` | Append TSV row (alternative to decide) |
 | `autoresearch status` | Show full state JSON |
 | `autoresearch progress` | Formatted progress summary |
 | `autoresearch resume` | Detect resumable prior run |
+| `autoresearch runtime start --dry-run` | Persist background launch/runtime artifacts; omit `--dry-run` to spawn detached Codex |
+| `autoresearch runtime status` | Show saved runtime state |
+| `autoresearch runtime stop` | Mark a background runtime stopped |
 | `autoresearch lessons --search "query" --last 5` | Query lessons for strategy |
 | `autoresearch evals [path]` | Analyze results: trends, plateaus |
 | `autoresearch handoff --source loop --status GOAL_MET` | Write chain handoff.json |
@@ -121,9 +129,15 @@ All under `autoresearch-results/` (never committed):
 |---|---|
 | `results.tsv` | Every iteration: metric, delta, status, description |
 | `state.json` | Machine-readable resume snapshot |
+| `context.json` | Canonical run config, repo, baseline, and artifact pointers |
 | `escalation.json` | REFINE/PIVOT counters |
 | `lessons.md` | Cross-run learning |
 | `handoff.json` | Chain handoff for downstream commands |
+| `launch.json` | Background runtime launch manifest |
+| `runtime.json` | Background runtime status |
+| `runtime.log` | Background runtime log |
+
+Additionally `.codex-autoresearch/pointer.json` points tools to the canonical context artifact and must stay uncommitted.
 
 ## Quick Start
 
