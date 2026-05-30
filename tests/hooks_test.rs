@@ -19,6 +19,15 @@ fn run_hook_in(dir: &std::path::Path, hook_name: &str, input: &str) -> assert_cm
         .assert()
 }
 
+fn run_hook_disabled(hook_name: &str, env_name: &str, input: &str) -> assert_cmd::assert::Assert {
+    Command::cargo_bin("autoresearch")
+        .unwrap()
+        .env(env_name, "1")
+        .args(["hook", hook_name])
+        .write_stdin(input)
+        .assert()
+}
+
 fn write_scope_state(dir: &std::path::Path, scope: &[&str]) {
     let results = dir.join("autoresearch-results");
     std::fs::create_dir_all(&results).unwrap();
@@ -121,6 +130,29 @@ fn test_scout_block_blocks_workspace_escape() {
         .stdout(predicate::str::contains("outside the workspace"));
 }
 
+#[test]
+fn test_hook_disable_env_allows_scout_block() {
+    let dir = tempfile::tempdir().unwrap();
+    write_scope_state(dir.path(), &["src/**"]);
+    let input = serde_json::json!({
+        "tool_name": "Write",
+        "tool_input": {
+            "path": "../outside.rs",
+            "content": "fn main() {}"
+        }
+    });
+
+    Command::cargo_bin("autoresearch")
+        .unwrap()
+        .current_dir(dir.path())
+        .env("AR_DISABLE_SCOUT_BLOCK", "1")
+        .args(["hook", "scout-block"])
+        .write_stdin(input.to_string())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\":\"block\"").not());
+}
+
 // ── Privacy Block ────────────────────────────────────────────────────
 
 #[test]
@@ -205,6 +237,24 @@ fn test_privacy_block_allows_documented_exceptions_and_approved_paths() {
             .success()
             .stdout(predicate::str::contains("\"decision\":\"block\"").not());
     }
+}
+
+#[test]
+fn test_hook_disable_env_allows_privacy_block() {
+    let input = serde_json::json!({
+        "tool_name": "Read",
+        "tool_input": {
+            "file_path": ".env"
+        }
+    });
+
+    run_hook_disabled(
+        "privacy-block",
+        "AR_DISABLE_PRIVACY_BLOCK",
+        &input.to_string(),
+    )
+    .success()
+    .stdout(predicate::str::contains("\"decision\":\"block\"").not());
 }
 
 #[test]
@@ -317,6 +367,24 @@ fn test_dangerous_cmd_ignores_non_bash_tools() {
     run_hook("dangerous-cmd-block", &input.to_string())
         .success()
         .stdout(predicate::str::contains("\"decision\":\"block\"").not());
+}
+
+#[test]
+fn test_hook_disable_env_allows_dangerous_cmd_block() {
+    let input = serde_json::json!({
+        "tool_name": "Bash",
+        "tool_input": {
+            "command": "git push --force origin main"
+        }
+    });
+
+    run_hook_disabled(
+        "dangerous-cmd-block",
+        "AR_DISABLE_DANGEROUS_CMD_BLOCK",
+        &input.to_string(),
+    )
+    .success()
+    .stdout(predicate::str::contains("\"decision\":\"block\"").not());
 }
 
 // ── Iteration Context ────────────────────────────────────────────────

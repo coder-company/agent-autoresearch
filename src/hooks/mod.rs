@@ -87,6 +87,11 @@ pub fn read_stdin() -> Option<HookInput> {
 pub fn dispatch(hook_name: &str) -> Result<()> {
     let input = read_stdin();
 
+    if hook_disabled(hook_name) {
+        HookResponse::allow().emit();
+        return Ok(());
+    }
+
     let response = match hook_name {
         "iteration-context" => iteration_context::run(input.as_ref()),
         "scout-block" => scout_block::run(input.as_ref()),
@@ -108,4 +113,12 @@ pub fn dispatch(hook_name: &str) -> Result<()> {
 
     response.emit();
     Ok(())
+}
+
+fn hook_disabled(hook_name: &str) -> bool {
+    let env_key = format!(
+        "AR_DISABLE_{}",
+        hook_name.replace('-', "_").to_ascii_uppercase()
+    );
+    std::env::var_os(env_key).is_some_and(|value| !value.is_empty())
 }
