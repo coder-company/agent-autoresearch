@@ -54,14 +54,14 @@ Hooks must complete in <5ms. No network calls, no heavy I/O.
 |------|----------|---------|
 | `session_init` | Session start | Detect interrupted runs, load state |
 | `session_end` | Session end | Write final state, cleanup |
-| `iteration_context` | Each tool call | Inject iteration number + last result |
-| `stop_check` | Each tool call | Check if iteration cap reached |
-| `scout_block` | File read | Block reads of sensitive files (`.ckignore`) |
-| `dangerous_cmd` | Shell command | Screen for `rm -rf`, `DROP TABLE`, etc. |
-| `simplify_gate` | After keep | Enforce "equal metric + less code = keep" |
+| `iteration_context` | UserPromptSubmit | Inject iteration number + last result |
+| `stop_check` | Stop | Check if iteration cap reached |
+| `scout_block` | PreToolUse: Write/Edit/MultiEdit/Bash/Glob/Grep/Read | Block generated/vendor/sensitive paths, Bash reads, and out-of-scope writes |
+| `dangerous_cmd` | PreToolUse: Bash | Screen for `rm -rf`, `DROP TABLE`, etc. |
+| `simplify_gate` | UserPromptSubmit | Enforce "equal metric + less code = keep" |
 | `compaction_reanchor` | Context compaction | Re-inject critical state after compaction |
-| `privacy_block` | File read | Block reads of credential files |
-| `dev_rules_reminder` | Periodic | Remind agent of project conventions |
+| `privacy_block` | PreToolUse: Write/Edit/MultiEdit/Bash/Glob/Grep/Read | Block credential paths and secret-looking inputs; warn on sensitive Bash paths |
+| `dev_rules_reminder` | UserPromptSubmit | Remind agent of project conventions |
 | `subagent_context` | Subagent spawn | Inject autoresearch state into subagent prompt |
 
 ### `src/escalation/` — Failure recovery

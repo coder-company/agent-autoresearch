@@ -138,6 +138,7 @@ require_grep '\-\-codex-plugin' install.sh
 require_grep 'dangerously-bypass-approvals-and-sandbox' guide/autoresearch-codex.md
 require_grep 'danger_full_access' guide/autoresearch-codex.md
 require_grep 'plugins/autoresearch' docs/codebase-summary.md
+require_grep 'out-of-scope writes' docs/architecture.md
 require_grep 'plugins/autoresearch/skills/autoresearch' CONTRIBUTING.md
 require_grep 'Codex plugin package' docs/system-architecture.md
 require_grep 'Codex plugin package \+ local marketplace entry' docs/development-roadmap.md

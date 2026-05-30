@@ -37,7 +37,7 @@
 
 | File | Hook | Fires On |
 |------|------|----------|
-| `scout_block.rs` | scout-block | PreToolUse (Write/Edit/Bash/Read) — blocks out-of-scope access during active run |
+| `scout_block.rs` | scout-block | PreToolUse (Write/Edit/MultiEdit/Bash/Glob/Grep/Read) — blocks generated paths, Bash reads, and out-of-scope writes |
 | `privacy_block.rs` | privacy-block | PreToolUse — blocks access to sensitive paths |
 | `dangerous_cmd.rs` | dangerous-cmd-block | PreToolUse (Bash) — blocks rm -rf, fork bombs, etc. |
 | `iteration_context.rs` | iteration-context | UserPromptSubmit — injects run state into agent context |
