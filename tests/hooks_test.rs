@@ -43,6 +43,42 @@ fn write_scope_state(dir: &std::path::Path, scope: &[&str]) {
     std::fs::write(results.join("state.json"), state.to_string()).unwrap();
 }
 
+fn init_git_repo(dir: &std::path::Path) {
+    std::process::Command::new("git")
+        .args(["init"])
+        .current_dir(dir)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["config", "user.email", "test@test.com"])
+        .current_dir(dir)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["config", "user.name", "Test"])
+        .current_dir(dir)
+        .output()
+        .unwrap();
+    std::fs::write(dir.join("README.md"), "initial\n").unwrap();
+    std::process::Command::new("git")
+        .args(["add", "."])
+        .current_dir(dir)
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["commit", "-m", "initial"])
+        .current_dir(dir)
+        .output()
+        .unwrap();
+}
+
+fn write_changed_lines(dir: &std::path::Path, count: usize) {
+    let content = (0..count)
+        .map(|index| format!("line {index}\n"))
+        .collect::<String>();
+    std::fs::write(dir.join("README.md"), content).unwrap();
+}
+
 // ── Scout Block ──────────────────────────────────────────────────────
 
 #[test]
@@ -469,4 +505,51 @@ fn test_iteration_context_injects_state() {
 #[test]
 fn test_iteration_context_handles_empty_input() {
     run_hook("iteration-context", "{}").success();
+}
+
+// ── Simplify Gate ────────────────────────────────────────────────────
+
+#[test]
+fn test_simplify_gate_blocks_large_shipping_diff() {
+    let dir = tempfile::tempdir().unwrap();
+    init_git_repo(dir.path());
+    write_changed_lines(dir.path(), 900);
+    let input = serde_json::json!({
+        "prompt": "ship this"
+    });
+
+    run_hook_in(dir.path(), "simplify-gate", &input.to_string())
+        .success()
+        .stdout(predicate::str::contains("\"decision\":\"block\""))
+        .stdout(predicate::str::contains("shipping threshold"));
+}
+
+#[test]
+fn test_simplify_gate_warns_medium_shipping_diff() {
+    let dir = tempfile::tempdir().unwrap();
+    init_git_repo(dir.path());
+    write_changed_lines(dir.path(), 450);
+    let input = serde_json::json!({
+        "prompt": "merge this"
+    });
+
+    run_hook_in(dir.path(), "simplify-gate", &input.to_string())
+        .success()
+        .stdout(predicate::str::contains("\"additionalContext\""))
+        .stdout(predicate::str::contains("\"decision\":\"block\"").not());
+}
+
+#[test]
+fn test_simplify_gate_allows_negated_shipping_prompt() {
+    let dir = tempfile::tempdir().unwrap();
+    init_git_repo(dir.path());
+    write_changed_lines(dir.path(), 900);
+    let input = serde_json::json!({
+        "prompt": "don't ship yet"
+    });
+
+    run_hook_in(dir.path(), "simplify-gate", &input.to_string())
+        .success()
+        .stdout(predicate::str::contains("\"decision\":\"block\"").not())
+        .stdout(predicate::str::contains("\"additionalContext\"").not());
 }
