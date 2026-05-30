@@ -91,6 +91,9 @@ enum Commands {
         /// Stop condition description
         #[arg(long)]
         stop_condition: Option<String>,
+        /// Environment profile summary to persist in results.tsv metadata
+        #[arg(long)]
+        environment_summary: Option<String>,
         /// Run mode: foreground or background
         #[arg(long)]
         run_mode: Option<String>,
@@ -489,6 +492,7 @@ fn main() -> Result<()> {
             iterations,
             run_tag,
             stop_condition,
+            environment_summary,
             run_mode,
             workspace_root,
             primary_repo,
@@ -511,6 +515,7 @@ fn main() -> Result<()> {
             iterations,
             run_tag,
             stop_condition,
+            environment_summary,
             run_mode,
             workspace_root,
             primary_repo,
@@ -644,6 +649,7 @@ fn cmd_init(
     iterations: Option<u32>,
     run_tag: Option<String>,
     stop_condition: Option<String>,
+    environment_summary: Option<String>,
     run_mode: Option<String>,
     workspace_root: Option<PathBuf>,
     primary_repo: Option<PathBuf>,
@@ -745,7 +751,12 @@ fn cmd_init(
     let results_dir = ensure_results_dir_protected(&workspace)?;
 
     // Write TSV with header + baseline row
-    let log = ResultsLog::create(&results_dir, direction)?;
+    let log = match environment_summary.as_deref() {
+        Some(summary) if !summary.trim().is_empty() => {
+            ResultsLog::create_with_metadata(&results_dir, direction, &[("environment", summary)])?
+        }
+        _ => ResultsLog::create(&results_dir, direction)?,
+    };
     let baseline_row = ResultRow {
         iteration: 0,
         commit: Some(head.clone()),

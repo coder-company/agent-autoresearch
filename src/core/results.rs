@@ -17,6 +17,16 @@ pub fn tsv_header(direction: Direction) -> String {
     )
 }
 
+/// TSV header with additional comment metadata before the metric direction.
+pub fn tsv_header_with_metadata(direction: Direction, metadata: &[(&str, &str)]) -> String {
+    let mut header = String::new();
+    for (key, value) in metadata {
+        let _ = writeln!(header, "# {}: {}", key.trim(), sanitize_tsv_field(value));
+    }
+    header.push_str(&tsv_header(direction));
+    header
+}
+
 /// A single row in the results TSV.
 #[derive(Debug, Clone)]
 pub struct ResultRow {
@@ -93,9 +103,18 @@ pub struct ResultsLog {
 impl ResultsLog {
     /// Create a new results log at the given path with the TSV header.
     pub fn create(dir: &Path, direction: Direction) -> Result<Self> {
+        Self::create_with_metadata(dir, direction, &[])
+    }
+
+    /// Create a new results log at the given path with extra header comments.
+    pub fn create_with_metadata(
+        dir: &Path,
+        direction: Direction,
+        metadata: &[(&str, &str)],
+    ) -> Result<Self> {
         fs::create_dir_all(dir).context("Failed to create results directory")?;
         let path = dir.join("results.tsv");
-        let header = tsv_header(direction);
+        let header = tsv_header_with_metadata(direction, metadata);
         fs::write(&path, format!("{header}\n")).context("Failed to write results header")?;
         Ok(Self { path })
     }

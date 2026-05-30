@@ -122,6 +122,12 @@ Include environment summary in the first line of the results log comments:
 # metric_direction: lower
 ```
 
+Pass the same summary to the native initializer:
+
+```bash
+autoresearch init --environment-summary "cpu=8 ram=16384MB gpu=A100(40GB) python=3.11 container=docker" ...
+```
+
 ## Refresh Policy
 
 - Full probe: once per run start.

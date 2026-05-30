@@ -20,6 +20,7 @@ Extract from $ARGUMENTS:
 - `Acceptance criteria:` — optional metric thresholds for stopping
 - `Required keep criteria:` — optional metric thresholds that every keep must satisfy
 - `Companion repo:` or `--companion-repo-scope PATH=SCOPE` — optional clean companion repos for multi-repo runs
+- `Environment summary:` or `--environment-summary TEXT` — optional resource/tool profile written to results TSV metadata
 - `Iterations:` or `--iterations` — integer N for bounded mode (default: 25). "unlimited" for unbounded.
 - `--evals` — enable mid-loop checkpoints
 - `--evals-interval N` — checkpoint frequency override
@@ -49,7 +50,7 @@ Before first dry-run, screen Verify command for: rm -rf, fork bombs, pipe-to-she
 
 ## Establish Baseline (Iteration 0)
 
-1. Run `autoresearch init --verify "{verify command}" --direction {higher|lower}` with any verify format, primary metric key, acceptance criteria, and required keep criteria flags.
+1. Run `autoresearch init --verify "{verify command}" --direction {higher|lower}` with any verify format, primary metric key, acceptance criteria, required keep criteria, and optional environment summary flags.
 2. Let the binary create `autoresearch-results/`, `results.tsv`, `state.json`, `context.json`, and `.codex-autoresearch/pointer.json`.
 3. Use the returned baseline metric and state JSON for `/goal`.
 
