@@ -163,6 +163,8 @@ When using the native binary in exec mode:
 
 - `autoresearch exec --iterations N` reads `RunConfig` JSON from stdin.
 - It initializes workspace-owned `autoresearch-results/results.tsv`, `state.json`, `context.json`, and the repo-local pointer.
+- It archives prior `results.tsv`, `state.json`, and `context.json` to `.prev` files before writing the fresh run.
+- It leaves `lessons.md` read-only: an existing lessons file may be read for context, but exec does not create or mutate it.
 - It emits JSON lines only; no prose.
 - Parallel closeout is not supported in exec mode.
 

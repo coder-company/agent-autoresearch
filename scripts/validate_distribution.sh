@@ -107,6 +107,9 @@ require_grep 'companion-repo-scope' references/results-logging.md
 require_grep 'companion-repo-scope' SKILL.md
 require_grep 'companion-repo-scope' skills/autoresearch/SKILL.md
 require_grep 'companion-repo-scope' .agents/skills/autoresearch/SKILL.md
+require_grep 'results\.tsv.*\.prev' references/exec-workflow.md
+require_grep 'lessons\.md.*read-only' references/exec-workflow.md
+require_grep 'multi-repo-smoke' scripts/run_skill_e2e.sh
 
 check_synced_reference_package "$ROOT/.agents/skills/autoresearch"
 check_synced_reference_package "$ROOT/.opencode/skills/autoresearch"
