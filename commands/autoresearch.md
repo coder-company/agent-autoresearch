@@ -140,13 +140,29 @@ Print: total iterations, kept/discarded/crash counts, starting metric → final 
 After completion, write handoff.json to output directory:
 ```json
 {
-  "version": "0.1.0",
+  "version": "2.1.0",
+  "protocol_version": "2.1.0",
+  "binary_version": "<binary semver>",
   "source": "loop",
+  "source_command": "loop",
   "timestamp": "<ISO>",
   "status": "COMPLETE|GOAL_MET|BOUNDED|BLOCKED|ERROR",
   "results_tsv": "autoresearch-results/results.tsv",
+  "workspace_root": "<absolute workspace path>",
+  "artifact_root": "<absolute autoresearch-results path>",
+  "results_path": "<absolute results.tsv path>",
+  "handoff_path": "<absolute handoff.json path>",
+  "goal": "...",
+  "scope": [...],
+  "hypothesis_queue": [],
+  "summary": {},
   "findings": [],
-  "config": {"goal": "...", "scope": [...], "metric": "...", "direction": "...", "verify": "..."}
+  "config": {"goal": "...", "scope": [...], "metric": "...", "direction": "...", "verify": "..."},
+  "chain": ["debug"],
+  "next_target": "debug",
+  "chain_continue": true,
+  "propagate_evals": true,
+  "evals_interval": 5
 }
 ```
 Invoke next target in --chain order. Propagate --evals flag.
