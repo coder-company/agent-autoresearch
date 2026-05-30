@@ -1,7 +1,23 @@
 {
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "autoresearch",
-  "slug": "coder-company/agent-autoresearch",
-  "tagline": "Autonomous goal-directed iteration: modify → verify → keep/discard → repeat",
-  "categories": ["development", "testing", "security", "automation"],
-  "install_command": "git clone https://github.com/coder-company/agent-autoresearch.git && cd agent-autoresearch && ./install.sh --yes --claude"
+  "version": "0.1.0",
+  "description": "Autoresearch - autonomous goal-directed iteration for Claude Code. 13 commands, Rust hooks, structured metrics, background runtime, and parallel workers.",
+  "owner": {
+    "name": "Coder Company",
+    "url": "https://github.com/coder-company"
+  },
+  "plugins": [
+    {
+      "name": "autoresearch",
+      "description": "Autonomous improvement engine: modify, verify, keep/discard, and repeat against any mechanical metric.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Coder Company",
+        "url": "https://github.com/coder-company"
+      },
+      "source": ".",
+      "category": "productivity"
+    }
+  ]
 }

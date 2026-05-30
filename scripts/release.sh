@@ -31,7 +31,7 @@ update_json_version() {
     local version="$2"
 
     if [[ -f "$path" ]]; then
-        sed -i "0,/\"version\": \".*\"/s//\"version\": \"$version\"/" "$path"
+        sed -i "s/\"version\": \".*\"/\"version\": \"$version\"/g" "$path"
     fi
 }
 
@@ -56,6 +56,7 @@ sed -i "s/^version = \".*\"/version = \"$VERSION\"/" "$ROOT/Cargo.toml"
 # ── 3. Bump agent package manifests ─────────────────────────────────
 echo "[2/8] Bumping agent package manifests..."
 update_json_version "$ROOT/.claude-plugin/plugin.json" "$VERSION"
+update_json_version "$ROOT/.claude-plugin/marketplace.json" "$VERSION"
 update_json_version "$ROOT/plugins/autoresearch/.codex-plugin/plugin.json" "$VERSION-codex.0"
 update_skill_version "$ROOT/skills/autoresearch/SKILL.md"
 update_skill_version "$ROOT/.agents/skills/autoresearch/SKILL.md"
@@ -103,6 +104,7 @@ git -C "$ROOT" add \
     Cargo.lock \
     docs/changelog.md \
     .claude-plugin/plugin.json \
+    .claude-plugin/marketplace.json \
     skills/autoresearch/SKILL.md \
     .opencode/skills/autoresearch/SKILL.md \
     .agents/skills/autoresearch/SKILL.md \

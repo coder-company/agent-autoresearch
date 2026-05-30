@@ -55,6 +55,8 @@ required_paths=(
     SKILL.md
     agents/openai.yaml
     agents/skill-openai.yaml
+    .claude-plugin/marketplace.json
+    .claude-plugin/plugin.json
     .agents/plugins/marketplace.json
     .agents/skills/autoresearch/agents/openai.yaml
     commands/autoresearch.md
@@ -89,6 +91,8 @@ require_grep '^\s*display_name: "Autoresearch"' agents/openai.yaml
 require_grep '^\s*allow_implicit_invocation:\s*false\s*$' agents/openai.yaml
 require_grep '\$autoresearch' agents/openai.yaml
 require_grep 'exec' agents/openai.yaml
+require_grep '"\$schema": "https://anthropic.com/claude-code/marketplace.schema.json"' .claude-plugin/marketplace.json
+require_grep '"source": "\."' .claude-plugin/marketplace.json
 require_grep '"path": "\./plugins/autoresearch"' .agents/plugins/marketplace.json
 require_grep '"installation": "AVAILABLE"' .agents/plugins/marketplace.json
 cmp -s "$ROOT/agents/skill-openai.yaml" "$ROOT/.agents/skills/autoresearch/agents/openai.yaml" \

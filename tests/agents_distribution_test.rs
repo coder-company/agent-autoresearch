@@ -167,3 +167,30 @@ fn codex_marketplace_points_to_plugin_package() {
         .join("plugins/autoresearch/.codex-plugin/plugin.json")
         .is_file());
 }
+
+#[test]
+fn claude_marketplace_points_to_repo_plugin_package() {
+    let root = repo_root();
+    let plugin_manifest_path = root.join(".claude-plugin/plugin.json");
+    let marketplace_path = root.join(".claude-plugin/marketplace.json");
+    let plugin_manifest: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&plugin_manifest_path).unwrap()).unwrap();
+    let marketplace: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&marketplace_path).unwrap()).unwrap();
+    let plugins = marketplace["plugins"].as_array().unwrap();
+    let autoresearch = plugins
+        .iter()
+        .find(|plugin| plugin["name"] == "autoresearch")
+        .expect("Claude marketplace should list autoresearch plugin");
+
+    assert_eq!(
+        marketplace["$schema"],
+        "https://anthropic.com/claude-code/marketplace.schema.json"
+    );
+    assert_eq!(marketplace["version"], plugin_manifest["version"]);
+    assert_eq!(autoresearch["version"], plugin_manifest["version"]);
+    assert_eq!(autoresearch["source"], ".");
+    assert!(root.join("commands/autoresearch.md").is_file());
+    assert!(root.join("hooks/hooks.json").is_file());
+    assert!(plugin_manifest_path.is_file());
+}

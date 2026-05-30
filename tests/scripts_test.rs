@@ -95,6 +95,7 @@ fn release_script_updates_agent_package_versions() {
 
     assert!(script.contains("update_json_version"));
     assert!(script.contains(".claude-plugin/plugin.json"));
+    assert!(script.contains(".claude-plugin/marketplace.json"));
     assert!(script.contains("plugins/autoresearch/.codex-plugin/plugin.json"));
     assert!(script.contains("$VERSION-codex.0"));
     assert!(script.contains("skills/autoresearch/SKILL.md"));
