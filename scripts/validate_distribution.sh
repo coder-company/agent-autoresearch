@@ -181,6 +181,7 @@ require_grep 'Companion repo registration through `--companion-repo-scope PATH=S
 require_grep 'Claude marketplace/plugin' COMPARISON.md
 require_grep '13-command surface' COMPARISON.md
 require_grep 'Structured metrics' COMPARISON.md
+require_grep 'Claude, Codex, and OpenCode packages' COMPARISON.md
 require_grep '\.agents/skills/autoresearch/' AGENTS.md
 require_grep '\.opencode/' AGENTS.md
 require_grep '\.agents/skills/autoresearch/' docs/changelog.md

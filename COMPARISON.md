@@ -69,5 +69,5 @@ Karpathy's autoresearch
      │
      ├── codex-autoresearch (background mode, parallel experiments)
      │
-     └── coder-company/agent-autoresearch (compiled binary, all agents, Claude and Codex plugin packages)
+     └── coder-company/agent-autoresearch (compiled binary, all agents, Claude, Codex, and OpenCode packages)
 ```
