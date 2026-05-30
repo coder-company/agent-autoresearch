@@ -170,6 +170,10 @@ require_grep 'environment-summary' references/environment-awareness.md
 require_grep 'environment-summary' commands/autoresearch.md
 require_grep 'codex plugin marketplace add \.agents/plugins/marketplace\.json' docs/INSTALL.md
 require_grep 'codex plugin marketplace add \.agents/plugins/marketplace\.json' guide/autoresearch-codex.md
+require_grep '\.claude/commands' README.md
+require_grep '\.claude/skills/autoresearch' README.md
+require_grep '\.claude/commands' docs/INSTALL.md
+require_grep '\.claude/skills/autoresearch' docs/INSTALL.md
 require_grep '\-\-codex-plugin' docs/INSTALL.md
 require_grep '\-\-codex-plugin' install.sh
 require_grep '\-\-local' docs/INSTALL.md

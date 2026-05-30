@@ -20,6 +20,20 @@ claude plugin add coder-company/agent-autoresearch
 
 Restart Claude Code after installing the plugin.
 
+Manual local Claude package:
+
+```bash
+git clone https://github.com/coder-company/agent-autoresearch.git
+cd agent-autoresearch
+
+# From the project where you want local commands/skills:
+mkdir -p /path/to/project/.claude
+cp -R .claude/commands /path/to/project/.claude/commands
+cp -R .claude/skills/autoresearch /path/to/project/.claude/skills/autoresearch
+```
+
+The `.claude/` package is generated from the same canonical command and reference files as the plugin package.
+
 ## Codex
 
 ```text

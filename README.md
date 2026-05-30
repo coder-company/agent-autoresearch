@@ -46,6 +46,7 @@ cd agent-autoresearch
 ```
 
 That builds the Rust binary, installs it on your `PATH`, and installs the Claude plugin hooks. If you already have the `autoresearch` binary installed, `claude plugin add coder-company/agent-autoresearch` also works.
+For local/manual Claude installs, copy the generated `.claude/commands` and `.claude/skills/autoresearch` package from this repo into your target project.
 
 Open your project and go:
 
