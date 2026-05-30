@@ -41,9 +41,12 @@
 
 ## v0.4.0 — Multi-Repo + Workspace Support
 
-- [ ] Multi-repo iteration (modify repo A, verify in repo B)
-- [ ] Workspace-aware scope (monorepo package boundaries)
-- [ ] Cross-repo guard commands
+- [x] Workspace-owned artifacts (`autoresearch-results/`) and repo-local pointers for managed repos
+- [x] Companion repo registration through `--companion-repo-scope PATH=SCOPE`
+- [x] Companion repo preflight, health, and runtime dirty-worktree safeguards
+- [ ] Cross-repo change execution and rollback across companion repos
+- [ ] Workspace-aware scope expansion (monorepo package boundaries)
+- [ ] Cross-repo guard command presets
 - [ ] Shared lessons across repos in a workspace
 
 ## v1.0.0 — Stable API + Ecosystem
