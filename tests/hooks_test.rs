@@ -507,6 +507,48 @@ fn test_iteration_context_handles_empty_input() {
     run_hook("iteration-context", "{}").success();
 }
 
+// ── Session Init ─────────────────────────────────────────────────────
+
+#[test]
+fn test_session_init_injects_project_context() {
+    let dir = tempfile::tempdir().unwrap();
+    init_git_repo(dir.path());
+
+    run_hook_in(dir.path(), "session-init", "{}")
+        .success()
+        .stdout(predicate::str::contains("\"additionalContext\""))
+        .stdout(predicate::str::contains("Session initialized"))
+        .stdout(predicate::str::contains(dir.path().to_str().unwrap()));
+}
+
+#[test]
+fn test_session_init_includes_resumable_run_context() {
+    let dir = tempfile::tempdir().unwrap();
+    init_git_repo(dir.path());
+    let results = dir.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    let state = serde_json::json!({
+        "iteration": 3,
+        "current_metric": "42",
+        "phase": {
+            "phase": "iterating",
+            "iteration": 3,
+            "current_metric": "42",
+            "best_metric": "42",
+            "best_iteration": 3
+        }
+    });
+    std::fs::write(results.join("state.json"), state.to_string()).unwrap();
+
+    run_hook_in(dir.path(), "session-init", "{}")
+        .success()
+        .stdout(predicate::str::contains("Session initialized"))
+        .stdout(predicate::str::contains(
+            "Resumable autoresearch run detected",
+        ))
+        .stdout(predicate::str::contains("iteration 3"));
+}
+
 // ── Simplify Gate ────────────────────────────────────────────────────
 
 #[test]
