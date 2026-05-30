@@ -93,16 +93,40 @@ echo "[7/8] Adding changelog entry..."
 CHANGELOG="$ROOT/docs/changelog.md"
 if [ -f "$CHANGELOG" ]; then
     DATE=$(date +%Y-%m-%d)
-    # Insert new version header after the top-level header block
-    sed -i "/^## \[/i \\
-## [$VERSION] — $DATE\\
-\\
-### Changed\\
-\\
-- TODO: Fill in changes for this release\\
-" "$CHANGELOG"
-    echo "  Added placeholder entry for v$VERSION in docs/changelog.md"
-    echo "  ⚠  Edit docs/changelog.md to fill in the actual changes before pushing."
+
+    LATEST_TAG=$(git -C "$ROOT" describe --tags --abbrev=0 2>/dev/null || true)
+    if [[ -n "$LATEST_TAG" ]]; then
+        mapfile -t CHANGE_LINES < <(git -C "$ROOT" log --format='- %s' "${LATEST_TAG}..HEAD")
+    else
+        mapfile -t CHANGE_LINES < <(git -C "$ROOT" log --format='- %s' --max-count=20)
+    fi
+    if [[ ${#CHANGE_LINES[@]} -eq 0 ]]; then
+        CHANGE_LINES=("- Release v$VERSION")
+    fi
+
+    TMP_CHANGELOG=$(mktemp)
+    INSERTED=0
+    while IFS= read -r line; do
+        if [[ "$INSERTED" -eq 0 && "$line" == "## ["* ]]; then
+            {
+                printf '## [%s] — %s\n\n' "$VERSION" "$DATE"
+                printf '### Changed\n\n'
+                printf '%s\n' "${CHANGE_LINES[@]}"
+                printf '\n'
+            } >> "$TMP_CHANGELOG"
+            INSERTED=1
+        fi
+        printf '%s\n' "$line" >> "$TMP_CHANGELOG"
+    done < "$CHANGELOG"
+    if [[ "$INSERTED" -eq 0 ]]; then
+        {
+            printf '\n## [%s] — %s\n\n' "$VERSION" "$DATE"
+            printf '### Changed\n\n'
+            printf '%s\n' "${CHANGE_LINES[@]}"
+        } >> "$TMP_CHANGELOG"
+    fi
+    mv "$TMP_CHANGELOG" "$CHANGELOG"
+    echo "  Added changelog entry for v$VERSION from recent commit subjects."
 fi
 
 # ── 9. Commit and tag ──────────────────────────────────────────────
@@ -125,7 +149,7 @@ echo ""
 echo "=== Release v$VERSION prepared ==="
 echo ""
 echo "Next steps:"
-echo "  1. Review docs/changelog.md and fill in changes"
+echo "  1. Review generated docs/changelog.md notes"
 echo "  2. Amend the commit if needed: git commit --amend"
 echo "  3. Push: git push origin main --tags"
 echo "  4. Create GitHub release: gh release create v$VERSION --generate-notes"

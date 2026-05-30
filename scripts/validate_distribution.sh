@@ -168,12 +168,16 @@ require_grep '\.opencode/' AGENTS.md
 require_grep '\.agents/skills/autoresearch/' docs/changelog.md
 require_grep 'MAX_RELEASE_BINARY_BYTES=\$\(\(5 \* 1024 \* 1024\)\)' scripts/run_contributor_gate.sh
 require_grep 'MAX_RELEASE_BINARY_BYTES=\$\(\(5 \* 1024 \* 1024\)\)' scripts/release.sh
+require_grep 'git -C "\$ROOT" log --format=' scripts/release.sh
 require_grep 'workflow_dispatch:' .github/workflows/ci.yml
 require_grep 'timeout-minutes: 25' .github/workflows/ci.yml
 require_grep 'actions/cache@v4' .github/workflows/ci.yml
 require_grep 'bash -n "\$script"' .github/workflows/ci.yml
 if grep -R -E '2[,.]5 ?M(B|o|Б)' "$ROOT/AGENTS.md" "$ROOT/CONTRIBUTING.md" "$ROOT/docs" "$ROOT/scripts/release.md" >/dev/null; then
     fail "docs still advertise the old 2.5MB binary size"
+fi
+if grep -q 'TODO: Fill in changes for this release' "$ROOT/scripts/release.sh"; then
+    fail "release script still writes placeholder changelog entries"
 fi
 
 check_synced_reference_package "$ROOT/.agents/skills/autoresearch"

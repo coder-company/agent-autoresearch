@@ -1,6 +1,6 @@
 # Release Checklist
 
-Manual steps for cutting a release. For automation, use `./scripts/release.sh <version>`.
+Manual steps for cutting a release. For automation, use `./scripts/release.sh <version>`; it generates a changelog entry from recent commit subjects before creating the release commit and tag.
 
 ## Pre-release
 
@@ -14,7 +14,7 @@ Manual steps for cutting a release. For automation, use `./scripts/release.sh <v
 ## Version Bump
 
 - [ ] Update `version` in `Cargo.toml`
-- [ ] Update `docs/changelog.md` with actual changes
+- [ ] Review generated `docs/changelog.md` release notes, or update it manually before tagging
 - [ ] Update `.claude-plugin/plugin.json`
 - [ ] Update `.claude-plugin/marketplace.json`
 - [ ] Update `plugins/autoresearch/.codex-plugin/plugin.json` (`<VERSION>-codex.0`)

@@ -124,6 +124,17 @@ fn release_script_enforces_release_binary_size() {
 }
 
 #[test]
+fn release_script_generates_non_placeholder_changelog_notes() {
+    let root = repo_root();
+    let script = std::fs::read_to_string(root.join("scripts/release.sh")).unwrap();
+
+    assert!(script.contains("git -C \"$ROOT\" log --format='- %s'"));
+    assert!(script.contains("CHANGE_LINES"));
+    assert!(script.contains("Added changelog entry for v$VERSION from recent commit subjects."));
+    assert!(!script.contains("TODO: Fill in changes for this release"));
+}
+
+#[test]
 fn contributor_gate_enforces_release_binary_size() {
     let root = repo_root();
     let script = std::fs::read_to_string(root.join("scripts/run_contributor_gate.sh")).unwrap();
