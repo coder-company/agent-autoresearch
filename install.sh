@@ -125,6 +125,27 @@ component_enabled() {
     esac
 }
 
+ensure_safe_codex_skill_dir() {
+    local dir="${1%/}"
+
+    if [[ -z "$dir" ]]; then
+        err "Refusing empty Codex skill path."
+        return 1
+    fi
+
+    case "$dir" in
+        "/"|"$HOME"|"$HOME/.codex"|"$HOME/.codex/skills")
+            err "Refusing unsafe Codex skill path: $dir"
+            return 1
+            ;;
+    esac
+
+    if [[ "${dir##*/}" != "autoresearch" ]]; then
+        err "Refusing Codex skill path that does not end in autoresearch: $dir"
+        return 1
+    fi
+}
+
 # ── OS Detection ──────────────────────────────────────────────────────
 
 detect_os() {
@@ -355,6 +376,7 @@ install_codex_skill() {
                 skill_dir="${skill_dir:-$target_dir}"
             fi
 
+            ensure_safe_codex_skill_dir "$skill_dir"
             rm -rf "$skill_dir"
             mkdir -p "$skill_dir"
 
