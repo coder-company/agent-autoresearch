@@ -696,6 +696,7 @@ fn cmd_verify(
     let workspace = resolve_cwd(cwd);
     let fmt = parse_format(format_str);
 
+    verify::screen_command(command)?;
     let result = verify::run_verify(command, fmt, key, &workspace)?;
 
     let out = serde_json::json!({

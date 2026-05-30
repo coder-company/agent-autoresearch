@@ -158,6 +158,25 @@ fn test_verify_fails_on_nonzero_exit_even_with_metric() {
         ));
 }
 
+#[test]
+fn test_verify_screens_dangerous_commands() {
+    let dir = TempDir::new().unwrap();
+
+    cmd()
+        .args([
+            "verify",
+            "--command",
+            "echo 'DROP TABLE users'",
+            "--format",
+            "scalar",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("dangerous pattern"));
+}
+
 // ── Evals Command ────────────────────────────────────────────────────
 
 #[test]
