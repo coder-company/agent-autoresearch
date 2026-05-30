@@ -1576,7 +1576,7 @@ fn default_completed_status() -> String {
 fn cmd_parallel(command: ParallelCommands) -> Result<()> {
     match command {
         ParallelCommands::Closeout { batch_file, cwd } => {
-            let workspace = resolve_cwd(cwd);
+            let workspace = resolve_results_workspace(cwd);
             let out = cmd_parallel_closeout(&workspace, &batch_file)?;
             println!("{}", serde_json::to_string_pretty(&out)?);
         }

@@ -2386,6 +2386,9 @@ fn test_parallel_closeout_selects_best_worker() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
     let root = dir.path().to_str().unwrap();
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+    let subdir = subdir.to_str().unwrap();
     write_metric_and_commit(&dir, "41\n");
 
     cmd()
@@ -2419,7 +2422,7 @@ fn test_parallel_closeout_selects_best_worker() {
             "--batch-file",
             batch_path.to_str().unwrap(),
             "--cwd",
-            root,
+            subdir,
         ])
         .assert()
         .success()
@@ -2435,6 +2438,7 @@ fn test_parallel_closeout_selects_best_worker() {
     assert!(results.contains(
         "1\tabc1234\t38\t-3\tpass\tkeep\t[PARALLEL batch] selected worker-a: narrowed auth types"
     ));
+    assert!(!dir.path().join("src/autoresearch-results").exists());
 
     let state =
         std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap();
