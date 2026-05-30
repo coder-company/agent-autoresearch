@@ -91,10 +91,12 @@ I want to get rid of all the `any` types in my TypeScript code
 | `Goal` | Yes | What to achieve (plain language) |
 | `Scope` | Yes | Glob patterns for modifiable files |
 | `Metric` | Yes | What number to optimize |
-| `Verify` | Yes | Command that outputs metric on last line |
+| `Verify` | Yes | Command that outputs a scalar metric or final-line JSON metrics |
 | `Guard` | No | Safety command that must exit 0 |
 | `Iterations` | No | Turn cap (default: 500) |
 | `Direction` | No | `higher` or `lower` |
+| `Acceptance criteria` | No | Metric thresholds for stopping |
+| `Required keep criteria` | No | Metric thresholds every keep must satisfy |
 
 ---
 
@@ -106,7 +108,7 @@ I want to get rid of all the `any` types in my TypeScript code
 4. **Automatic rollback** — `git revert HEAD --no-edit` on failure.
 5. **Simplicity wins** — equal metric + less code = KEEP.
 6. **Git is memory** — experiments committed, failures reverted, TSV logs all.
-7. **Never stage artifacts** — `autoresearch-results/` stays uncommitted.
+7. **Never stage artifacts** — `autoresearch-results/` and `.codex-autoresearch/` stay uncommitted.
 8. **When stuck, escalate** — REFINE → PIVOT → Web Search → Stop.
 
 ---
