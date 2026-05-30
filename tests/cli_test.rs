@@ -298,6 +298,13 @@ fn test_init_persists_runtime_config() {
     assert!(state.contains("\"stop_condition\": \"coverage >= 90\""));
     assert!(state.contains("\"run_mode\": \"foreground\""));
     assert!(state.contains("\"rollback_strategy\": \"hard_reset\""));
+
+    cmd()
+        .args(["status", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"config\""))
+        .stdout(predicate::str::contains("\"run_tag\": \"nightly\""));
 }
 
 #[test]

@@ -1055,6 +1055,7 @@ fn cmd_status(cwd: Option<PathBuf>) -> Result<()> {
         "consecutive_discards": state.consecutive_discards,
         "last_status": state.last_status.as_str(),
         "phase": state.phase,
+        "config": state.config,
         "escalation": escalation,
         "recent_rows": tail,
     });
