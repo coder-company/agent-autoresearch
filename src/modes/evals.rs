@@ -89,8 +89,12 @@ pub fn parse_results_tsv(content: &str) -> Result<Vec<ParsedRow>> {
         }
 
         let parts: Vec<&str> = line.split('\t').collect();
-        if parts.len() < 7 {
-            continue;
+        if parts.len() != 7 {
+            bail!(
+                "Invalid column count at iteration {}: got {}, expected 7",
+                parts.first().copied().unwrap_or("<missing>"),
+                parts.len()
+            );
         }
 
         let Ok(iteration) = parts[0].parse::<u32>() else {
@@ -313,6 +317,16 @@ mod tests {
         assert_eq!(rows[0].iteration, 0);
         assert_eq!(rows[1].iteration, 1);
         assert_eq!(rows[1].description, "batch");
+    }
+
+    #[test]
+    fn test_parse_results_tsv_rejects_wrong_column_count() {
+        let tsv = "# metric_direction: higher\niteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n\
+                   1\tabc1234\t85\t+2\tpass\tkeep\n";
+
+        let err = parse_results_tsv(tsv).unwrap_err().to_string();
+
+        assert!(err.contains("Invalid column count at iteration 1"));
     }
 
     #[test]
