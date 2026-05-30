@@ -11,7 +11,7 @@ Autonomous goal-directed iteration. Modify → Verify → Keep/Discard → Repea
 
 ## When Activated
 
-1. Classify the request as `loop`, `plan`, `debug`, `fix`, `security`, `ship`, or `exec`.
+1. Classify the request as `loop`, `plan`, `debug`, `fix`, `security`, `ship`, `scenario`, `predict`, `learn`, `reason`, `probe`, `improve`, `evals`, or `exec`.
 2. Load `references/core-principles.md` and `references/runtime-protocol.md`.
 3. Load `references/interaction-wizard.md` for every new interactive launch.
 4. Load `references/session-resume.md` if prior artifacts are detected.
@@ -39,6 +39,13 @@ Autonomous goal-directed iteration. Modify → Verify → Keep/Discard → Repea
 | `fix` | Reduce errors to zero, one at a time |
 | `security` | STRIDE + OWASP structured audit |
 | `ship` | Gate and execute ship workflow |
+| `scenario` | Explore edge cases across 12 dimensions |
+| `predict` | Debate a decision with expert personas |
+| `learn` | Generate or refresh documentation |
+| `reason` | Refine subjective decisions with blind judging |
+| `probe` | Interrogate requirements until constraints saturate |
+| `improve` | Research ICP needs and generate product improvement PRDs |
+| `evals` | Analyze iteration results and plateaus |
 | `exec` | Non-interactive CI/CD mode, JSON output |
 
 ## Goal Integration

@@ -61,6 +61,7 @@ cd agent-autoresearch
 | `autoresearch:learn` | Auto-generate documentation |
 | `autoresearch:reason` | Adversarial refinement with blind judges |
 | `autoresearch:probe` | Requirement interrogation until saturation |
+| `autoresearch:improve` | ICP-driven product improvement research |
 | `autoresearch:evals` | Analyze iteration results: trends, plateaus |
 
 ---
