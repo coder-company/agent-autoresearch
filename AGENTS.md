@@ -41,7 +41,7 @@ Then: `$autoresearch`
 ```bash
 git clone https://github.com/coder-company/agent-autoresearch.git
 cd agent-autoresearch
-./install.sh
+./install.sh --yes --all
 ```
 
 ---

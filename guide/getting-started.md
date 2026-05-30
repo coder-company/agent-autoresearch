@@ -25,10 +25,10 @@ $skill-installer install https://github.com/coder-company/agent-autoresearch
 ```bash
 git clone https://github.com/coder-company/agent-autoresearch.git
 cd agent-autoresearch
-./install.sh
+./install.sh --yes --opencode
 ```
 
-Choose the OpenCode assets step. Commands are installed with underscore names such as
+Commands are installed with underscore names such as
 `/autoresearch_debug`, `/autoresearch_fix`, and `/autoresearch_security`.
 
 **From source:**
@@ -36,8 +36,10 @@ Choose the OpenCode assets step. Commands are installed with underscore names su
 ```bash
 git clone https://github.com/coder-company/agent-autoresearch.git
 cd agent-autoresearch
-./install.sh
+./install.sh --yes --all
 ```
+
+Run `./install.sh` without flags for the guided installer.
 
 ---
 
