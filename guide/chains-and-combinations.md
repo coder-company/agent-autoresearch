@@ -20,6 +20,8 @@ When a command completes, it writes `autoresearch-results/handoff.json`:
   "results_tsv": "autoresearch-results/results.tsv",
   "workspace_root": "/path/to/workspace",
   "artifact_root": "/path/to/workspace/autoresearch-results",
+  "primary_repo": "/path/to/workspace",
+  "repo_targets": [{"path": "/path/to/workspace", "scope": "src/**", "role": "primary"}],
   "results_path": "/path/to/workspace/autoresearch-results/results.tsv",
   "handoff_path": "/path/to/workspace/autoresearch-results/handoff.json",
   "goal": "...",

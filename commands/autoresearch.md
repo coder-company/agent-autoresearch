@@ -151,6 +151,8 @@ After completion, write handoff.json to output directory:
   "results_tsv": "autoresearch-results/results.tsv",
   "workspace_root": "<absolute workspace path>",
   "artifact_root": "<absolute autoresearch-results path>",
+  "primary_repo": "<absolute primary repo path>",
+  "repo_targets": [{"path": "<absolute repo path>", "scope": "src/**", "role": "primary"}],
   "results_path": "<absolute results.tsv path>",
   "handoff_path": "<absolute handoff.json path>",
   "goal": "...",

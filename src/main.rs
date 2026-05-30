@@ -3465,6 +3465,7 @@ fn cmd_handoff(
         .cloned()
         .map(serde_json::Value::String)
         .unwrap_or(serde_json::Value::Null);
+    let (primary_repo, repo_targets) = handoff_context_values(&results_dir)?;
 
     let handoff = serde_json::json!({
         "version": "2.1.0",
@@ -3477,6 +3478,8 @@ fn cmd_handoff(
         "results_tsv": "autoresearch-results/results.tsv",
         "workspace_root": workspace.to_string_lossy().to_string(),
         "artifact_root": results_dir.to_string_lossy().to_string(),
+        "primary_repo": primary_repo,
+        "repo_targets": repo_targets,
         "results_path": results_dir.join("results.tsv").to_string_lossy().to_string(),
         "handoff_path": handoff_path.to_string_lossy().to_string(),
         "goal": goal,
@@ -3512,6 +3515,20 @@ fn cmd_handoff(
 
     println!(r#"{{"status":"ok","path":"autoresearch-results/handoff.json"}}"#);
     Ok(())
+}
+
+fn handoff_context_values(results_dir: &Path) -> Result<(serde_json::Value, serde_json::Value)> {
+    let context_path = results_dir.join("context.json");
+    if !context_path.exists() {
+        return Ok((serde_json::Value::Null, serde_json::Value::Null));
+    }
+    let context: context::RunContext =
+        serde_json::from_str(&std::fs::read_to_string(&context_path)?)
+            .with_context(|| format!("Invalid context JSON at {}", context_path.display()))?;
+    Ok((
+        serde_json::Value::String(context.primary_repo),
+        serde_json::to_value(context.repo_targets)?,
+    ))
 }
 
 // ── Exec ─────────────────────────────────────────────────────────────
