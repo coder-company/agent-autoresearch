@@ -540,6 +540,9 @@ fn cmd_init(
 
     // Verify git repo
     let git = GitRepo::open(&workspace).context("autoresearch requires a git repository")?;
+    if git.head_detached()? {
+        anyhow::bail!("init preflight blocked: detached_head");
+    }
     if let WorktreeStatus::Dirty(files) = git.worktree_status()? {
         anyhow::bail!(
             "init preflight blocked: unexpected worktree changes before launch: {}",

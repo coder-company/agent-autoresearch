@@ -706,6 +706,36 @@ fn test_init_blocks_unexpected_dirty_worktree() {
 }
 
 #[test]
+fn test_init_blocks_detached_head() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    std::process::Command::new("git")
+        .args(["checkout", "--detach", "HEAD"])
+        .current_dir(dir.path())
+        .output()
+        .unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("init preflight blocked"))
+        .stderr(predicate::str::contains("detached_head"));
+
+    assert!(!dir.path().join("autoresearch-results/results.tsv").exists());
+}
+
+#[test]
 fn test_resume_reports_baseline_as_resumable() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
