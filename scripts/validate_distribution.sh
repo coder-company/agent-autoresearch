@@ -155,6 +155,8 @@ require_grep 'ensure_safe_opencode_dir' install.sh
 require_grep 'dangerously-bypass-approvals-and-sandbox' guide/autoresearch-codex.md
 require_grep 'danger_full_access' guide/autoresearch-codex.md
 require_grep 'plugins/autoresearch' docs/codebase-summary.md
+require_grep 'runtime, parallel, screen, and hooks' docs/codebase-summary.md
+require_grep 'dev_rules_reminder\.rs' docs/codebase-summary.md
 require_grep 'out-of-scope writes' docs/architecture.md
 require_grep 'plugins/autoresearch/skills/autoresearch' CONTRIBUTING.md
 require_grep 'Codex plugin package' docs/system-architecture.md

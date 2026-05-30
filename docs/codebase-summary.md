@@ -6,7 +6,7 @@
 
 | Path | Purpose |
 |------|---------|
-| `src/main.rs` | CLI entry — Clap-based command dispatch (init, verify, guard, log, decide, evals, status, screen, hook, resume, progress, lessons, handoff, exec) |
+| `src/main.rs` | CLI entry — Clap-based command dispatch for run setup, verify/guard/decide, health, resume/status/progress/watch, lessons, handoff, exec, runtime, parallel, screen, and hooks |
 | `.claude-plugin/marketplace.json` | Claude marketplace manifest for the repo-root plugin package |
 | `hooks/hooks.json` | Claude Code plugin hook definitions — maps lifecycle events to binary invocations |
 | `skills/autoresearch/SKILL.md` | Agent skill file — iteration protocol, subcommand table, references |
@@ -27,6 +27,9 @@
 | `results.rs` | `ResultsLog` — append TSV rows, read history |
 | `state.rs` | `RunState` — iteration count, metrics, keeps/discards, phase tracking |
 | `metrics.rs` | Metric parsing, delta calculation, direction comparison |
+| `context.rs` | Canonical `context.json` and repo-local pointer writing |
+| `health.rs` | Native preflight checks for runtime launch safety |
+| `runtime.rs` | Background launch/runtime manifests, supervisor snapshots, and stop control |
 
 ## Escalation (`src/escalation/`)
 
@@ -43,11 +46,12 @@
 | `privacy_block.rs` | privacy-block | PreToolUse — blocks access to sensitive paths |
 | `dangerous_cmd.rs` | dangerous-cmd-block | PreToolUse (Bash) — blocks rm -rf, fork bombs, etc. |
 | `iteration_context.rs` | iteration-context | UserPromptSubmit — injects run state into agent context |
+| `dev_rules_reminder.rs` | dev-rules-reminder | UserPromptSubmit — re-injects active protocol and code standards |
 | `simplify_gate.rs` | simplify-gate | UserPromptSubmit — reminds agent of simplicity rule |
 | `stop_check.rs` | stop-check | Stop — detects premature stop during active run |
 | `compaction_reanchor.rs` | compaction-reanchor | PostCompact — re-injects critical state after context compaction |
 | `session_init.rs` | session-init | SessionStart — detects interrupted runs |
-| `session_end.rs` | session-end | SessionEnd — writes final state |
+| `session_end.rs` | session-end | SessionEnd — emits terminal notification and optional webhook summary |
 | `subagent_context.rs` | subagent-context | SubagentStart — passes run context to subagents |
 
 ## Modes (`src/modes/`)
@@ -76,6 +80,12 @@ User prompt → [hook: iteration-context injects state]
            → Next iteration
 ```
 
+Background runs route the same state machine through `autoresearch runtime run`,
+which writes `launch.json`, `runtime.json`, and `runtime.log`, runs the native
+health preflight at each relaunch boundary, and supervises detached Codex turns.
+Parallel batches use `autoresearch parallel prepare/run/closeout/cleanup` to run
+worker worktrees and retain only one verified batch winner.
+
 ## Key Types
 
 | Type | Location | Fields |
@@ -83,6 +93,7 @@ User prompt → [hook: iteration-context injects state]
 | `RunConfig` | core/config.rs | verify, direction, format, scope, guard, primary_metric_key |
 | `RunState` | core/state.rs | iteration, baseline_metric, current_metric, best_metric, keeps, discards, crashes, consecutive_discards, phase |
 | `ResultRow` | core/results.rs | iteration, commit, metric, delta, guard, status, description |
+| `LaunchManifest` | core/runtime.rs | workspace_root, execution_policy, codex_bin, repo_targets, config |
 | `EscalationState` | escalation/pivot.rs | consecutive_discards, pivots, last_action |
 | `Direction` | core/config.rs | Higher, Lower |
 | `IterationStatus` | core/state.rs | Baseline, Keep, Discard, Crash, NoOp, Blocked, Pivot, Refine, Search |
