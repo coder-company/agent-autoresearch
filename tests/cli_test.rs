@@ -563,6 +563,28 @@ fn test_evals_accepts_timestamp_and_guard_metric_columns() {
 }
 
 #[test]
+fn test_evals_infers_lower_direction_from_error_count_column() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\terror_count\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t5\t0\t-\tbaseline\tinitial errors").unwrap();
+    writeln!(file, "1\tbcd2345\t3\t-2\tpass\tkeep\tfixed errors").unwrap();
+
+    cmd()
+        .args(["evals", tsv_path.to_str().unwrap(), "--format", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"direction\": \"lower\""))
+        .stdout(predicate::str::contains("\"best\": \"3\""));
+}
+
+#[test]
 fn test_evals_rejects_invalid_guard() {
     let dir = TempDir::new().unwrap();
     let tsv_path = dir.path().join("results.tsv");

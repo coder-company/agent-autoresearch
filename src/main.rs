@@ -1203,13 +1203,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
         .with_context(|| format!("Cannot read {}", tsv_path.display()))?;
 
     // Parse direction from header
-    let direction = parse_evals_direction(
-        content
-            .lines()
-            .find(|l| l.starts_with("# metric_direction:"))
-            .and_then(|l| l.split(':').nth(1))
-            .map(|s| s.trim()),
-    )?;
+    let direction = evals_direction(&content)?;
 
     let has_data_rows = content
         .lines()
@@ -1369,6 +1363,34 @@ fn parse_evals_direction(value: Option<&str>) -> Result<&'static str> {
         Some("lower" | "lower_is_better") => Ok("lower"),
         Some(other) => anyhow::bail!("Invalid metric_direction: {other}"),
         None => anyhow::bail!("results TSV is missing # metric_direction header"),
+    }
+}
+
+fn evals_direction(content: &str) -> Result<&'static str> {
+    let explicit = content
+        .lines()
+        .find(|line| line.starts_with("# metric_direction:"))
+        .and_then(|line| line.split(':').nth(1))
+        .map(|value| value.trim());
+    if explicit.is_some() {
+        return parse_evals_direction(explicit);
+    }
+
+    infer_evals_direction_from_header(content)
+        .context("results TSV is missing # metric_direction header")
+}
+
+fn infer_evals_direction_from_header(content: &str) -> Option<&'static str> {
+    let header = content.lines().find(|line| {
+        !line.starts_with('#') && !line.trim().is_empty() && line.starts_with("iteration\t")
+    })?;
+    let columns: BTreeSet<&str> = header.split('\t').collect();
+    if columns.contains("error_count") {
+        Some("lower")
+    } else if columns.contains("metric") || columns.contains("metric_value") {
+        Some("higher")
+    } else {
+        None
     }
 }
 
