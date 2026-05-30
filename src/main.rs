@@ -2713,6 +2713,14 @@ fn cmd_handoff(
         serde_json::from_str(findings.unwrap_or("[]")).context("Invalid findings JSON")?;
     let config_val: serde_json::Value =
         serde_json::from_str(config.unwrap_or("{}")).context("Invalid config JSON")?;
+    let goal = config_val
+        .get("goal")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
+    let scope = config_val
+        .get("scope")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
 
     let timestamp = chrono::Utc::now().to_rfc3339();
 
@@ -2723,6 +2731,8 @@ fn cmd_handoff(
         "timestamp": timestamp,
         "status": status,
         "results_tsv": "autoresearch-results/results.tsv",
+        "goal": goal,
+        "scope": scope,
         "findings": findings_val,
         "config": config_val,
     });

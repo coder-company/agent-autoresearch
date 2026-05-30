@@ -1434,6 +1434,8 @@ fn test_handoff_defaults_to_repo_root_results_from_subdir() {
             "COMPLETE",
             "--findings",
             r#"[{"title":"fixed"}]"#,
+            "--config",
+            r#"{"goal":"fix login","scope":["src/auth/**"]}"#,
             "--cwd",
             subdir.to_str().unwrap(),
         ])
@@ -1448,6 +1450,8 @@ fn test_handoff_defaults_to_repo_root_results_from_subdir() {
     assert!(handoff.contains("\"source\": \"debug\""));
     assert!(handoff.contains("\"source_command\": \"debug\""));
     assert!(handoff.contains("\"status\": \"COMPLETE\""));
+    assert!(handoff.contains("\"goal\": \"fix login\""));
+    assert!(handoff.contains("\"scope\": ["));
     assert!(!subdir.join("autoresearch-results").exists());
 }
 
