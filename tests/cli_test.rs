@@ -1352,6 +1352,36 @@ fn test_resume_reports_baseline_as_resumable() {
 }
 
 #[test]
+fn test_resume_defaults_to_repo_root_results_from_subdir() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+
+    cmd()
+        .args(["resume", "--cwd", subdir.to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"resumable\": true"))
+        .stdout(predicate::str::contains("\"recommendation\": \"resume\""));
+}
+
+#[test]
 fn test_runtime_start_status_stop_dry_run() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
