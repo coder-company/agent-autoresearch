@@ -159,16 +159,12 @@ Exec mode always starts fresh:
 - If `autoresearch-results/lessons.md` exists, read it for hypothesis filtering but never modify it.
 - Do not revert prior experiment commits (assume external cleanup between CI runs).
 
-When using the bundled helper scripts in exec mode:
-Here `<skill-root>` is the directory containing the loaded `SKILL.md`. In the common repo-local install this is usually `.agents/skills/codex-autoresearch`.
+When using the native binary in exec mode:
 
-- `autoresearch init ...` defaults its JSON state to a deterministic scratch file under `/tmp/codex-autoresearch-exec/...`.
-- In that default helper flow, do not manually rename old `autoresearch-results/results.tsv` or `autoresearch-results/state.json` first. `autoresearch_init_run.py` performs the fresh-start archival it owns.
-- The initialized `autoresearch-results/results.tsv` header includes `# mode: exec`, so `autoresearch_resume_check.py` can rediscover the matching scratch state without a manual `--state-path`.
-- `autoresearch decide ...` and `python3 <skill-root>/scripts/autoresearch_select_parallel_batch.py ...` automatically reuse that scratch state when the workspace JSON state file is absent.
-- Before exiting, run `# exec state handled internally` so exec mode removes scratch JSON state and leaves the persistent workspace-owned audit artifacts in place: `autoresearch-results/results.tsv` plus inactive canonical context metadata (`autoresearch-results/context.json` and the repo-local pointer).
-- Treat that cleanup as the **final serial helper step**. Do not run it in parallel with `autoresearch_record_iteration.py`, `autoresearch_select_parallel_batch.py`, or any other helper that still needs the scratch state.
-- If you override `--state-path` manually, you are responsible for removing that custom scratch file before exit.
+- `autoresearch exec --iterations N` reads `RunConfig` JSON from stdin.
+- It initializes workspace-owned `autoresearch-results/results.tsv`, `state.json`, `context.json`, and the repo-local pointer.
+- It emits JSON lines only; no prose.
+- Parallel closeout is not supported in exec mode.
 
 ## Constraints
 
@@ -177,8 +173,8 @@ Here `<skill-root>` is the directory containing the loaded `SKILL.md`. In the co
 - No launch question: do not ask for "go" or any extra confirmation; the prompt/env config is the approval.
 - No web search: CI environments should not make unexpected network calls.
 - No parallel: CI resource limits are unpredictable; use serial mode only.
-- No session resume: every CI run starts fresh. When using the default helper flow, let `autoresearch_init_run.py --repo <primary_repo> --workspace-root <workspace_root> --mode exec ...` perform the archival automatically instead of hand-renaming artifacts.
-- Dirty worktree: `autoresearch_init_run.py --repo <primary_repo> --workspace-root <workspace_root>` runs the prelaunch commit gate in exec mode. If `git status --porcelain` shows anything beyond autoresearch-owned artifacts before launch, it emits a blocker and exits with code 2 instead of asking.
+- No session resume: every CI run starts fresh.
+- Dirty worktree: if `git status --porcelain` shows anything beyond autoresearch-owned artifacts before launch, `autoresearch exec` emits a `dirty_worktree` error and exits with code 2.
 - Lessons: read `autoresearch-results/lessons.md` if it exists in the workspace (useful for persistent learning across CI runs), but **never create or modify it** during exec mode -- not even after keep or pivot decisions. Exec mode is read-only for lessons.
 
 ## Integration Points

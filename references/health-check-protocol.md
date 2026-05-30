@@ -101,8 +101,8 @@ Thresholds:
 
 - **autonomous-loop-protocol.md:** Runs as the detailed reference for Phase 8.5 (Health Check) and Phase 8.7 (Re-Anchoring). Context health feeds into the Protocol Fingerprint Check defined in `runtime-hard-invariants.md`.
 - **environment-awareness.md:** Initial probes establish baselines for drift detection.
-- **parallel-experiments-protocol.md:** `autoresearch_select_parallel_batch.py` reuses the lightweight health/worktree preflight before it accepts a completed parallel batch into the authoritative run state.
+- **parallel-experiments-protocol.md:** native parallel batch closeout should reuse the lightweight health/worktree preflight before it accepts a completed batch into the authoritative run state.
 - **multi-repo runs:** the helper remains anchored in the primary repo for results/state/log integrity, but companion repos participate in worktree-scope checks through the launch-manifest repo list.
 - **results-logging.md:** The health helper returns structured findings; append TSV rows only when the runtime explicitly chooses to log a blocker or recovery event.
-- **session-resume-protocol.md:** JSON/TSV integrity checks must reuse `autoresearch_resume_check.py` decisions and launch/runtime control files instead of maintaining a second row-count heuristic.
+- **session-resume-protocol.md:** JSON/TSV integrity checks should reuse `autoresearch resume` decisions and launch/runtime control files instead of maintaining a second row-count heuristic.
 - **SKILL.md:** Listed in the load order for iterating modes.

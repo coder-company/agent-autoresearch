@@ -196,7 +196,7 @@ Record:
 - current commit hash,
 - a short baseline description.
 
-Immediately after the baseline is known, initialize the run artifacts with `<skill-root>/scripts/autoresearch_init_run.py --repo <primary_repo> --workspace-root <workspace_root>`.
+Immediately after the baseline is known, initialize the run artifacts with `autoresearch init --cwd <workspace_root> ...`.
 
 If the baseline itself fails unpredictably, do not enter the optimization loop. Either repair the setup first or switch to `debug` or `fix` mode.
 
@@ -392,10 +392,7 @@ Do not hand-edit `autoresearch-results/results.tsv` or `autoresearch-results/sta
   ```bash
   autoresearch decide ...
   ```
-- For parallel batches, prefer:
-  ```bash
-  python3 <skill-root>/scripts/autoresearch_select_parallel_batch.py --batch-file ...
-  ```
+- Parallel batch native closeout is not implemented yet. Until it is, use serial `autoresearch decide` closeout. Do not hand-edit worker/main rows.
 
 These helpers keep two key semantics consistent:
 

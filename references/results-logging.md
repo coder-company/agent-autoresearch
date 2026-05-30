@@ -1,6 +1,6 @@
 # Results Logging
 
-This is the detailed reference for TSV/state semantics. During normal loop execution, treat `autoresearch_record_iteration.py` or `autoresearch_select_parallel_batch.py` as the authoritative closeout step instead of reopening this file.
+This is the detailed reference for TSV/state semantics. During normal loop execution, treat the native `autoresearch decide` closeout as authoritative instead of hand-editing TSV/JSON artifacts.
 
 ## Workspace-Owned Results Directory
 
@@ -28,7 +28,7 @@ marks the runtime stopped and terminates the recorded process when one is runnin
 
 ### `context.json` Schema
 
-`context.json` is the canonical run context written by `autoresearch_workspace.py`. It replaces the former `autoresearch-hook-context.json` and serves as the single source of truth for resume and control-plane helpers to locate the active run's artifacts.
+`context.json` is the canonical run context written by `autoresearch init`. It replaces the former `autoresearch-hook-context.json` and serves as the single source of truth for resume and control-plane helpers to locate the active run's artifacts.
 
 ```json
 {
@@ -149,8 +149,7 @@ For those runs:
 
 - persist `config.required_keep_labels` when retention itself has a structural requirement
 - persist `config.required_stop_labels` in JSON config/state
-- record structured iteration labels with `autoresearch_record_iteration.py --label ...`
-- let the helper write a canonical TSV prefix like:
+- when structured labels are supported by the active runtime, record a canonical TSV prefix like:
 
 ```text
 [labels: production-path, real-backend] optimized query path preserved real backend behavior
@@ -222,8 +221,8 @@ The `autoresearch` binary handles all mechanical operations.
   Appends one authoritative main iteration row and updates JSON state atomically. Multi-repo runs may add repeated `--repo-commit PATH=COMMIT` flags to update companion-repo commit provenance while the TSV `commit` column continues to track the primary repo. Repeated `--label LABEL` flags record structured keep/stop-gating labels on the attempted row and retained state.
 - `autoresearch resume ...`
   Reconstructs retained state from the TSV and decides `full_resume`, `mini_wizard`, `tsv_fallback`, or `fresh_start`.
-- `python3 <skill-root>/scripts/autoresearch_select_parallel_batch.py --batch-file ...`
-  Logs worker rows, runs the batch-boundary health/worktree preflight, appends the main batch row, and updates JSON state once per batch. Worker batch items may include `repo_commits` for companion-repo provenance and `labels` for structured keep/stop gating.
+- `parallel batch closeout`
+  Native parallel batch selection is not implemented yet. Until it is, do not write worker rows by hand; run serial closeout through `autoresearch decide`.
 - `# exec state handled internally`
   Prints the deterministic exec scratch-state path under `/tmp` and cleans it up on `--cleanup`.
 - `autoresearch status ...`

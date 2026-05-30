@@ -23,7 +23,7 @@ Iterate toward a measurable outcome by making one focused change, verifying mech
 5. Create the scoped trial commit when the workspace is safe to isolate.
 6. Run the verify command and guard.
 7. Decide keep or discard; revert discarded trials with the approved rollback strategy.
-8. Record the result through `autoresearch_record_iteration.py` or `autoresearch_select_parallel_batch.py` using the current clean HEAD after closeout.
+8. Record the result through `autoresearch decide` using the current clean HEAD after closeout.
 9. Only after the result is recorded, choose the next experiment.
 
 ## Escalation And Recovery

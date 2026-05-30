@@ -108,7 +108,7 @@ Lessons older than 14 days receive reduced weight during hypothesis selection. L
 
 - Create the lessons file at the end of the first iteration that produces a keep or pivot.
 - Append after each qualifying event (keep, pivot, run completion).
-- The file format on disk must exactly match the lesson structure above; `autoresearch_lessons.py list` is the canonical parser for that format.
+- The file format on disk must exactly match the lesson structure above; `autoresearch lessons` is the canonical reader for that format.
 - Never commit the lessons file.
 - Use the same run tag as the results log for cross-referencing when one is available.
 - If the lessons file is corrupted or unparseable, the canonical helper must rename it with a `.bak` suffix and start fresh.
