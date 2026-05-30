@@ -60,6 +60,11 @@ required_paths=(
     scripts/run_contributor_gate.sh
     scripts/run_skill_e2e.sh
     scripts/transform.sh
+    docs/INSTALL.md
+    docs/GUIDE.md
+    docs/EXAMPLES.md
+    docs/system-architecture.md
+    docs/project-changelog.md
     guide/README.md
     guide/autoresearch-codex.md
     references/core-principles.md
