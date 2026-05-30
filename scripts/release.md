@@ -15,7 +15,10 @@ Manual steps for cutting a release. For automation, use `./scripts/release.sh <v
 
 - [ ] Update `version` in `Cargo.toml`
 - [ ] Update `docs/changelog.md` with actual changes
-- [ ] If plugin manifest has a version, update `.claude-plugin/plugin.json`
+- [ ] Update `.claude-plugin/plugin.json`
+- [ ] Update `plugins/autoresearch/.codex-plugin/plugin.json` (`<VERSION>-codex.0`)
+- [ ] Update skill frontmatter in `skills/autoresearch/SKILL.md` and `.agents/skills/autoresearch/SKILL.md`
+- [ ] Run `./scripts/transform.sh` so `.opencode/` and `plugins/autoresearch/skills/` inherit the version bump
 - [ ] Run `cargo build --release` to regenerate `Cargo.lock`
 
 ## Build & Verify
@@ -27,7 +30,7 @@ Manual steps for cutting a release. For automation, use `./scripts/release.sh <v
 
 ## Tag & Push
 
-- [ ] `git add Cargo.toml Cargo.lock docs/changelog.md`
+- [ ] `git add Cargo.toml Cargo.lock docs/changelog.md .claude-plugin/plugin.json skills/autoresearch/SKILL.md .opencode/skills/autoresearch/SKILL.md .agents/skills/autoresearch/SKILL.md plugins/autoresearch`
 - [ ] `git commit -m "release: v<VERSION>"`
 - [ ] `git tag -a v<VERSION> -m "Release v<VERSION>"`
 - [ ] `git push origin main --tags`

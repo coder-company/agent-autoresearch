@@ -26,6 +26,23 @@ fi
 echo "=== Releasing v$VERSION ==="
 echo ""
 
+update_json_version() {
+    local path="$1"
+    local version="$2"
+
+    if [[ -f "$path" ]]; then
+        sed -i "0,/\"version\": \".*\"/s//\"version\": \"$version\"/" "$path"
+    fi
+}
+
+update_skill_version() {
+    local path="$1"
+
+    if [[ -f "$path" ]]; then
+        sed -i "0,/^version: .*/s//version: $VERSION/" "$path"
+    fi
+}
+
 # ── 1. Check clean worktree ─────────────────────────────────────────
 if ! git -C "$ROOT" diff --quiet HEAD 2>/dev/null; then
     echo "Error: working tree is dirty. Commit or stash changes first."
@@ -33,26 +50,37 @@ if ! git -C "$ROOT" diff --quiet HEAD 2>/dev/null; then
 fi
 
 # ── 2. Bump version in Cargo.toml ───────────────────────────────────
-echo "[1/6] Bumping Cargo.toml to $VERSION..."
+echo "[1/8] Bumping Cargo.toml to $VERSION..."
 sed -i "s/^version = \".*\"/version = \"$VERSION\"/" "$ROOT/Cargo.toml"
 
-# ── 3. Run tests ────────────────────────────────────────────────────
-echo "[2/6] Running tests..."
+# ── 3. Bump agent package manifests ─────────────────────────────────
+echo "[2/8] Bumping agent package manifests..."
+update_json_version "$ROOT/.claude-plugin/plugin.json" "$VERSION"
+update_json_version "$ROOT/plugins/autoresearch/.codex-plugin/plugin.json" "$VERSION-codex.0"
+update_skill_version "$ROOT/skills/autoresearch/SKILL.md"
+update_skill_version "$ROOT/.agents/skills/autoresearch/SKILL.md"
+
+# ── 4. Sync generated distributions ─────────────────────────────────
+echo "[3/8] Syncing generated distributions..."
+"$ROOT/scripts/transform.sh"
+
+# ── 5. Run tests ────────────────────────────────────────────────────
+echo "[4/8] Running tests..."
 cargo test --manifest-path "$ROOT/Cargo.toml"
 
-# ── 4. Run clippy ───────────────────────────────────────────────────
-echo "[3/6] Running clippy..."
+# ── 6. Run clippy ───────────────────────────────────────────────────
+echo "[5/8] Running clippy..."
 cargo clippy --manifest-path "$ROOT/Cargo.toml" -- -D warnings
 
-# ── 5. Build release ────────────────────────────────────────────────
-echo "[4/6] Building release binary..."
+# ── 7. Build release ────────────────────────────────────────────────
+echo "[6/8] Building release binary..."
 cargo build --manifest-path "$ROOT/Cargo.toml" --release
 
 BINARY_SIZE=$(du -h "$ROOT/target/release/autoresearch" | cut -f1)
 echo "  Binary size: $BINARY_SIZE"
 
-# ── 6. Update changelog ────────────────────────────────────────────
-echo "[5/6] Adding changelog entry..."
+# ── 8. Update changelog ────────────────────────────────────────────
+echo "[7/8] Adding changelog entry..."
 CHANGELOG="$ROOT/docs/changelog.md"
 if [ -f "$CHANGELOG" ]; then
     DATE=$(date +%Y-%m-%d)
@@ -68,9 +96,18 @@ if [ -f "$CHANGELOG" ]; then
     echo "  ⚠  Edit docs/changelog.md to fill in the actual changes before pushing."
 fi
 
-# ── 7. Commit and tag ──────────────────────────────────────────────
-echo "[6/6] Committing and tagging..."
-git -C "$ROOT" add Cargo.toml Cargo.lock docs/changelog.md
+# ── 9. Commit and tag ──────────────────────────────────────────────
+echo "[8/8] Committing and tagging..."
+git -C "$ROOT" add \
+    Cargo.toml \
+    Cargo.lock \
+    docs/changelog.md \
+    .claude-plugin/plugin.json \
+    skills/autoresearch/SKILL.md \
+    .opencode/skills/autoresearch/SKILL.md \
+    .agents/skills/autoresearch/SKILL.md \
+    plugins/autoresearch/.codex-plugin/plugin.json \
+    plugins/autoresearch/skills/autoresearch
 git -C "$ROOT" commit -m "release: v$VERSION"
 git -C "$ROOT" tag -a "v$VERSION" -m "Release v$VERSION"
 

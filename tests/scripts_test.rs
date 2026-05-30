@@ -87,3 +87,18 @@ fn multi_repo_skill_e2e_harness_passes() {
     );
     assert!(String::from_utf8_lossy(&smoke.stdout).contains("multi-repo smoke: OK"));
 }
+
+#[test]
+fn release_script_updates_agent_package_versions() {
+    let root = repo_root();
+    let script = std::fs::read_to_string(root.join("scripts/release.sh")).unwrap();
+
+    assert!(script.contains("update_json_version"));
+    assert!(script.contains(".claude-plugin/plugin.json"));
+    assert!(script.contains("plugins/autoresearch/.codex-plugin/plugin.json"));
+    assert!(script.contains("$VERSION-codex.0"));
+    assert!(script.contains("skills/autoresearch/SKILL.md"));
+    assert!(script.contains(".agents/skills/autoresearch/SKILL.md"));
+    assert!(script.contains("\"$ROOT/scripts/transform.sh\""));
+    assert!(script.contains("plugins/autoresearch/skills/autoresearch"));
+}
