@@ -24,6 +24,9 @@ bash -n install.sh
 echo "==> scripts/transform.sh"
 ./scripts/transform.sh
 
+echo "==> scripts/validate_distribution.sh"
+./scripts/validate_distribution.sh
+
 echo "==> git diff --check"
 git diff --check
 
