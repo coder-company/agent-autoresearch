@@ -839,7 +839,11 @@ fn cmd_log(
     if status == IterationStatus::Baseline {
         anyhow::bail!("baseline log rows are created by init");
     }
-    if status == IterationStatus::Keep && commit_val.is_none() {
+    if matches!(
+        status,
+        IterationStatus::Keep | IterationStatus::KeepReworked
+    ) && commit_val.is_none()
+    {
         anyhow::bail!("keep log rows require a commit");
     }
 
@@ -864,8 +868,9 @@ fn cmd_log(
         let mut escalation_update = None;
 
         match status {
-            IterationStatus::Keep => {
+            IterationStatus::Keep | IterationStatus::KeepReworked => {
                 state.record_keep(metric, commit.to_string());
+                state.last_status = status;
             }
             IterationStatus::Discard => {
                 state.record_discard(metric, commit_val);
@@ -1256,7 +1261,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
         .first()
         .is_some_and(|(iteration, status, _, _)| *iteration == 0 || *status == "baseline");
     let total_iterations = total.saturating_sub(usize::from(has_baseline));
-    let keeps = metrics.iter().filter(|m| m.1 == "keep").count();
+    let keeps = metrics.iter().filter(|m| is_keep_status(m.1)).count();
     let discards = metrics.iter().filter(|m| m.1 == "discard").count();
     let crashes = metrics.iter().filter(|m| m.1 == "crash").count();
     let baseline = metrics.first().map(|m| m.2).unwrap_or_default();
@@ -1271,7 +1276,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
     let mut longest_plateau = 0u32;
     let mut current_plateau = 0u32;
     for m in &metrics {
-        if m.1 != "keep" && m.1 != "baseline" {
+        if !is_keep_status(m.1) && m.1 != "baseline" {
             current_plateau += 1;
             longest_plateau = longest_plateau.max(current_plateau);
         } else {
@@ -1282,7 +1287,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
     // Top improvements (keeps sorted by absolute delta)
     let keep_rows: Vec<&str> = main_rows
         .iter()
-        .filter(|r| r.contains("\tkeep\t"))
+        .filter(|row| row.split('\t').nth(5).is_some_and(is_keep_status))
         .copied()
         .collect();
     let mut top_keeps: Vec<(Decimal, &str)> = keep_rows
@@ -1308,7 +1313,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
     // Determine trend from last 5 keeps
     let recent_keeps: Vec<Decimal> = metrics
         .iter()
-        .filter(|m| m.1 == "keep")
+        .filter(|m| is_keep_status(m.1))
         .rev()
         .take(5)
         .map(|m| m.2)
@@ -2320,7 +2325,7 @@ fn tsv_fallback_resume(
 
     for row in rows {
         match row.status.as_str() {
-            "keep" => {
+            "keep" | "keep (reworked)" => {
                 keeps += 1;
                 current_metric = row.metric;
                 if metric_is_better(row.metric, best_metric, direction) {
@@ -2364,6 +2369,10 @@ fn results_tsv_direction(content: &str) -> Direction {
         .map(str::trim)
         .and_then(parse_metric_direction_value)
         .unwrap_or(Direction::Higher)
+}
+
+fn is_keep_status(value: &str) -> bool {
+    matches!(value, "keep" | "keep (reworked)")
 }
 
 fn metric_is_better(candidate: Decimal, current_best: Decimal, direction: Direction) -> bool {
