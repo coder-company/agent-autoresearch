@@ -2584,13 +2584,9 @@ fn cmd_parallel_closeout(
     let mut merge_failures = BTreeMap::new();
     let mut merged_winner = None;
     for candidate in ordered_candidates {
-        let Some(commit) = candidate.commit.clone() else {
-            merge_failures.insert(candidate.worker_id.clone(), "missing commit".to_string());
-            continue;
-        };
-        match cherry_pick_parallel_commit(workspace, &commit) {
-            Ok(retained_commit) => {
-                merged_winner = Some((candidate, retained_commit));
+        match merge_and_verify_parallel_candidate(workspace, &state, &candidate) {
+            Ok((verified_candidate, retained_commit)) => {
+                merged_winner = Some((verified_candidate, retained_commit));
                 break;
             }
             Err(err) => {
@@ -3678,6 +3674,135 @@ fn cherry_pick_parallel_commit(workspace: &Path, commit: &str) -> Result<String>
     }
 
     GitRepo::open(workspace)?.head_short()
+}
+
+fn merge_and_verify_parallel_candidate(
+    workspace: &Path,
+    state: &RunState,
+    candidate: &ParallelWorkerRecord,
+) -> Result<(ParallelWorkerRecord, String)> {
+    let Some(commit) = candidate.commit.as_deref() else {
+        anyhow::bail!("missing commit");
+    };
+    let before = GitRepo::open(workspace)?.head_full()?;
+    let retained_commit = match cherry_pick_parallel_commit(workspace, commit) {
+        Ok(commit) => commit,
+        Err(err) => {
+            reset_to_commit(workspace, &before)?;
+            return Err(err);
+        }
+    };
+
+    let result = verify_parallel_retained_candidate(workspace, state, candidate);
+    match result {
+        Ok(verified) => Ok((verified, retained_commit)),
+        Err(err) => {
+            reset_to_commit(workspace, &before)?;
+            Err(err)
+        }
+    }
+}
+
+fn verify_parallel_retained_candidate(
+    workspace: &Path,
+    state: &RunState,
+    candidate: &ParallelWorkerRecord,
+) -> Result<ParallelWorkerRecord> {
+    let config = state
+        .config
+        .as_ref()
+        .context("parallel closeout requires run config for post-merge verification")?;
+    verify::screen_command(&config.verify)?;
+    let verify_result = verify::run_verify(
+        &config.verify,
+        config.verify_format,
+        config.primary_metric_key.as_deref(),
+        workspace,
+    )
+    .context("post-merge verify failed")?;
+    let guard = match config.guard.as_deref() {
+        Some(command) if !command.trim().is_empty() => {
+            verify::screen_command(command)?;
+            let result =
+                verify::run_guard(command, workspace).context("post-merge guard failed")?;
+            if result.passed {
+                GuardResult::Pass
+            } else {
+                GuardResult::Fail
+            }
+        }
+        _ => GuardResult::Skip,
+    };
+    if guard == GuardResult::Fail {
+        anyhow::bail!("post-merge guard failed");
+    }
+
+    let primary_metric_key = config
+        .primary_metric_key
+        .clone()
+        .or_else(|| {
+            if config.metric.trim().is_empty() {
+                None
+            } else {
+                Some(config.metric.clone())
+            }
+        })
+        .unwrap_or_else(|| "metric".to_string());
+    let mut metrics = verify_result
+        .metrics
+        .clone()
+        .unwrap_or_else(|| BTreeMap::from([(primary_metric_key.clone(), verify_result.metric)]));
+    metrics
+        .entry("metric".to_string())
+        .or_insert(verify_result.metric);
+    metrics
+        .entry(primary_metric_key)
+        .or_insert(verify_result.metric);
+    let delta = verify_result.metric - state.current_metric;
+    if !state.direction.is_improvement(delta) {
+        anyhow::bail!(
+            "post-merge verify did not improve retained metric: {}",
+            verify_result.metric
+        );
+    }
+    let required_keep = criteria::evaluate_criteria(&config.required_keep_criteria, &metrics);
+    if !required_keep.satisfied {
+        anyhow::bail!(
+            "post-merge keep criteria failed: {}",
+            required_keep.failures.join("; ")
+        );
+    }
+    let missing_labels = missing_required_labels(&config.required_keep_labels, &candidate.labels);
+    if !missing_labels.is_empty() {
+        anyhow::bail!(
+            "post-merge required labels missing: {}",
+            missing_labels.join(", ")
+        );
+    }
+
+    let mut verified = candidate.clone();
+    verified.metric = verify_result.metric;
+    verified.metrics = Some(metrics);
+    verified.guard = guard;
+    verified.status = IterationStatus::Keep;
+    Ok(verified)
+}
+
+fn reset_to_commit(workspace: &Path, commit: &str) -> Result<()> {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(workspace)
+        .args(["reset", "--hard", commit])
+        .output()
+        .context("failed to run git reset")?;
+    if !output.status.success() {
+        anyhow::bail!(
+            "git reset --hard {commit} failed: {}{}",
+            String::from_utf8_lossy(&output.stderr),
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+    Ok(())
 }
 
 fn git_resolve_commit(workspace: &Path, commit: &str) -> Result<Option<String>> {

@@ -4981,9 +4981,8 @@ fn test_parallel_closeout_selects_best_worker() {
         .assert()
         .success();
 
-    let commit_a = create_branch_commit(&dir, "worker-a", "src/auth.txt", "narrowed\n", "worker a");
-    let commit_b =
-        create_branch_commit(&dir, "worker-b", "src/wrapper.txt", "wrapper\n", "worker b");
+    let commit_a = create_branch_commit(&dir, "worker-a", "metric.txt", "38\n", "worker a");
+    let commit_b = create_branch_commit(&dir, "worker-b", "metric.txt", "42\n", "worker b");
     std::fs::create_dir_all(dir.path().join("src")).unwrap();
     let batch_path = dir.path().join("autoresearch-results/parallel-batch.json");
     std::fs::write(
@@ -5021,12 +5020,12 @@ fn test_parallel_closeout_selects_best_worker() {
     assert!(results.contains("1b\t-\t42\t+1\tpass\tdiscard\t[PARALLEL worker-b] wrapper approach"));
     assert!(results.contains("1c\t-\t41\t0\t-\tcrash\t[PARALLEL worker-c] timeout"));
     assert!(results.contains(&format!(
-        "1\t{retained_commit}\t38\t-3\tpass\tkeep\t[PARALLEL batch] selected worker-a: narrowed auth types"
+        "1\t{retained_commit}\t38\t-3\t-\tkeep\t[PARALLEL batch] selected worker-a: narrowed auth types"
     )));
     assert!(!dir.path().join("src/autoresearch-results").exists());
     assert_eq!(
-        std::fs::read_to_string(dir.path().join("src/auth.txt")).unwrap(),
-        "narrowed\n"
+        std::fs::read_to_string(dir.path().join("metric.txt")).unwrap(),
+        "38\n"
     );
 
     let state =
@@ -5081,8 +5080,8 @@ fn test_parallel_closeout_falls_back_when_best_worker_conflicts() {
     let commit_b = create_branch_commit(
         &dir,
         "fallback-worker-b",
-        "src/fallback.txt",
-        "fallback\n",
+        "metric.txt",
+        "35\n",
         "worker b fallback",
     );
     commit_file(&dir, "src/shared.txt", "main\n", "main conflicting change");
@@ -5120,15 +5119,15 @@ fn test_parallel_closeout_falls_back_when_best_worker_conflicts() {
         "1a\t-\t30\t-11\tpass\tdiscard\t[PARALLEL worker-a] best but conflicts [MERGE failed]"
     ));
     assert!(results.contains(&format!(
-        "1\t{retained_commit}\t35\t-6\tpass\tkeep\t[PARALLEL batch] selected worker-b: second best applies"
+        "1\t{retained_commit}\t35\t-6\t-\tkeep\t[PARALLEL batch] selected worker-b: second best applies"
     )));
     assert_eq!(
         std::fs::read_to_string(dir.path().join("src/shared.txt")).unwrap(),
         "main\n"
     );
     assert_eq!(
-        std::fs::read_to_string(dir.path().join("src/fallback.txt")).unwrap(),
-        "fallback\n"
+        std::fs::read_to_string(dir.path().join("metric.txt")).unwrap(),
+        "35\n"
     );
     let status = std::process::Command::new("git")
         .args(["-C", root, "status", "--short"])
@@ -5202,12 +5201,18 @@ fn test_parallel_closeout_applies_required_keep_criteria() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
     let root = dir.path().to_str().unwrap();
+    commit_file(
+        &dir,
+        "metrics.json",
+        "{\"coverage\":10,\"errors\":0}\n",
+        "metrics baseline",
+    );
 
     cmd()
         .args([
             "init",
             "--verify",
-            "echo '{\"coverage\":10,\"errors\":0}'",
+            "cat metrics.json",
             "--format",
             "metrics_json",
             "--key",
@@ -5225,8 +5230,8 @@ fn test_parallel_closeout_applies_required_keep_criteria() {
     let commit_b = create_branch_commit(
         &dir,
         "criteria-worker-b",
-        "src/safe-coverage.txt",
-        "safe\n",
+        "metrics.json",
+        "{\"coverage\":15,\"errors\":0}\n",
         "safe coverage",
     );
     let batch_path = dir.path().join("autoresearch-results/parallel-batch.json");
@@ -5262,7 +5267,7 @@ fn test_parallel_closeout_applies_required_keep_criteria() {
     ));
     let retained_commit = git_head_short(&dir);
     assert!(results.contains(&format!(
-        "1\t{retained_commit}\t15\t+5\tpass\tkeep\t[PARALLEL batch] selected worker-b: safe coverage gain"
+        "1\t{retained_commit}\t15\t+5\t-\tkeep\t[PARALLEL batch] selected worker-b: safe coverage gain"
     )));
 
     let state: serde_json::Value = serde_json::from_str(
@@ -5299,8 +5304,8 @@ fn test_parallel_closeout_applies_required_keep_labels() {
     let commit_b = create_branch_commit(
         &dir,
         "label-worker-b",
-        "src/production-path.txt",
-        "production\n",
+        "metric.txt",
+        "55\n",
         "production path",
     );
     let batch_path = dir.path().join("autoresearch-results/parallel-batch.json");
@@ -5336,7 +5341,7 @@ fn test_parallel_closeout_applies_required_keep_labels() {
     ));
     let retained_commit = git_head_short(&dir);
     assert!(results.contains(&format!(
-        "1\t{retained_commit}\t55\t+5\tpass\tkeep\t[PARALLEL batch] selected worker-b: [labels: production-path] production path improvement"
+        "1\t{retained_commit}\t55\t+5\t-\tkeep\t[PARALLEL batch] selected worker-b: [labels: production-path] production path improvement"
     )));
 
     let state: serde_json::Value = serde_json::from_str(
