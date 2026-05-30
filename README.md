@@ -62,7 +62,7 @@ Agent: Baseline: 47. Iterating.
 
 Each improvement stacks. Each failure reverts. Everything is logged.
 
-> **Codex users:** `$skill-installer install https://github.com/coder-company/agent-autoresearch`, then `$autoresearch`. Local plugin package users can also add `.agents/plugins/marketplace.json` and install `autoresearch` from that marketplace.
+> **Codex users:** start Codex with `codex --dangerously-bypass-approvals-and-sandbox` for the smoothest runtime experience, then `$skill-installer install https://github.com/coder-company/agent-autoresearch` and invoke `$autoresearch`. Local plugin package users can also add `.agents/plugins/marketplace.json` and install `autoresearch` from that marketplace.
 >
 > **OpenCode users:** clone the repo and run `./install.sh --yes --opencode`. Commands install as `/autoresearch` and `/autoresearch_debug`, `/autoresearch_fix`, etc.
 >

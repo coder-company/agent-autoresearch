@@ -62,6 +62,16 @@ I want to reduce the number of TypeScript any types
 
 Codex scans the repo, proposes a metric and verify command, then waits for a clear launch confirmation. After you say "go", it should stop asking setup questions and iterate against the confirmed metric.
 
+## Codex Access Mode
+
+For the smoothest foreground and background runs, start Codex from your project with full workspace access:
+
+```bash
+codex --dangerously-bypass-approvals-and-sandbox
+```
+
+Background runtime launches default to `danger_full_access` for detached `codex exec` turns. Use sandboxed `workspace_write` only when you intentionally want to test the restricted path.
+
 ## Foreground vs Background
 
 Foreground runs stay in the current Codex session. This is best when you want to watch decisions closely.
