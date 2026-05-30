@@ -269,19 +269,19 @@ install_claude_plugin() {
 
     if component_enabled "CLAUDE" "  Install Claude Code plugin? [Y/n] "; then
             if command -v claude &>/dev/null; then
-                info "Installing via claude CLI..."
-                claude plugin add coder-company/agent-autoresearch || {
-                    warn "Remote install failed. You can install from local path instead:"
-                    echo "    claude plugin add $REPO_DIR"
+                info "Installing local plugin via claude CLI..."
+                claude plugin add "$REPO_DIR" || {
+                    warn "Local install failed. If the binary is on PATH, you can install the remote plugin instead:"
+                    echo "    claude plugin add coder-company/agent-autoresearch"
                 }
             else
                 info "Claude CLI not found. Install the plugin manually:"
                 echo ""
-                echo "    claude plugin add coder-company/agent-autoresearch"
-                echo ""
-                echo "  Or from local path:"
-                echo ""
                 echo "    claude plugin add $REPO_DIR"
+                echo ""
+                echo "  Or, if the binary is already on PATH, from GitHub:"
+                echo ""
+                echo "    claude plugin add coder-company/agent-autoresearch"
             fi
             echo ""
             echo "  Restart your Claude Code session after installing."
