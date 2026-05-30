@@ -916,6 +916,47 @@ fn test_health_blocks_corrupt_results_row() {
 }
 
 #[test]
+fn test_health_reports_corrupt_state_as_blocker() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    std::fs::write(
+        dir.path().join("autoresearch-results/state.json"),
+        "{bad json",
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "health",
+            "--verify",
+            "cat metric.txt",
+            "--min-free-mb",
+            "1",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .code(2)
+        .stdout(predicate::str::contains("\"decision\": \"block\""))
+        .stdout(predicate::str::contains("state_corrupt"));
+}
+
+#[test]
 fn test_health_blocks_unknown_results_status() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

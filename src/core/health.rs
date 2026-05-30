@@ -132,13 +132,22 @@ pub fn run_health_check(
         main_rows = log.count()?;
     }
     if has_state {
-        let state: RunState = serde_json::from_str(
-            &std::fs::read_to_string(&state_path)
-                .with_context(|| format!("failed to read {}", state_path.display()))?,
-        )
-        .with_context(|| format!("failed to parse {}", state_path.display()))?;
-        expected_rows = Some(state.iteration + 1);
-        state_verify = state.config.as_ref().map(|config| config.verify.clone());
+        match std::fs::read_to_string(&state_path) {
+            Ok(content) => match serde_json::from_str::<RunState>(&content) {
+                Ok(state) => {
+                    expected_rows = Some(state.iteration + 1);
+                    state_verify = state.config.as_ref().map(|config| config.verify.clone());
+                }
+                Err(err) => blockers.push(HealthFinding {
+                    code: "state_corrupt",
+                    message: format!("failed to parse {}: {err}", state_path.display()),
+                }),
+            },
+            Err(err) => blockers.push(HealthFinding {
+                code: "state_unreadable",
+                message: format!("failed to read {}: {err}", state_path.display()),
+            }),
+        }
     }
     if has_context {
         let context: RunContext = serde_json::from_str(
