@@ -113,6 +113,15 @@ Iterations: unlimited
 4. **Set realistic scope** — narrower scope = faster iterations = more experiments per night
 5. **Consider bounded first** — try `Iterations: 50` before unlimited
 
+### Monitor From Another Terminal
+
+```bash
+autoresearch watch --lines 20
+autoresearch runtime status
+```
+
+`watch` prints the active `results.tsv` header plus recent rows, then follows new rows until you stop it. Use `--once` for scripts or quick snapshots.
+
 ### Recovery After Interruption
 
 If a session is interrupted:

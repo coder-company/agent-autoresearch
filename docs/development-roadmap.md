@@ -22,8 +22,8 @@
 - [ ] Parallel experiments runtime — run N trials concurrently, keep the best
 - [ ] Experiment branching — each trial on its own git branch
 - [ ] Branch merge strategy selection (fast-forward, squash, rebase)
+- [x] `autoresearch watch` — tail results in real-time
 - [ ] Progress websocket for real-time monitoring
-- [ ] `autoresearch watch` — tail results in real-time
 - [ ] Improved evals: statistical significance testing on parallel results
 
 ## v0.3.0 — Web Search + MCP Integration

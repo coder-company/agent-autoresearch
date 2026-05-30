@@ -10,7 +10,7 @@ Initial release.
 
 ### Added
 
-- **Core engine**: `init`, `verify`, `guard`, `log`, `decide`, `status`, `resume`, `progress` CLI commands
+- **Core engine**: `init`, `verify`, `guard`, `log`, `decide`, `status`, `resume`, `progress`, `watch` CLI commands
 - **State machine**: `RunPhase` enum (Setup → Baseline → Iterating → Complete/Blocked) with typed transitions
 - **Results logging**: TSV format with iteration, commit, metric, delta, guard, status, description columns
 - **State persistence**: `state.json` with full run context, resume support for interrupted sessions
