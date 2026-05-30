@@ -211,6 +211,7 @@ No. Every change is committed before verification. If it makes things worse, it 
 
 | Doc | What it covers |
 |-----|---------------|
+| [Docs Index](docs/README.md) | Repository documentation map |
 | [Installation](docs/INSTALL.md) | Claude Code, Codex, OpenCode, source install |
 | [Guide](docs/GUIDE.md) | Command map, binary operations, artifact contract |
 | [Examples](docs/EXAMPLES.md) | Copy-paste configs for common goals and parallel closeout |

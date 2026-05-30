@@ -35,6 +35,7 @@ fn readme_links_required_docs_entrypoints() {
     let root = repo_root();
     let readme = fs::read_to_string(root.join("README.md")).unwrap();
     let required_docs = [
+        "docs/README.md",
         "docs/INSTALL.md",
         "docs/GUIDE.md",
         "docs/EXAMPLES.md",

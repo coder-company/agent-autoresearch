@@ -50,6 +50,7 @@ Do not commit `autoresearch-results/` or `.codex-autoresearch/`.
 
 ## Detailed Guides
 
+- [Docs Index](README.md)
 - [Getting Started](../guide/getting-started.md)
 - [Examples](EXAMPLES.md)
 - [System Architecture](system-architecture.md)
