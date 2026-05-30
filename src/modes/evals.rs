@@ -109,6 +109,9 @@ pub fn parse_results_tsv(content: &str) -> Result<Vec<ParsedRow>> {
         let delta_str = parts[3].trim_start_matches('+');
         let delta = Decimal::from_str(delta_str)
             .with_context(|| format!("Invalid delta value at iteration {iteration}"))?;
+        if !matches!(parts[4], "pass" | "fail" | "-") {
+            bail!("Invalid guard value at iteration {iteration}");
+        }
         let status = parts[5].to_string();
         let description = parts[6].to_string();
 
@@ -338,6 +341,16 @@ mod tests {
         let err = parse_results_tsv(tsv).unwrap_err().to_string();
 
         assert!(err.contains("Invalid delta value at iteration 1"));
+    }
+
+    #[test]
+    fn test_parse_results_tsv_rejects_invalid_guard() {
+        let tsv = "# metric_direction: higher\niteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n\
+                   1\tabc1234\t85\t+2\tmaybe\tkeep\tadd tests\n";
+
+        let err = parse_results_tsv(tsv).unwrap_err().to_string();
+
+        assert!(err.contains("Invalid guard value at iteration 1"));
     }
 
     #[test]
