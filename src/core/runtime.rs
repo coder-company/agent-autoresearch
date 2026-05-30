@@ -5,6 +5,7 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::fs::{self, OpenOptions};
+use std::io::ErrorKind;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -346,9 +347,11 @@ fn spawn_runtime_child(
 
 fn write_runtime_prompt(child: &mut Child, manifest: &LaunchManifest) -> Result<()> {
     if let Some(mut stdin) = child.stdin.take() {
-        stdin
-            .write_all(manifest.prompt.as_bytes())
-            .context("failed to write runtime prompt to codex stdin")?;
+        match stdin.write_all(manifest.prompt.as_bytes()) {
+            Ok(()) => {}
+            Err(err) if err.kind() == ErrorKind::BrokenPipe => {}
+            Err(err) => return Err(err).context("failed to write runtime prompt to codex stdin"),
+        }
     }
     Ok(())
 }
@@ -844,6 +847,57 @@ fn append_log(path: &Path, text: &str) -> Result<()> {
         .with_context(|| format!("failed to open {}", path.display()))?;
     file.write_all(text.as_bytes())
         .with_context(|| format!("failed to write {}", path.display()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn write_runtime_prompt_ignores_closed_child_stdin() {
+        let dir = tempfile::tempdir().unwrap();
+        let ready = dir.path().join("ready");
+        let mut child = Command::new("sh")
+            .arg("-c")
+            .arg("exec 0<&-; printf ready > \"$1\"; sleep 1")
+            .arg("sh")
+            .arg(&ready)
+            .stdin(Stdio::piped())
+            .spawn()
+            .unwrap();
+
+        for _ in 0..50 {
+            if ready.exists() {
+                break;
+            }
+            thread::sleep(Duration::from_millis(20));
+        }
+        assert!(ready.exists());
+
+        let manifest = LaunchManifest {
+            version: 1,
+            created_at: String::new(),
+            workspace_root: String::new(),
+            primary_repo: String::new(),
+            results_path: String::new(),
+            state_path: String::new(),
+            launch_path: String::new(),
+            runtime_path: String::new(),
+            log_path: String::new(),
+            execution_policy: "workspace_write".to_string(),
+            codex_bin: "sh".to_string(),
+            codex_args: Vec::new(),
+            config: None,
+            prompt: "continue\n".to_string(),
+        };
+
+        let result = write_runtime_prompt(&mut child, &manifest);
+        let _ = child.kill();
+        let _ = child.wait();
+
+        assert!(result.is_ok());
+    }
 }
 
 #[cfg(unix)]
