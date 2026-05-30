@@ -247,6 +247,9 @@ impl ResultsLog {
         if !saw_header {
             anyhow::bail!("results.tsv is missing the column header");
         }
+        if expected_main_iteration == 0 {
+            anyhow::bail!("results.tsv is missing the baseline row");
+        }
         Ok(())
     }
 
@@ -512,6 +515,16 @@ mod tests {
         let err = log.validate().unwrap_err().to_string();
 
         assert!(err.contains("main iteration 2; expected 1"));
+    }
+
+    #[test]
+    fn test_validate_requires_baseline_row() {
+        let dir = tempfile::tempdir().unwrap();
+        let log = ResultsLog::create(dir.path(), Direction::Higher).unwrap();
+
+        let err = log.validate().unwrap_err().to_string();
+
+        assert!(err.contains("missing the baseline row"));
     }
 
     #[test]
