@@ -26,7 +26,7 @@ Run before each detached Codex session. `autoresearch runtime run` repeats this 
 | Check | How | Failure Action |
 |-------|-----|----------------|
 | Disk space | `df -m . \| awk 'NR==2{print $4}'` >= 500MB | Warning at <1GB, hard blocker at <500MB |
-| Git state | For single-repo runs, `git status --porcelain` shows only expected files and autoresearch-owned artifacts. For multi-repo runs, apply the same check to the primary repo and every companion repo declared in the launch manifest. | Warning if unexpected files; hard blocker if repo is corrupt |
+| Git state | For single-repo runs, `git status --porcelain` shows only expected files and autoresearch-owned artifacts, HEAD is attached to a branch, no stale git lock files are present, and autoresearch-owned artifacts are not staged. For multi-repo runs, apply the same check to the primary repo and every companion repo declared in the launch manifest. | Warning if unexpected files; hard blocker if repo is corrupt, HEAD is detached, git lock files are present, or autoresearch artifacts are staged |
 | Verify command | Confirm the configured verify command still resolves to an executable | Hard blocker if the verify command is missing |
 | Log integrity | `autoresearch resume ...` can reconstruct TSV state | Hard blocker if the TSV is corrupt |
 | JSON state integrity | `autoresearch resume` reports `full_resume` or a recoverable fallback | Warning on divergence; optionally rewrite state from TSV. Hard blocker if both TSV and JSON are unusable |

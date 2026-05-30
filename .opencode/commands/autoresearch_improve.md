@@ -166,4 +166,4 @@ This command is a **terminal emitter** — it produces PRDs and reports as final
 If invoked via --chain from an upstream command (e.g., probe → improve):
 - Read handoff.json for constraints, requirements, or scope from upstream
 - Use upstream findings to seed research categories
-- Write handoff.json: version "0.1.0", source "improve", timestamp, status (COMPLETE|USER_INTERRUPT|BOUNDED|ERROR), findings = selected improvements with tier + score, config{goal, icp, scope}
+- Write handoff.json: version "2.1.0", source "improve", timestamp, status (COMPLETE|USER_INTERRUPT|BOUNDED|ERROR), findings = selected improvements with tier + score, config{goal, icp, scope}
