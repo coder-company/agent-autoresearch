@@ -796,6 +796,107 @@ fn test_log_keep_requires_commit() {
 }
 
 #[test]
+fn test_log_meta_status_advances_state() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "log",
+            "--iteration",
+            "1",
+            "--metric",
+            "50",
+            "--status",
+            "search",
+            "--description",
+            "looked up prior art",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "log",
+            "--iteration",
+            "2",
+            "--metric",
+            "50",
+            "--status",
+            "no-op",
+            "--description",
+            "no diff after search",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let state: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(state["iteration"], 2);
+    assert_eq!(state["last_status"], "no-op");
+}
+
+#[test]
+fn test_log_rejects_baseline_status() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "log",
+            "--iteration",
+            "1",
+            "--metric",
+            "50",
+            "--status",
+            "baseline",
+            "--description",
+            "duplicate baseline",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "baseline log rows are created by init",
+        ));
+}
+
+#[test]
 fn test_decide_rejects_invalid_guard_value() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

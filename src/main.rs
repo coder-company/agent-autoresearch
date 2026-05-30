@@ -836,6 +836,9 @@ fn cmd_log(
     let guard = parse_guard_result(Some(guard_str))?;
 
     let status = parse_status(status_str)?;
+    if status == IterationStatus::Baseline {
+        anyhow::bail!("baseline log rows are created by init");
+    }
     if status == IterationStatus::Keep && commit_val.is_none() {
         anyhow::bail!("keep log rows require a commit");
     }
@@ -878,7 +881,10 @@ fn cmd_log(
             IterationStatus::Drift => {
                 state.record_drift(metric);
             }
-            _ => {} // baseline, pivot, refine, search — state updated by decide
+            IterationStatus::Pivot | IterationStatus::Refine | IterationStatus::Search => {
+                state.record_meta_status(status, metric);
+            }
+            _ => {}
         }
 
         std::fs::write(&state_path, serde_json::to_string_pretty(&state)?)?;

@@ -291,6 +291,26 @@ impl RunState {
         };
     }
 
+    /// Record a non-experiment control-plane row such as refine, pivot, or search.
+    pub fn record_meta_status(&mut self, status: IterationStatus, metric: Decimal) {
+        self.iteration += 1;
+        self.last_trial_metric = Some(metric);
+        self.last_trial_commit = None;
+        self.last_status = status;
+
+        if status == IterationStatus::Pivot {
+            self.pivot_count += 1;
+            self.consecutive_discards = 0;
+        }
+
+        self.phase = RunPhase::Iterating {
+            iteration: self.iteration,
+            current_metric: self.current_metric,
+            best_metric: self.best_metric,
+            best_iteration: self.best_iteration,
+        };
+    }
+
     /// Mark run complete.
     pub fn complete(&mut self, reason: StopReason) {
         self.phase = RunPhase::Complete { reason };
@@ -329,6 +349,7 @@ pub enum IterationStatus {
     Keep,
     Discard,
     Crash,
+    #[serde(rename = "no-op")]
     NoOp,
     Blocked,
     Pivot,
