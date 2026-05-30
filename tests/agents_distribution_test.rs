@@ -102,13 +102,22 @@ fn codex_skill_reference_links_are_closed_and_synced() {
 #[test]
 fn codex_skill_packages_openai_agent_metadata() {
     let root = repo_root();
-    let canonical = root.join("agents/openai.yaml");
+    let canonical = root.join("agents/skill-openai.yaml");
     let packaged = root.join(".agents/skills/autoresearch/agents/openai.yaml");
+    let packaged_content = fs::read_to_string(&packaged).unwrap();
 
     assert!(packaged.is_file(), "missing packaged OpenAI agent metadata");
     assert_eq!(
         fs::read_to_string(&canonical).unwrap(),
-        fs::read_to_string(&packaged).unwrap(),
-        "packaged OpenAI agent metadata drifted from agents/openai.yaml"
+        packaged_content,
+        "packaged OpenAI agent metadata drifted from agents/skill-openai.yaml"
     );
+    for unsupported in ["name:", "description:", "model:", "tools:"] {
+        assert!(
+            !packaged_content
+                .lines()
+                .any(|line| line.trim_start().starts_with(unsupported)),
+            "packaged skill agent metadata contains unsupported field {unsupported}"
+        );
+    }
 }

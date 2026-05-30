@@ -112,7 +112,7 @@ for f in "$ROOT/references/"*.md; do
     cp "$f" "$ROOT/.agents/skills/autoresearch/references/$(basename "$f")"
 done
 mkdir -p "$ROOT/.agents/skills/autoresearch/agents"
-cp "$ROOT/agents/openai.yaml" "$ROOT/.agents/skills/autoresearch/agents/openai.yaml"
+cp "$ROOT/agents/skill-openai.yaml" "$ROOT/.agents/skills/autoresearch/agents/openai.yaml"
 
 check_reference_links "$ROOT/.agents/skills/autoresearch" \
     "$ROOT"/.agents/skills/autoresearch/SKILL.md \
