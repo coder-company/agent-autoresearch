@@ -239,7 +239,7 @@ Hooks must respond in under 3 seconds (5 seconds for `Stop` hooks). Use `HookRes
 ## Areas of Interest for Contributors
 
 - **New mode implementations** — The `src/modes/` directory is empty and ready for Rust implementations of the 12 modes currently defined as command markdown files.
-- **Hook improvements** — The `scout_block.rs` scope enforcement uses glob patterns but the matching is not yet implemented (marked with TODO).
+- **Hook improvements** — Expand `scout_block.rs` regression coverage for more shell path forms, symlinks, and multi-root scope policies.
 - **Platform adapters** — `src/agents/claude.rs` and `src/agents/codex.rs` can be expanded with platform-specific optimizations.
 - **Verification templates** — Pre-built verify command templates for common frameworks (Jest, pytest, Go test, etc.).
 - **Metrics format extensions** — Support for additional output formats beyond scalar and JSON.
