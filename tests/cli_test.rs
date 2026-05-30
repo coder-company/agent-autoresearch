@@ -524,18 +524,26 @@ fn test_evals_reports_unknown_columns() {
     writeln!(file, "# metric_direction: higher").unwrap();
     writeln!(
         file,
-        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\ttechnique"
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\ttechnique\tcustom_note"
     )
     .unwrap();
-    writeln!(file, "0\tabc1234\t50\t0\t-\tbaseline\tinitial\tbaseline").unwrap();
-    writeln!(file, "1\tbcd2345\t55\t+5\tpass\tkeep\timproved\trefactor").unwrap();
+    writeln!(
+        file,
+        "0\tabc1234\t50\t0\t-\tbaseline\tinitial\tbaseline\tseed"
+    )
+    .unwrap();
+    writeln!(
+        file,
+        "1\tbcd2345\t55\t+5\tpass\tkeep\timproved\trefactor\tnote"
+    )
+    .unwrap();
 
     cmd()
         .args(["evals", tsv_path.to_str().unwrap(), "--format", "json"])
         .assert()
         .success()
         .stdout(predicate::str::contains("\"unknown_columns\""))
-        .stdout(predicate::str::contains("\"technique\""));
+        .stdout(predicate::str::contains("\"custom_note\""));
 }
 
 #[test]

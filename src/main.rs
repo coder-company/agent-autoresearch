@@ -1505,6 +1505,20 @@ fn evals_unknown_columns(content: &str) -> Vec<String> {
         "guard-metric",
         "status",
         "description",
+        "severity",
+        "hypothesis",
+        "owasp",
+        "stride",
+        "technique",
+        "dimension",
+        "candidate_label",
+        "judge_verdict",
+        "error_type",
+        "classification",
+        "convergence_count",
+        "finding",
+        "evidence",
+        "file_line",
     ]);
     header
         .split('\t')
