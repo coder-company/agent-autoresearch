@@ -165,9 +165,13 @@ pub fn detect_plateau(rows: &[ParsedRow], threshold: usize) -> Option<u32> {
 
 /// Compute efficiency metrics.
 pub fn compute_efficiency(rows: &[ParsedRow]) -> EfficiencyMetrics {
-    let total = rows.len() as u32;
-    let keeps = rows.iter().filter(|r| r.status == "keep").count() as u32;
-    let discards = total - keeps;
+    let attempt_rows: Vec<&ParsedRow> = rows.iter().filter(|r| r.status != "baseline").collect();
+    let total = attempt_rows.len() as u32;
+    let keeps = attempt_rows.iter().filter(|r| r.status == "keep").count() as u32;
+    let discards = attempt_rows
+        .iter()
+        .filter(|r| r.status == "discard")
+        .count() as u32;
 
     let keep_ratio = if total > 0 {
         keeps as f64 / total as f64
@@ -409,6 +413,41 @@ mod tests {
         assert_eq!(eff.total_iterations, 3);
         assert_eq!(eff.keeps, 2);
         assert_eq!(eff.discards, 1);
+    }
+
+    #[test]
+    fn test_efficiency_metrics_exclude_baseline() {
+        let rows = vec![
+            ParsedRow {
+                iteration: 0,
+                commit: Some("base".into()),
+                metric: Decimal::from(10),
+                delta: Decimal::ZERO,
+                status: "baseline".into(),
+                description: "initial".into(),
+            },
+            ParsedRow {
+                iteration: 1,
+                commit: Some("a".into()),
+                metric: Decimal::from(8),
+                delta: Decimal::from(-2),
+                status: "keep".into(),
+                description: "t".into(),
+            },
+            ParsedRow {
+                iteration: 2,
+                commit: None,
+                metric: Decimal::from(9),
+                delta: Decimal::from(1),
+                status: "discard".into(),
+                description: "t".into(),
+            },
+        ];
+        let eff = compute_efficiency(&rows);
+        assert_eq!(eff.total_iterations, 2);
+        assert_eq!(eff.keeps, 1);
+        assert_eq!(eff.discards, 1);
+        assert_eq!(eff.keep_ratio, 0.5);
     }
 
     #[test]
