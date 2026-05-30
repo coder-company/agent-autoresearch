@@ -112,17 +112,7 @@ pub fn run_health_check(
     };
 
     let free_mb = disk_free_mb(workspace);
-    match free_mb {
-        Some(value) if value < min_free_mb => blockers.push(HealthFinding {
-            code: "low_disk",
-            message: format!("only {value} MB free; require at least {min_free_mb} MB"),
-        }),
-        None => warnings.push(HealthFinding {
-            code: "disk_unknown",
-            message: "could not determine free disk space".to_string(),
-        }),
-        _ => {}
-    }
+    check_disk_space(free_mb, min_free_mb, &mut warnings, &mut blockers);
 
     let has_results = tsv_path.exists();
     let has_state = state_path.exists();
@@ -259,6 +249,73 @@ fn disk_free_mb(path: &Path) -> Option<u64> {
     Some(available_kb / 1024)
 }
 
+fn check_disk_space(
+    free_mb: Option<u64>,
+    min_free_mb: u64,
+    warnings: &mut Vec<HealthFinding>,
+    blockers: &mut Vec<HealthFinding>,
+) {
+    match free_mb {
+        Some(value) if value < min_free_mb => blockers.push(HealthFinding {
+            code: "low_disk",
+            message: format!("only {value} MB free; require at least {min_free_mb} MB"),
+        }),
+        Some(value) if value < max_warning_free_mb(min_free_mb) => warnings.push(HealthFinding {
+            code: "disk_low_warning",
+            message: format!("{value} MB free; disk headroom is below warning threshold"),
+        }),
+        None => warnings.push(HealthFinding {
+            code: "disk_unknown",
+            message: "could not determine free disk space".to_string(),
+        }),
+        _ => {}
+    }
+}
+
+fn max_warning_free_mb(min_free_mb: u64) -> u64 {
+    std::cmp::max(min_free_mb.saturating_mul(2), 1000)
+}
+
 fn display_path(path: &Path) -> String {
     PathBuf::from(path).display().to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn disk_space_blocks_below_minimum() {
+        let mut warnings = Vec::new();
+        let mut blockers = Vec::new();
+
+        check_disk_space(Some(499), 500, &mut warnings, &mut blockers);
+
+        assert!(warnings.is_empty());
+        assert_eq!(blockers.len(), 1);
+        assert_eq!(blockers[0].code, "low_disk");
+    }
+
+    #[test]
+    fn disk_space_warns_below_headroom_threshold() {
+        let mut warnings = Vec::new();
+        let mut blockers = Vec::new();
+
+        check_disk_space(Some(750), 500, &mut warnings, &mut blockers);
+
+        assert!(blockers.is_empty());
+        assert_eq!(warnings.len(), 1);
+        assert_eq!(warnings[0].code, "disk_low_warning");
+    }
+
+    #[test]
+    fn disk_space_accepts_enough_headroom() {
+        let mut warnings = Vec::new();
+        let mut blockers = Vec::new();
+
+        check_disk_space(Some(1000), 500, &mut warnings, &mut blockers);
+
+        assert!(warnings.is_empty());
+        assert!(blockers.is_empty());
+    }
 }
