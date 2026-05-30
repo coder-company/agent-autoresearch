@@ -108,6 +108,8 @@ For repository contributors:
 ```bash
 ./scripts/validate_distribution.sh
 ./scripts/run_skill_e2e.sh binary-smoke --clean
+./scripts/run_skill_e2e.sh runtime-smoke --clean
+./scripts/run_skill_e2e.sh parallel-smoke --clean
 ./scripts/run_contributor_gate.sh
 ```
 

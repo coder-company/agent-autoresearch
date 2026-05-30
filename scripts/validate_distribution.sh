@@ -176,6 +176,12 @@ require_grep 'out-of-scope writes' docs/architecture.md
 require_grep 'tool_name' tests/test-hooks.sh
 require_grep '\.decision // "allow"' tests/test-hooks.sh
 require_grep '\./tests/test-hooks\.sh' CONTRIBUTING.md
+require_grep 'runtime-smoke --clean' CONTRIBUTING.md
+require_grep 'parallel-smoke --clean' CONTRIBUTING.md
+require_grep 'runtime-smoke --clean' docs/INSTALL.md
+require_grep 'parallel-smoke --clean' docs/INSTALL.md
+require_grep 'runtime-smoke --clean' docs/code-standards.md
+require_grep 'parallel-smoke --clean' docs/code-standards.md
 require_grep 'plugins/autoresearch/skills/autoresearch' CONTRIBUTING.md
 require_grep '\.opencode/' CONTRIBUTING.md
 require_grep '\./scripts/release\.sh <version>' CONTRIBUTING.md

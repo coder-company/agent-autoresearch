@@ -90,7 +90,13 @@ Run the lightweight end-to-end binary smoke:
 ```
 
 This creates a disposable git repo and exercises `init`, `decide`, `status`, `watch`, and `evals` through the built `autoresearch` binary.
-Use `./scripts/run_skill_e2e.sh multi-repo-smoke --clean` after changing workspace, companion repo, health, handoff, or runtime launch behavior.
+Use these targeted smokes after changing adjacent behavior:
+
+```bash
+./scripts/run_skill_e2e.sh multi-repo-smoke --clean    # workspace, companion repo, health, handoff, runtime launch metadata
+./scripts/run_skill_e2e.sh runtime-smoke --clean       # runtime start/status/stop with a fake Codex process
+./scripts/run_skill_e2e.sh parallel-smoke --clean      # parallel prepare/run/cleanup with fake Codex workers
+```
 
 ---
 
