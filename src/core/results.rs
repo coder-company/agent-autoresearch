@@ -493,7 +493,7 @@ pub fn ensure_results_dir_protected(workspace: &Path) -> Result<PathBuf> {
 
 fn protect_artifacts_in_git_exclude(workspace: &Path, entries: &[&str]) -> Result<()> {
     let repo = Repository::discover(workspace).context("Failed to locate git repository")?;
-    let exclude_path = repo.path().join("info/exclude");
+    let exclude_path = git_common_dir(&repo).join("info/exclude");
     if let Some(parent) = exclude_path.parent() {
         fs::create_dir_all(parent)
             .with_context(|| format!("Failed to create {}", parent.display()))?;
@@ -521,6 +521,21 @@ fn protect_artifacts_in_git_exclude(workspace: &Path, entries: &[&str]) -> Resul
         writeln!(file, "{entry}")?;
     }
     Ok(())
+}
+
+fn git_common_dir(repo: &Repository) -> PathBuf {
+    let git_dir = repo.path();
+    let commondir_path = git_dir.join("commondir");
+    let Ok(raw_common_dir) = fs::read_to_string(&commondir_path) else {
+        return git_dir.to_path_buf();
+    };
+
+    let common_dir = PathBuf::from(raw_common_dir.trim());
+    if common_dir.is_absolute() {
+        common_dir
+    } else {
+        git_dir.join(common_dir)
+    }
 }
 
 /// Generate a timestamped run tag.

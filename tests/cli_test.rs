@@ -2872,6 +2872,34 @@ fn test_init_protects_artifacts_without_dirtying_gitignore() {
 }
 
 #[test]
+fn test_init_protects_artifacts_in_linked_worktree() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture_with_gitignore(&dir, "target/\n");
+    let worktree_parent = TempDir::new().unwrap();
+    let worktree_path = worktree_parent.path().join("linked");
+    let worktree_root = worktree_path.to_str().unwrap();
+    git_ok(dir.path(), &["worktree", "add", worktree_root]);
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            worktree_root,
+        ])
+        .assert()
+        .success();
+
+    let exclude = std::fs::read_to_string(dir.path().join(".git/info/exclude")).unwrap();
+    assert!(exclude.contains("autoresearch-results/"));
+    assert!(exclude.contains(".codex-autoresearch/"));
+    assert_eq!(git_output(&worktree_path, &["status", "--short"]), "");
+}
+
+#[test]
 fn test_init_persists_environment_summary_metadata() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
