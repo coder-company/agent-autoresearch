@@ -221,6 +221,12 @@ impl ResultsLog {
                     columns[5]
                 );
             }
+            if main_iteration.is_none() && columns[5] == "baseline" {
+                anyhow::bail!(
+                    "results.tsv line {} has worker row with baseline status",
+                    index + 1
+                );
+            }
             if let Some(iteration) = main_iteration {
                 match (iteration, columns[5]) {
                     (0, "baseline") => {}
@@ -578,5 +584,23 @@ mod tests {
         let err = log.validate().unwrap_err().to_string();
 
         assert!(err.contains("worker iteration 2; expected pending main iteration 1"));
+    }
+
+    #[test]
+    fn test_validate_rejects_worker_baseline_status() {
+        let dir = tempfile::tempdir().unwrap();
+        let log = ResultsLog::create(dir.path(), Direction::Higher).unwrap();
+        fs::write(
+            log.path(),
+            format!(
+                "{}\n0\tbase\t10\t0\t-\tbaseline\tbaseline\n1a\tabc1234\t11\t+1\tpass\tbaseline\tbad worker\n1\tabc1234\t11\t+1\tpass\tkeep\tmain row\n",
+                tsv_header(Direction::Higher)
+            ),
+        )
+        .unwrap();
+
+        let err = log.validate().unwrap_err().to_string();
+
+        assert!(err.contains("worker row with baseline status"));
     }
 }
