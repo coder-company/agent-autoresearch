@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use rust_decimal::Decimal;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as FmtWrite;
 use std::path::Path;
 use std::path::PathBuf;
@@ -572,6 +572,21 @@ fn cmd_init(
     // Measure baseline
     let result = verify::run_verify(verify_cmd, fmt, key, &workspace)
         .context("Baseline verification failed")?;
+    if fmt == VerifyFormat::MetricsJson {
+        let metrics = result
+            .metrics
+            .as_ref()
+            .context("verify_format=metrics_json requires structured baseline metrics")?;
+        let primary_metric_key = key
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or("metric");
+        ensure_metrics_json_keys(
+            metrics,
+            primary_metric_key,
+            &acceptance_criteria,
+            &required_keep_criteria,
+        )?;
+    }
 
     // Create results directory + protect from git staging
     let results_dir = ensure_results_dir_protected(&workspace)?;
@@ -2228,6 +2243,30 @@ fn build_trial_metrics(
             primary_metric,
         )])),
     }
+}
+
+fn ensure_metrics_json_keys(
+    metrics: &BTreeMap<String, Decimal>,
+    primary_metric_key: &str,
+    acceptance_criteria: &[autoresearch::core::config::MetricCriterion],
+    required_keep_criteria: &[autoresearch::core::config::MetricCriterion],
+) -> Result<()> {
+    let mut required = BTreeSet::from([primary_metric_key.to_string()]);
+    for criterion in acceptance_criteria.iter().chain(required_keep_criteria) {
+        required.insert(criterion.metric_key.clone());
+    }
+
+    let missing = required
+        .into_iter()
+        .filter(|key| !metrics.contains_key(key))
+        .collect::<Vec<_>>();
+    if !missing.is_empty() {
+        anyhow::bail!(
+            "verify_format=metrics_json requires metrics keys: {}",
+            missing.join(", ")
+        );
+    }
+    Ok(())
 }
 
 fn parse_direction(s: &str) -> Result<Direction> {
