@@ -20,6 +20,7 @@ Invoke via `$autoresearch` mention syntax. Modes are passed as keywords:
 - `$autoresearch probe` — requirement interrogation
 - `$autoresearch improve` — ICP-driven product improvement
 - `$autoresearch evals` — results analysis
+- `$autoresearch exec` — non-interactive CI/CD loop with structured JSON output
 
 ## Safety Invariants
 - Never push, publish, or deploy without explicit user approval.
@@ -32,6 +33,7 @@ Invoke via `$autoresearch` mention syntax. Modes are passed as keywords:
 The `autoresearch` binary handles mechanical operations:
 - `autoresearch init` — initialize results directory, baseline, config, and canonical context
 - `autoresearch init --companion-repo-scope PATH=SCOPE` — register clean companion repos in state/context and write repo-local pointers
+- `autoresearch exec` — run a fully specified non-interactive loop from JSON config
 - `autoresearch health` — preflight git/artifact/disk/verify/context state
 - `autoresearch verify` — run verify command, parse metric or metrics JSON
 - `autoresearch decide` — evaluate keep/discard logic, criteria gates, rollback, and escalation
@@ -101,15 +103,27 @@ Use the binary decision/log command to append `autoresearch-results/results.tsv`
 
 Load only what the current mode requires:
 - `references/core-principles.md` — 8 foundational rules
+- `references/runtime-hard-invariants.md` — active execution checklist and artifact invariants
 - `references/runtime-protocol.md` — Closeout order, state machine, TSV format, verify/guard contracts
+- `references/loop-workflow.md` — core loop workflow
+- `references/autonomous-loop-protocol.md` — foreground/background launch and stop conditions
 - `references/interaction-wizard.md` — Guided setup flow from natural-language goals
+- `references/structured-output-spec.md` — mode output contracts
+- `references/modes.md` — mode routing reference
 - `references/session-resume.md` — Recovery flow for interrupted runs and stale artifacts
 - `references/escalation.md` — REFINE/PIVOT/web-search escalation thresholds and lessons
 - `references/health-check-protocol.md` — Runtime preflight and integrity checks
 - `references/results-logging.md` — TSV, state, context, and acceptance criteria semantics
+- `references/exec-workflow.md` — CI/CD exec mode and JSON output discipline
+- `references/plan-workflow.md` — Goal-to-config planning flow
+- `references/debug-workflow.md` — Bug-hunting workflow
+- `references/fix-workflow.md` — Error repair workflow
+- `references/security-workflow.md` — Security mode workflow
+- `references/ship-workflow.md` — Ship readiness workflow
 - `references/environment-awareness.md` — Resource, toolchain, and network probes for feasible hypotheses
 - `references/parallel-experiments-protocol.md` — Isolated worktree workers and batch closeout
 - `references/pivot-protocol.md` — Detailed REFINE/PIVOT counting and stuck recovery
+- `references/hypothesis-perspectives.md` — Hypothesis generation lenses
 - `references/web-search-protocol.md` — Controlled search escalation as hypothesis input
 - `references/lessons-protocol.md` — Persistent cross-run lesson extraction and reuse
 - `references/security-checklist.md` — STRIDE + OWASP tables

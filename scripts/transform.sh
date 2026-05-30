@@ -2,8 +2,9 @@
 # transform.sh — Generate OpenCode distribution assets from canonical sources.
 #
 # Copies commands/ and skills/ into the OpenCode naming conventions. The
-# .agents Codex skill is maintained directly because it uses a different
-# invocation model than the Claude/OpenCode command surface.
+# .agents Codex skill entrypoint is maintained directly because it uses a
+# different invocation model, but its reference package is synced from the
+# same canonical references/ directory as OpenCode.
 #
 # Usage: ./scripts/transform.sh
 
@@ -103,7 +104,13 @@ opencode_count=$(find "$ROOT/.opencode" -type f | wc -l)
 
 # ── .agents distribution ────────────────────────────────────────────
 
-echo "Checking .agents/ distribution..."
+echo "Building .agents/ reference package..."
+
+rm -rf "$ROOT/.agents/skills/autoresearch/references"
+mkdir -p "$ROOT/.agents/skills/autoresearch/references"
+for f in "$ROOT/references/"*.md; do
+    cp "$f" "$ROOT/.agents/skills/autoresearch/references/$(basename "$f")"
+done
 
 check_reference_links "$ROOT/.agents/skills/autoresearch" \
     "$ROOT"/.agents/skills/autoresearch/SKILL.md \

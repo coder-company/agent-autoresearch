@@ -87,6 +87,8 @@ require_grep 'exec' agents/openai.yaml
 
 require_grep '\$autoresearch' .agents/skills/autoresearch/SKILL.md
 require_grep 'autoresearch runtime run' .agents/skills/autoresearch/SKILL.md
+require_grep 'exec-workflow\.md' .agents/skills/autoresearch/SKILL.md
+require_grep 'runtime-hard-invariants\.md' .agents/skills/autoresearch/SKILL.md
 require_grep 'autoresearch watch' SKILL.md
 require_grep 'autoresearch watch' skills/autoresearch/SKILL.md
 require_grep 'autoresearch watch' guide/advanced-patterns.md
