@@ -17,7 +17,13 @@ Mode names are passed as keywords:
 | Security audit | `$autoresearch security` |
 | Ship workflow | `$autoresearch ship` |
 | Scenario exploration | `$autoresearch scenario` |
+| Prediction debate | `$autoresearch predict` |
+| Documentation generation | `$autoresearch learn` |
+| Adversarial reasoning | `$autoresearch reason` |
+| Requirement probing | `$autoresearch probe` |
+| Product improvement | `$autoresearch improve` |
 | Results analysis | `$autoresearch evals` |
+| CI/CD JSON loop | `$autoresearch exec` |
 
 ## Install
 
@@ -104,8 +110,13 @@ $autoresearch security
 Scope: src/api/**/*.ts
 Depth: deep
 
+$autoresearch exec
+Config: <fully specified JSON RunConfig>
+
 $autoresearch evals
 ```
+
+`exec` is the non-interactive path for CI and scripted use. Provide all config up front, expect structured JSON lines, and use the exit code instead of conversational prompts.
 
 ## Related Guides
 
