@@ -159,6 +159,14 @@ pub fn run_health_check(
                             message: "context.json is marked inactive".to_string(),
                         });
                     }
+                    if let Some(message) =
+                        context_path_mismatch(&context, &results_path, &state_path)
+                    {
+                        blockers.push(HealthFinding {
+                            code: "context_mismatch",
+                            message,
+                        });
+                    }
                 }
                 Err(err) => blockers.push(HealthFinding {
                     code: "context_corrupt",
@@ -256,6 +264,55 @@ pub fn run_health_check(
     })
 }
 
+fn context_path_mismatch(
+    context: &RunContext,
+    results_path: &Path,
+    state_path: &Path,
+) -> Option<String> {
+    let expected = [
+        (
+            "artifact_root",
+            context.artifact_root.as_str(),
+            results_path.to_path_buf(),
+        ),
+        (
+            "results_path",
+            context.results_path.as_str(),
+            results_path.join("results.tsv"),
+        ),
+        (
+            "state_path",
+            context.state_path.as_str(),
+            state_path.to_path_buf(),
+        ),
+        (
+            "launch_path",
+            context.launch_path.as_str(),
+            results_path.join("launch.json"),
+        ),
+        (
+            "runtime_path",
+            context.runtime_path.as_str(),
+            results_path.join("runtime.json"),
+        ),
+        (
+            "log_path",
+            context.log_path.as_str(),
+            results_path.join("runtime.log"),
+        ),
+    ];
+
+    expected
+        .into_iter()
+        .find(|(_, actual, expected)| *actual != absolute_path(expected))
+        .map(|(field, actual, expected)| {
+            format!(
+                "context.json {field} points to {actual}; expected {}",
+                absolute_path(&expected)
+            )
+        })
+}
+
 fn disk_free_mb(path: &Path) -> Option<u64> {
     let output = Command::new("df").arg("-Pk").arg(path).output().ok()?;
     if !output.status.success() {
@@ -296,6 +353,13 @@ fn max_warning_free_mb(min_free_mb: u64) -> u64 {
 
 fn display_path(path: &Path) -> String {
     PathBuf::from(path).display().to_string()
+}
+
+fn absolute_path(path: &Path) -> String {
+    path.canonicalize()
+        .unwrap_or_else(|_| PathBuf::from(path))
+        .display()
+        .to_string()
 }
 
 #[cfg(test)]

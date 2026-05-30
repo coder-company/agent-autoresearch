@@ -1050,6 +1050,52 @@ fn test_health_reports_corrupt_context_as_blocker() {
 }
 
 #[test]
+fn test_health_blocks_context_path_mismatch() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let context_path = dir.path().join("autoresearch-results/context.json");
+    let mut context: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&context_path).unwrap()).unwrap();
+    context["results_path"] = serde_json::json!("/tmp/wrong-results.tsv");
+    std::fs::write(
+        &context_path,
+        serde_json::to_string_pretty(&context).unwrap(),
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "health",
+            "--verify",
+            "cat metric.txt",
+            "--min-free-mb",
+            "1",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .code(2)
+        .stdout(predicate::str::contains("\"decision\": \"block\""))
+        .stdout(predicate::str::contains("context_mismatch"))
+        .stdout(predicate::str::contains("results_path"));
+}
+
+#[test]
 fn test_health_blocks_unknown_results_status() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
