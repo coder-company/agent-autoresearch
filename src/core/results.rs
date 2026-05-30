@@ -149,6 +149,43 @@ impl ResultsLog {
             .count())
     }
 
+    /// Validate that data rows are structurally parseable before health/runtime trust them.
+    pub fn validate(&self) -> Result<()> {
+        let content = fs::read_to_string(&self.path).context("Failed to read results TSV")?;
+        let mut saw_header = false;
+
+        for (index, line) in content.lines().enumerate() {
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            if line.starts_with("iteration\t") {
+                saw_header = true;
+                continue;
+            }
+
+            let columns = line.split('\t').collect::<Vec<_>>();
+            if columns.len() != 7 {
+                anyhow::bail!(
+                    "results.tsv line {} has {} columns; expected 7",
+                    index + 1,
+                    columns.len()
+                );
+            }
+            columns[2]
+                .parse::<Decimal>()
+                .with_context(|| format!("results.tsv line {} has invalid metric", index + 1))?;
+            columns[3]
+                .trim_start_matches('+')
+                .parse::<Decimal>()
+                .with_context(|| format!("results.tsv line {} has invalid delta", index + 1))?;
+        }
+
+        if !saw_header {
+            anyhow::bail!("results.tsv is missing the column header");
+        }
+        Ok(())
+    }
+
     pub fn path(&self) -> &Path {
         &self.path
     }

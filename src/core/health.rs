@@ -133,6 +133,12 @@ pub fn run_health_check(
 
     if has_results {
         let log = ResultsLog::open(tsv_path.clone())?;
+        if let Err(err) = log.validate() {
+            blockers.push(HealthFinding {
+                code: "results_corrupt",
+                message: err.to_string(),
+            });
+        }
         main_rows = log.count()?;
     }
     if has_state {
