@@ -52,6 +52,7 @@ Cada mejora se acumula. Cada fallo se revierte automáticamente. El progreso se 
 | `/autoresearch:learn` | Explorar → generar docs → validar → corregir | 10 |
 | `/autoresearch:reason` | Debate adversarial con jueces ciegos | 8 |
 | `/autoresearch:probe` | 8 personas interrogan los requisitos | 15 |
+| `/autoresearch:improve` | Investigación de mejoras de producto | 20 |
 | `/autoresearch:evals` | Análisis de resultados: tendencias y mesetas | única |
 
 ---

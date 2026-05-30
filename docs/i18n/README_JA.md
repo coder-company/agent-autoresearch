@@ -52,6 +52,7 @@
 | `/autoresearch:learn` | 偵察 → ドキュメント生成 → 検証 → 修正 | 10 |
 | `/autoresearch:reason` | ブラインド審査付き対立的議論 | 8 |
 | `/autoresearch:probe` | 8つのペルソナが要件を徹底質問 | 15 |
+| `/autoresearch:improve` | プロダクト改善リサーチ | 20 |
 | `/autoresearch:evals` | 反復結果の分析：傾向とプラトー | 1回 |
 
 ---

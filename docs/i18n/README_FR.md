@@ -52,6 +52,7 @@ Chaque amélioration s'empile. Chaque échec est automatiquement annulé. La pro
 | `/autoresearch:learn` | Explorer → générer docs → valider → corriger | 10 |
 | `/autoresearch:reason` | Débat contradictoire avec juges aveugles | 8 |
 | `/autoresearch:probe` | 8 personas interrogent les exigences | 15 |
+| `/autoresearch:improve` | Recherche d'améliorations produit | 20 |
 | `/autoresearch:evals` | Analyse des résultats : tendances et plateaux | unique |
 
 ---

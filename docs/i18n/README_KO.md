@@ -52,6 +52,7 @@
 | `/autoresearch:learn` | 탐색 → 문서 생성 → 검증 → 수정 | 10 |
 | `/autoresearch:reason` | 블라인드 심사가 있는 적대적 토론 | 8 |
 | `/autoresearch:probe` | 8개 페르소나가 요구사항 심문 | 15 |
+| `/autoresearch:improve` | 제품 개선 리서치 | 20 |
 | `/autoresearch:evals` | 반복 결과 분석: 추세와 정체기 | 1회 |
 
 ---

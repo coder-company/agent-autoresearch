@@ -52,6 +52,7 @@ Jede Verbesserung addiert sich. Jeder Fehlschlag wird automatisch zurückgesetzt
 | `/autoresearch:learn` | Erkunden → Doku generieren → validieren → korrigieren | 10 |
 | `/autoresearch:reason` | Kontradiktorische Debatte mit Blind-Richtern | 8 |
 | `/autoresearch:probe` | 8 Personas hinterfragen Anforderungen | 15 |
+| `/autoresearch:improve` | Recherche zu Produktverbesserungen | 20 |
 | `/autoresearch:evals` | Ergebnisanalyse: Trends und Plateaus | einmalig |
 
 ---

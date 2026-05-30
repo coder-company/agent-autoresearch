@@ -52,6 +52,7 @@
 | `/autoresearch:learn` | 侦察 → 生成文档 → 验证 → 修复 | 10 |
 | `/autoresearch:reason` | 对抗性辩论与盲审评判 | 8 |
 | `/autoresearch:probe` | 8 个角色审问需求 | 15 |
+| `/autoresearch:improve` | 产品改进研究 | 20 |
 | `/autoresearch:evals` | 分析迭代结果：趋势与瓶颈 | 一次性 |
 
 ---
