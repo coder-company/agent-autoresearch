@@ -5138,6 +5138,73 @@ fn test_parallel_closeout_falls_back_when_best_worker_conflicts() {
 }
 
 #[test]
+fn test_parallel_closeout_discards_when_post_merge_verify_does_not_improve() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+    write_metric_and_commit(&dir, "41\n");
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "lower",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let commit_a = create_branch_commit(
+        &dir,
+        "stale-metric-worker",
+        "src/no-metric-change.txt",
+        "changed code only\n",
+        "code-only worker",
+    );
+    let batch_path = dir.path().join("autoresearch-results/parallel-batch.json");
+    std::fs::write(
+        &batch_path,
+        format!(
+            r#"[
+  {{"worker_id":"a","metric":"38","guard":"pass","commit":"{commit_a}","description":"claimed improvement without metric change","diff_size":2}}
+]"#
+        ),
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "parallel",
+            "closeout",
+            "--batch-file",
+            batch_path.to_str().unwrap(),
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"selected_worker\": null"))
+        .stdout(predicate::str::contains("\"decision\": \"discard\""));
+
+    let results =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/results.tsv")).unwrap();
+    assert!(results.contains(
+        "1a\t-\t38\t-3\tpass\tdiscard\t[PARALLEL worker-a] claimed improvement without metric change [MERGE failed] post-merge verify did not improve retained metric: 41"
+    ));
+    assert!(results.contains(
+        "1\t-\t38\t-3\tpass\tdiscard\t[PARALLEL batch] no worker produced a keepable improvement; best discarded worker-a: claimed improvement without metric change [MERGE failed] post-merge verify did not improve retained metric: 41"
+    ));
+    assert!(!dir.path().join("src/no-metric-change.txt").exists());
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("metric.txt")).unwrap(),
+        "41\n"
+    );
+}
+
+#[test]
 fn test_parallel_closeout_discards_when_no_worker_improves() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
