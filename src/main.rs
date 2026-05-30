@@ -21,6 +21,7 @@ use autoresearch::core::verify;
 use autoresearch::escalation::lessons::{self, LessonsLog};
 use autoresearch::escalation::pivot::{EscalationAction, EscalationState};
 use autoresearch::hooks;
+use autoresearch::modes::evals::{parse_results_tsv, ParsedRow};
 
 #[derive(Parser)]
 #[command(
@@ -2052,6 +2053,27 @@ fn cmd_resume(cwd: Option<PathBuf>) -> Result<()> {
     let state_path = results_dir.join("state.json");
 
     if !state_path.exists() {
+        let tsv_path = results_dir.join("results.tsv");
+        if tsv_path.exists() {
+            let log = ResultsLog::open(tsv_path.clone())?;
+            if let Err(err) = log.validate() {
+                let out = serde_json::json!({
+                    "resumable": false,
+                    "recommendation": "fresh_start",
+                    "reason": "results_corrupt",
+                    "error": err.to_string(),
+                });
+                println!("{}", serde_json::to_string_pretty(&out)?);
+                return Ok(());
+            }
+
+            let content = std::fs::read_to_string(&tsv_path)?;
+            let rows = parse_results_tsv(&content)?;
+            if let Some(out) = tsv_fallback_resume(&rows, &content, log.tail(5)?) {
+                println!("{}", serde_json::to_string_pretty(&out)?);
+                return Ok(());
+            }
+        }
         println!(r#"{{"resumable":false}}"#);
         return Ok(());
     }
@@ -2112,6 +2134,78 @@ fn cmd_resume(cwd: Option<PathBuf>) -> Result<()> {
     });
     println!("{}", serde_json::to_string_pretty(&out)?);
     Ok(())
+}
+
+fn tsv_fallback_resume(
+    rows: &[ParsedRow],
+    content: &str,
+    recent_rows: Vec<String>,
+) -> Option<serde_json::Value> {
+    let baseline = rows.iter().find(|row| row.status == "baseline")?;
+    let direction = results_tsv_direction(content);
+    let mut current_metric = baseline.metric;
+    let mut best_metric = baseline.metric;
+    let mut best_iteration = baseline.iteration;
+    let mut keeps = 0u32;
+    let mut discards = 0u32;
+    let mut crashes = 0u32;
+    let mut no_ops = 0u32;
+    let mut blocked = 0u32;
+
+    for row in rows {
+        match row.status.as_str() {
+            "keep" => {
+                keeps += 1;
+                current_metric = row.metric;
+                if metric_is_better(row.metric, best_metric, direction) {
+                    best_metric = row.metric;
+                    best_iteration = row.iteration;
+                }
+            }
+            "discard" => discards += 1,
+            "crash" => crashes += 1,
+            "no-op" => no_ops += 1,
+            "blocked" => blocked += 1,
+            _ => {}
+        }
+    }
+
+    let last = rows.last()?;
+    Some(serde_json::json!({
+        "resumable": true,
+        "source": "results.tsv",
+        "recommendation": "tsv_fallback",
+        "iteration": last.iteration,
+        "current_metric": current_metric.to_string(),
+        "best_metric": best_metric.to_string(),
+        "best_iteration": best_iteration,
+        "keeps": keeps,
+        "discards": discards,
+        "crashes": crashes,
+        "no_ops": no_ops,
+        "blocked": blocked,
+        "last_status": last.status,
+        "recent_rows": recent_rows,
+    }))
+}
+
+fn results_tsv_direction(content: &str) -> Direction {
+    content
+        .lines()
+        .find_map(|line| line.strip_prefix("# metric_direction:"))
+        .map(str::trim)
+        .map(|value| match value {
+            "lower" => Direction::Lower,
+            _ => Direction::Higher,
+        })
+        .unwrap_or(Direction::Higher)
+}
+
+fn metric_is_better(candidate: Decimal, current_best: Decimal, direction: Direction) -> bool {
+    match direction {
+        Direction::Higher => candidate > current_best,
+        Direction::Lower => candidate < current_best,
+    }
 }
 
 // ── Progress ─────────────────────────────────────────────────────────
