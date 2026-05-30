@@ -2158,10 +2158,12 @@ fn cmd_parallel_prepare(
         )
         .with_context(|| format!("failed to create worker-{worker_id} worktree"))?;
         copy_pointer_to_worker(workspace, &worktree)?;
+        let prompt_file = write_parallel_worker_prompt(&worktree, &state, &worker_id, &branch)?;
         worker_entries.push(serde_json::json!({
             "worker_id": worker_id,
             "branch": branch,
             "worktree": worktree.display().to_string(),
+            "prompt_file": prompt_file.display().to_string(),
             "status": "prepared",
         }));
     }
@@ -3500,6 +3502,66 @@ fn copy_pointer_to_worker(workspace: &Path, worktree: &Path) -> Result<()> {
     std::fs::copy(&pointer, worker_pointer_dir.join("pointer.json"))
         .with_context(|| format!("failed to copy {}", pointer.display()))?;
     Ok(())
+}
+
+fn write_parallel_worker_prompt(
+    worktree: &Path,
+    state: &RunState,
+    worker_id: &str,
+    branch: &str,
+) -> Result<PathBuf> {
+    let prompt_dir = worktree.join(".codex-autoresearch");
+    std::fs::create_dir_all(&prompt_dir)
+        .with_context(|| format!("failed to create {}", prompt_dir.display()))?;
+    let prompt_path = prompt_dir.join("parallel-worker.md");
+    let config = state.config.as_ref();
+    let goal = config
+        .map(|config| config.goal.as_str())
+        .filter(|goal| !goal.trim().is_empty())
+        .unwrap_or("<fill in goal>");
+    let scope = config
+        .map(|config| config.scope.join(", "))
+        .filter(|scope| !scope.trim().is_empty())
+        .unwrap_or_else(|| "<fill in scope>".to_string());
+    let metric = config
+        .map(|config| config.metric.as_str())
+        .filter(|metric| !metric.trim().is_empty())
+        .unwrap_or("metric");
+    let verify = config
+        .map(|config| config.verify.as_str())
+        .filter(|verify| !verify.trim().is_empty())
+        .unwrap_or("<fill in verify command>");
+    let guard = config
+        .and_then(|config| config.guard.as_deref())
+        .filter(|guard| !guard.trim().is_empty())
+        .unwrap_or("skip");
+    let direction = state.direction.as_str();
+    let mut content = String::new();
+    writeln!(
+        content,
+        "# Parallel Worker {worker_id}\n\n\
+You are a parallel experiment worker for Autoresearch.\n\n\
+Goal: {goal}\n\
+Scope: {scope}\n\
+Worker branch: {branch}\n\
+Metric: {metric}\n\
+Metric direction: {direction}\n\
+Current retained metric: {}\n\
+Verify: {verify}\n\
+Guard: {guard}\n\n\
+Instructions:\n\
+1. Apply exactly one focused hypothesis within scope.\n\
+2. Create a scoped trial commit in this worktree.\n\
+3. Run the verify command and record the metric.\n\
+4. Run the guard command when it is not `skip`.\n\
+5. Fill this worker's result in the shared parallel batch JSON.\n\n\
+Do NOT modify files outside scope. Do NOT run multiple changes.\n\
+Do NOT ask questions or interact with the user.",
+        state.current_metric
+    )?;
+    std::fs::write(&prompt_path, content)
+        .with_context(|| format!("failed to write {}", prompt_path.display()))?;
+    Ok(prompt_path)
 }
 
 fn default_results_tsv(cwd: &Path) -> Option<PathBuf> {

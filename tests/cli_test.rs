@@ -4654,6 +4654,10 @@ fn test_parallel_prepare_creates_worker_worktrees_and_files() {
     assert_eq!(manifest["workers"].as_array().unwrap().len(), 2);
     assert_eq!(manifest["workers"][0]["branch"], "ar/test-1-a");
     assert_eq!(manifest["workers"][1]["branch"], "ar/test-1-b");
+    assert!(manifest["workers"][0]["prompt_file"]
+        .as_str()
+        .unwrap()
+        .ends_with(".codex-autoresearch/parallel-worker.md"));
 
     let batch_path = dir.path().join("autoresearch-results/custom-workers.json");
     let batch: serde_json::Value =
@@ -4667,6 +4671,14 @@ fn test_parallel_prepare_creates_worker_worktrees_and_files() {
         ));
         assert!(worktree.join(".git").exists());
         assert!(worktree.join(".codex-autoresearch/pointer.json").exists());
+        let prompt =
+            std::fs::read_to_string(worktree.join(".codex-autoresearch/parallel-worker.md"))
+                .unwrap();
+        assert!(prompt.contains(&format!("Parallel Worker {worker}")));
+        assert!(prompt.contains("Goal: <fill in goal>"));
+        assert!(prompt.contains("Verify: cat metric.txt"));
+        assert!(prompt.contains("Current retained metric: 41"));
+        assert!(prompt.contains("Do NOT ask questions"));
         let branch = std::process::Command::new("git")
             .args([
                 "-C",
