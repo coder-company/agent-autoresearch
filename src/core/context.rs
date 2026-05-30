@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
+use git2::Repository;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::fs;
@@ -113,16 +114,20 @@ fn write_pointer(primary_repo: &str, workspace_root: &str, context_path: &Path) 
 }
 
 fn protect_pointer_dir(primary_repo: &Path) -> Result<()> {
-    let git_exclude = primary_repo.join(".git/info/exclude");
-    if git_exclude.exists() {
-        let content = fs::read_to_string(&git_exclude)
-            .with_context(|| format!("failed to read {}", git_exclude.display()))?;
+    if let Ok(repo) = Repository::discover(primary_repo) {
+        let git_exclude = git_common_dir(&repo).join("info/exclude");
+        if let Some(parent) = git_exclude.parent() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("failed to create {}", parent.display()))?;
+        }
+        let content = fs::read_to_string(&git_exclude).unwrap_or_default();
         if !content
             .lines()
             .any(|line| line.trim() == ".codex-autoresearch/")
         {
             use std::io::Write;
             let mut file = fs::OpenOptions::new()
+                .create(true)
                 .append(true)
                 .open(&git_exclude)
                 .with_context(|| format!("failed to open {}", git_exclude.display()))?;
@@ -139,6 +144,21 @@ fn protect_pointer_dir(primary_repo: &Path) -> Result<()> {
         .with_context(|| format!("failed to create {}", pointer_dir.display()))?;
     fs::write(pointer_dir.join(".gitignore"), "*\n")
         .with_context(|| format!("failed to protect {}", pointer_dir.display()))
+}
+
+fn git_common_dir(repo: &Repository) -> PathBuf {
+    let git_dir = repo.path();
+    let commondir_path = git_dir.join("commondir");
+    let Ok(raw_common_dir) = fs::read_to_string(&commondir_path) else {
+        return git_dir.to_path_buf();
+    };
+
+    let common_dir = PathBuf::from(raw_common_dir.trim());
+    if common_dir.is_absolute() {
+        common_dir
+    } else {
+        git_dir.join(common_dir)
+    }
 }
 
 fn absolute_display(path: &Path) -> String {

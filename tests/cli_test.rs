@@ -2969,6 +2969,44 @@ fn test_init_protects_pointer_in_separate_primary_repo() {
 }
 
 #[test]
+fn test_init_protects_pointer_in_linked_primary_worktree() {
+    let workspace = TempDir::new().unwrap();
+    init_git_fixture(&workspace);
+    let workspace_root = workspace.path().to_str().unwrap();
+
+    let primary = TempDir::new().unwrap();
+    init_git_fixture_with_gitignore(&primary, "target/\n");
+    let primary_worktree_parent = TempDir::new().unwrap();
+    let primary_worktree = primary_worktree_parent.path().join("primary-linked");
+    let primary_worktree_root = primary_worktree.to_str().unwrap();
+    git_ok(primary.path(), &["worktree", "add", primary_worktree_root]);
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--workspace-root",
+            workspace_root,
+            "--primary-repo",
+            primary_worktree_root,
+            "--cwd",
+            workspace_root,
+        ])
+        .assert()
+        .success();
+
+    assert!(primary_worktree
+        .join(".codex-autoresearch/pointer.json")
+        .exists());
+    let exclude = std::fs::read_to_string(primary.path().join(".git/info/exclude")).unwrap();
+    assert!(exclude.contains(".codex-autoresearch/"));
+    assert_eq!(git_output(&primary_worktree, &["status", "--short"]), "");
+}
+
+#[test]
 fn test_init_records_companion_repo_targets_and_pointers() {
     let workspace = TempDir::new().unwrap();
     init_git_fixture(&workspace);
