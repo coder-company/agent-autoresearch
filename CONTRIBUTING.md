@@ -35,6 +35,9 @@ The built binary lands in `target/release/autoresearch` (or `target/debug/autore
 ## Running Tests
 
 ```bash
+# Run the full contributor gate used before pushing
+./scripts/run_contributor_gate.sh
+
 # Run all tests (unit + integration)
 cargo test
 
@@ -46,6 +49,7 @@ cargo test -- --nocapture
 ```
 
 Unit tests live alongside their modules in `src/`. Integration tests live in `tests/`.
+The contributor gate also checks formatting, installer shell syntax, generated distribution sync, and whitespace errors.
 
 ---
 
@@ -191,10 +195,7 @@ Hooks must respond in under 3 seconds (5 seconds for `Stop` hooks). Use `HookRes
 2. **Make your changes** — Keep commits atomic. One logical change per commit.
 3. **Run checks locally**:
    ```bash
-   cargo fmt --check
-   cargo clippy -- -D warnings
-   cargo test
-   cargo build --release
+   ./scripts/run_contributor_gate.sh
    ```
 4. **Write tests** — New features need tests. Bug fixes need regression tests.
 5. **Update docs** — If you change CLI behavior, update the relevant command file in `commands/`. If you change architecture, update this file.
