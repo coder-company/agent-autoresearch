@@ -173,12 +173,21 @@ impl ResultsLog {
                 );
             }
             let main_iteration = columns[0].parse::<u32>().ok();
-            if main_iteration.is_none() && !is_valid_worker_iteration_label(columns[0]) {
-                anyhow::bail!(
-                    "results.tsv line {} has invalid iteration label {:?}",
-                    index + 1,
-                    columns[0]
-                );
+            if main_iteration.is_none() {
+                match worker_iteration_prefix(columns[0]) {
+                    Some(worker_iteration) if worker_iteration == expected_main_iteration => {}
+                    Some(worker_iteration) => anyhow::bail!(
+                        "results.tsv line {} has worker iteration {}; expected pending main iteration {}",
+                        index + 1,
+                        worker_iteration,
+                        expected_main_iteration
+                    ),
+                    None => anyhow::bail!(
+                        "results.tsv line {} has invalid iteration label {:?}",
+                        index + 1,
+                        columns[0]
+                    ),
+                }
             }
             if let Some(iteration) = main_iteration {
                 if iteration != expected_main_iteration {
@@ -259,15 +268,15 @@ fn is_valid_status(value: &str) -> bool {
     )
 }
 
-fn is_valid_worker_iteration_label(value: &str) -> bool {
+fn worker_iteration_prefix(value: &str) -> Option<u32> {
     let Some(suffix_start) = value.find(|ch: char| !ch.is_ascii_digit()) else {
-        return false;
+        return None;
     };
     let (main, suffix) = value.split_at(suffix_start);
-    !main.is_empty()
-        && main.parse::<u32>().is_ok()
-        && !suffix.is_empty()
-        && suffix.chars().all(|ch| ch.is_ascii_lowercase())
+    if main.is_empty() || suffix.is_empty() || !suffix.chars().all(|ch| ch.is_ascii_lowercase()) {
+        return None;
+    }
+    main.parse::<u32>().ok()
 }
 
 /// Generate a completion summary.
@@ -551,5 +560,23 @@ mod tests {
         let err = log.validate().unwrap_err().to_string();
 
         assert!(err.contains("invalid iteration label"));
+    }
+
+    #[test]
+    fn test_validate_rejects_worker_label_for_wrong_main_iteration() {
+        let dir = tempfile::tempdir().unwrap();
+        let log = ResultsLog::create(dir.path(), Direction::Higher).unwrap();
+        fs::write(
+            log.path(),
+            format!(
+                "{}\n0\tbase\t10\t0\t-\tbaseline\tbaseline\n2a\tabc1234\t11\t+1\tpass\tkeep\twrong batch\n1\tabc1234\t11\t+1\tpass\tkeep\tmain row\n",
+                tsv_header(Direction::Higher)
+            ),
+        )
+        .unwrap();
+
+        let err = log.validate().unwrap_err().to_string();
+
+        assert!(err.contains("worker iteration 2; expected pending main iteration 1"));
     }
 }
