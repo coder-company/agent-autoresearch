@@ -181,6 +181,7 @@ mod tests {
             acceptance_criteria: Vec::new(),
             required_keep_criteria: Vec::new(),
             required_keep_labels: Vec::new(),
+            required_stop_labels: Vec::new(),
             rollback_strategy: Default::default(),
             run_mode: None,
             workspace_root: None,

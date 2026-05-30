@@ -3,6 +3,7 @@ use chrono::Utc;
 use regex::Regex;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -663,7 +664,8 @@ fn supervisor_decision(
     let has_acceptance = has_acceptance_criteria(state);
     let has_stop_condition = has_stop_condition(state);
     let acceptance_met = acceptance_satisfied(state);
-    let stop_condition_met = simple_stop_condition_satisfied(state);
+    let stop_condition_met =
+        simple_stop_condition_satisfied(state) && required_stop_labels_satisfied(state);
     if has_acceptance && has_stop_condition {
         if acceptance_met && stop_condition_met {
             return (
@@ -774,6 +776,27 @@ fn simple_stop_condition_satisfied(state: &RunState) -> bool {
         super::config::Direction::Lower => state.current_metric <= target,
         super::config::Direction::Higher => state.current_metric >= target,
     }
+}
+
+fn required_stop_labels_satisfied(state: &RunState) -> bool {
+    let Some(config) = &state.config else {
+        return true;
+    };
+    if config.required_stop_labels.is_empty() {
+        return true;
+    }
+    let retained = state
+        .current_labels
+        .iter()
+        .map(|label| label.trim().to_ascii_lowercase())
+        .filter(|label| !label.is_empty())
+        .collect::<BTreeSet<_>>();
+    config
+        .required_stop_labels
+        .iter()
+        .map(|label| label.trim().to_ascii_lowercase())
+        .filter(|label| !label.is_empty())
+        .all(|label| retained.contains(&label))
 }
 
 fn progress_signature(state: &RunState) -> String {

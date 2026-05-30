@@ -2126,6 +2126,78 @@ fn test_runtime_supervise_stop_condition_prefers_explicit_operator() {
         ));
 }
 
+#[test]
+fn test_runtime_supervise_requires_stop_label_for_stop_condition() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--stop-condition",
+            "metric >= 50",
+            "--required-stop-label",
+            "production-path",
+            "--run-mode",
+            "background",
+            "--workspace-root",
+            root,
+            "--primary-repo",
+            root,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "\"required_stop_labels_count\": 1",
+        ));
+
+    cmd()
+        .args(["runtime", "start", "--dry-run", "--cwd", root])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["runtime", "supervise", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"relaunch\""))
+        .stdout(predicate::str::contains("\"reason\": \"non_terminal\""));
+
+    cmd()
+        .args([
+            "decide",
+            "--decision",
+            "keep",
+            "--metric",
+            "50",
+            "--label",
+            "Production-Path",
+            "--description",
+            "retained result has production path label",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["runtime", "supervise", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"stop\""))
+        .stdout(predicate::str::contains("\"reason\": \"stop_condition\""))
+        .stdout(predicate::str::contains(
+            "\"terminal_reason\": \"goal_reached\"",
+        ));
+}
+
 // ── Parallel Command ─────────────────────────────────────────────────
 
 #[test]

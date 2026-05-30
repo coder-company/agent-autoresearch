@@ -71,6 +71,9 @@ enum Commands {
         /// Required label before an improved trial can be retained
         #[arg(long)]
         required_keep_label: Vec<String>,
+        /// Required retained label before a stop condition can end the run
+        #[arg(long)]
+        required_stop_label: Vec<String>,
         /// Iteration cap
         #[arg(long)]
         iterations: Option<u32>,
@@ -383,6 +386,7 @@ fn main() -> Result<()> {
             acceptance_criteria,
             required_keep_criteria,
             required_keep_label,
+            required_stop_label,
             iterations,
             run_tag,
             stop_condition,
@@ -403,6 +407,7 @@ fn main() -> Result<()> {
             acceptance_criteria,
             required_keep_criteria,
             required_keep_label,
+            required_stop_label,
             iterations,
             run_tag,
             stop_condition,
@@ -521,6 +526,7 @@ fn cmd_init(
     acceptance_criteria_raw: Option<String>,
     required_keep_criteria_raw: Option<String>,
     required_keep_label: Vec<String>,
+    required_stop_label: Vec<String>,
     iterations: Option<u32>,
     run_tag: Option<String>,
     stop_condition: Option<String>,
@@ -546,6 +552,7 @@ fn cmd_init(
         "required_keep_criteria",
     )?;
     let required_keep_labels = normalize_labels(required_keep_label);
+    let required_stop_labels = normalize_labels(required_stop_label);
 
     // Safety screen
     verify::screen_command(verify_cmd)?;
@@ -632,6 +639,7 @@ fn cmd_init(
         acceptance_criteria,
         required_keep_criteria,
         required_keep_labels,
+        required_stop_labels,
         rollback_strategy,
         run_mode,
         workspace_root,
@@ -640,6 +648,7 @@ fn cmd_init(
     let acceptance_criteria_count = run_config.acceptance_criteria.len();
     let required_keep_criteria_count = run_config.required_keep_criteria.len();
     let required_keep_labels_count = run_config.required_keep_labels.len();
+    let required_stop_labels_count = run_config.required_stop_labels.len();
 
     // Write state.json
     let mut state = RunState::from_baseline(result.metric, head.clone(), Some(run_config));
@@ -663,6 +672,7 @@ fn cmd_init(
         "acceptance_criteria_count": acceptance_criteria_count,
         "required_keep_criteria_count": required_keep_criteria_count,
         "required_keep_labels_count": required_keep_labels_count,
+        "required_stop_labels_count": required_stop_labels_count,
         "run_mode": run_mode.map(|mode| match mode {
             RunMode::Foreground => "foreground",
             RunMode::Background => "background",
