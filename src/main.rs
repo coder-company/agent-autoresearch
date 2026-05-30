@@ -2753,6 +2753,8 @@ fn cmd_handoff(
         "timestamp": timestamp,
         "status": status,
         "results_tsv": "autoresearch-results/results.tsv",
+        "workspace_root": workspace.to_string_lossy().to_string(),
+        "artifact_root": results_dir.to_string_lossy().to_string(),
         "results_path": results_dir.join("results.tsv").to_string_lossy().to_string(),
         "goal": goal,
         "scope": scope,
