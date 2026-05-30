@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -150,16 +150,25 @@ pub fn run_health_check(
         }
     }
     if has_context {
-        let context: RunContext = serde_json::from_str(
-            &std::fs::read_to_string(&context_path)
-                .with_context(|| format!("failed to read {}", context_path.display()))?,
-        )
-        .with_context(|| format!("failed to parse {}", context_path.display()))?;
-        if !context.active {
-            warnings.push(HealthFinding {
-                code: "inactive_context",
-                message: "context.json is marked inactive".to_string(),
-            });
+        match std::fs::read_to_string(&context_path) {
+            Ok(content) => match serde_json::from_str::<RunContext>(&content) {
+                Ok(context) => {
+                    if !context.active {
+                        warnings.push(HealthFinding {
+                            code: "inactive_context",
+                            message: "context.json is marked inactive".to_string(),
+                        });
+                    }
+                }
+                Err(err) => blockers.push(HealthFinding {
+                    code: "context_corrupt",
+                    message: format!("failed to parse {}: {err}", context_path.display()),
+                }),
+            },
+            Err(err) => blockers.push(HealthFinding {
+                code: "context_unreadable",
+                message: format!("failed to read {}: {err}", context_path.display()),
+            }),
         }
     } else if has_results || has_state {
         warnings.push(HealthFinding {
