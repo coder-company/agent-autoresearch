@@ -2033,9 +2033,14 @@ fn test_parallel_closeout_applies_required_keep_criteria() {
         "1\tbbb2222\t15\t+5\tpass\tkeep\t[PARALLEL batch] selected worker-b: safe coverage gain"
     ));
 
-    let state =
-        std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap();
-    assert!(state.contains("\"current_metric\": \"15\""));
+    let state: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(state["current_metric"], "15");
+    assert_eq!(state["current_metrics"]["coverage"], "15");
+    assert_eq!(state["current_metrics"]["errors"], "0");
+    assert_eq!(state["last_trial_metrics"], state["current_metrics"]);
 }
 
 #[test]

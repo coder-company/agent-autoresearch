@@ -1509,6 +1509,7 @@ struct ParallelWorkerRecord {
     description: String,
     commit: Option<String>,
     metric: Decimal,
+    metrics: Option<BTreeMap<String, Decimal>>,
     guard: GuardResult,
     status: IterationStatus,
     diff_size: u64,
@@ -1634,6 +1635,7 @@ fn cmd_parallel_closeout(
                     description,
                     commit: normalize_optional_commit(item.commit),
                     metric,
+                    metrics: Some(trial_metrics),
                     guard,
                     status,
                     diff_size: item.diff_size.unwrap_or(u64::MAX),
@@ -1655,6 +1657,7 @@ fn cmd_parallel_closeout(
             description: item.description,
             commit: normalize_optional_commit(item.commit),
             metric: current_metric,
+            metrics: None,
             guard,
             status,
             diff_size: item.diff_size.unwrap_or(u64::MAX),
@@ -1701,7 +1704,7 @@ fn cmd_parallel_closeout(
         ));
     }
 
-    let (main_status, main_metric, main_commit, main_guard, main_description) = match winner {
+    let (main_status, main_metric, main_metrics, main_commit, main_guard, main_description) = match winner {
         Some(winner_record) => {
             let Some(commit) = winner_record.commit.clone() else {
                 anyhow::bail!(
@@ -1712,6 +1715,7 @@ fn cmd_parallel_closeout(
             (
                 IterationStatus::Keep,
                 winner_record.metric,
+                winner_record.metrics.clone(),
                 Some(commit),
                 winner_record.guard,
                 format!(
@@ -1724,6 +1728,7 @@ fn cmd_parallel_closeout(
             Some(best) => (
                 IterationStatus::Discard,
                 best.metric,
+                best.metrics.clone(),
                 best.commit.clone(),
                 best.guard,
                 format!(
@@ -1734,6 +1739,7 @@ fn cmd_parallel_closeout(
             None => (
                 IterationStatus::Discard,
                 current_metric,
+                None,
                 None,
                 GuardResult::Skip,
                 "[PARALLEL batch] no worker completed successfully".to_string(),
@@ -1771,7 +1777,11 @@ fn cmd_parallel_closeout(
 
     match main_status {
         IterationStatus::Keep => {
-            state.record_keep(main_metric, main_commit.clone().unwrap());
+            if let Some(metrics) = main_metrics.clone() {
+                state.record_keep_with_metrics(main_metric, main_commit.clone().unwrap(), metrics);
+            } else {
+                state.record_keep(main_metric, main_commit.clone().unwrap());
+            }
             escalation.record_keep();
             let lesson = lessons::extract_keep_lesson(
                 &main_row.description,
@@ -1780,7 +1790,11 @@ fn cmd_parallel_closeout(
             let _ = lessons_log.append(&lesson);
         }
         IterationStatus::Discard => {
-            state.record_discard(main_metric, main_commit.clone());
+            if let Some(metrics) = main_metrics.clone() {
+                state.record_discard_with_metrics(main_metric, main_commit.clone(), metrics);
+            } else {
+                state.record_discard(main_metric, main_commit.clone());
+            }
             if escalation.record_discard() == EscalationAction::Pivot {
                 let lesson = lessons::extract_pivot_lesson(
                     &main_row.description,
