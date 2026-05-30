@@ -1,4 +1,5 @@
 use super::{HookInput, HookResponse};
+use std::path::PathBuf;
 use std::process::Command;
 
 const SHIPPING_VERBS: &[&str] = &["ship", "merge", "deploy", "pr", "publish", "release"];
@@ -45,7 +46,8 @@ pub fn run(input: Option<&HookInput>) -> HookResponse {
 
     // Check if we have recent results showing marginal improvements
     let cwd = std::env::current_dir().unwrap_or_default();
-    let tsv_path = cwd.join("autoresearch-results/results.tsv");
+    let project_root = git_output(&cwd, &["rev-parse", "--show-toplevel"]).unwrap_or(cwd);
+    let tsv_path = project_root.join("autoresearch-results/results.tsv");
 
     if !tsv_path.exists() {
         return HookResponse::allow();
@@ -128,4 +130,19 @@ fn extract_count_before(text: &str, marker: &str) -> Option<u64> {
         .rev()
         .find(|part| !part.is_empty())
         .and_then(|part| part.parse().ok())
+}
+
+fn git_output(cwd: &std::path::Path, args: &[&str]) -> Option<PathBuf> {
+    let output = Command::new("git")
+        .args(args)
+        .current_dir(cwd)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    String::from_utf8(output.stdout)
+        .ok()
+        .map(|value| PathBuf::from(value.trim()))
+        .filter(|value| !value.as_os_str().is_empty())
 }

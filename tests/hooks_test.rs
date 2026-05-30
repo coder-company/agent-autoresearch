@@ -845,3 +845,26 @@ fn test_simplify_gate_allows_negated_shipping_prompt() {
         .stdout(predicate::str::contains("\"decision\":\"block\"").not())
         .stdout(predicate::str::contains("\"additionalContext\"").not());
 }
+
+#[test]
+fn test_simplify_gate_uses_repo_root_results_from_subdir() {
+    let dir = tempfile::tempdir().unwrap();
+    init_git_repo(dir.path());
+    let subdir = dir.path().join("src");
+    std::fs::create_dir_all(&subdir).unwrap();
+    let results = dir.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    std::fs::write(
+        results.join("results.tsv"),
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription\n0\tabc\t10\t0\t-\tbaseline\tinitial\n1\tdef\t10.2\t0.2\tpass\tkeep\tmarginal\n2\tghi\t10.3\t0.1\tpass\tkeep\tmarginal\n3\tjkl\t10.4\t0.1\tpass\tkeep\tmarginal\n",
+    )
+    .unwrap();
+    let input = serde_json::json!({
+        "prompt": "continue"
+    });
+
+    run_hook_in(&subdir, "simplify-gate", &input.to_string())
+        .success()
+        .stdout(predicate::str::contains("\"additionalContext\""))
+        .stdout(predicate::str::contains("Simplicity gate"));
+}
