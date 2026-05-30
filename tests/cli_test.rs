@@ -714,7 +714,9 @@ fn test_runtime_supervise_stops_on_acceptance_criteria() {
         .stdout(predicate::str::contains(
             "\"reason\": \"acceptance_criteria\"",
         ))
-        .stdout(predicate::str::contains("\"terminal_reason\": \"goal_reached\""));
+        .stdout(predicate::str::contains(
+            "\"terminal_reason\": \"goal_reached\"",
+        ));
 }
 
 #[test]
@@ -818,7 +820,9 @@ fn test_runtime_supervise_stop_condition_prefers_explicit_operator() {
         .success()
         .stdout(predicate::str::contains("\"decision\": \"stop\""))
         .stdout(predicate::str::contains("\"reason\": \"stop_condition\""))
-        .stdout(predicate::str::contains("\"terminal_reason\": \"goal_reached\""));
+        .stdout(predicate::str::contains(
+            "\"terminal_reason\": \"goal_reached\"",
+        ));
 }
 
 fn init_git_fixture(dir: &TempDir) {

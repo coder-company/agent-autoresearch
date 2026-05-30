@@ -221,7 +221,10 @@ pub fn start_runtime(
                 }),
             };
             write_runtime_snapshot(&paths.runtime_path, &snapshot)?;
-            append_log(&paths.log_path, &format!("{} {message}\n", Utc::now().to_rfc3339()))?;
+            append_log(
+                &paths.log_path,
+                &format!("{} {message}\n", Utc::now().to_rfc3339()),
+            )?;
             anyhow::bail!(message);
         }
     };
@@ -280,7 +283,9 @@ pub fn supervise_runtime(
     let signature = progress_signature(&state);
 
     let mut restart_count = previous.as_ref().map_or(0, |status| status.restart_count);
-    let mut stagnation_count = previous.as_ref().map_or(0, |status| status.stagnation_count);
+    let mut stagnation_count = previous
+        .as_ref()
+        .map_or(0, |status| status.stagnation_count);
     if after_run {
         if previous
             .as_ref()
@@ -327,7 +332,9 @@ pub fn supervise_runtime(
     match status.decision.as_str() {
         "stop" => {
             snapshot.status = "stopped".to_string();
-            snapshot.stopped_at.get_or_insert_with(|| Utc::now().to_rfc3339());
+            snapshot
+                .stopped_at
+                .get_or_insert_with(|| Utc::now().to_rfc3339());
         }
         "needs_human" => {
             snapshot.status = "needs_human".to_string();
@@ -476,8 +483,7 @@ fn simple_stop_condition_satisfied(state: &RunState) -> bool {
     let Some(stop_condition) = &config.stop_condition else {
         return false;
     };
-    let Ok(operator_pattern) = Regex::new(r"(<=|>=|==|<|>)\s*(-?(?:\d+(?:\.\d+)?|\.\d+))")
-    else {
+    let Ok(operator_pattern) = Regex::new(r"(<=|>=|==|<|>)\s*(-?(?:\d+(?:\.\d+)?|\.\d+))") else {
         return false;
     };
     if let Some(captures) = operator_pattern.captures(stop_condition) {
