@@ -4881,6 +4881,83 @@ exit 0
     }
 }
 
+#[cfg(unix)]
+#[test]
+fn test_parallel_run_records_worker_crash_status() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+    write_metric_and_commit(&dir, "41\n");
+    let fake_codex = write_fake_codex(
+        &dir,
+        r#"
+cat > .codex-autoresearch/received-prompt
+case "$PWD" in
+  *worker-b) exit 42 ;;
+  *) exit 0 ;;
+esac
+"#,
+    );
+    let fake_codex = fake_codex.to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "lower",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "parallel",
+            "prepare",
+            "--workers",
+            "2",
+            "--branch-prefix",
+            "ar/crash",
+            "--manifest",
+            "autoresearch-results/crash-manifest.json",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "parallel",
+            "run",
+            "--manifest",
+            "autoresearch-results/crash-manifest.json",
+            "--execution-policy",
+            "workspace_write",
+            "--codex-bin",
+            fake_codex,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "\"status\": \"completed_with_failures\"",
+        ))
+        .stdout(predicate::str::contains("\"exit_code\": 42"));
+
+    let manifest_path = dir.path().join("autoresearch-results/crash-manifest.json");
+    let manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(manifest_path).unwrap()).unwrap();
+    let runs = manifest["worker_runs"].as_array().unwrap();
+    assert_eq!(runs[0]["status"], "completed");
+    assert_eq!(runs[1]["status"], "crash");
+    assert_eq!(runs[1]["exit_code"], 42);
+}
+
 #[test]
 fn test_parallel_closeout_selects_best_worker() {
     let dir = TempDir::new().unwrap();
