@@ -44,7 +44,7 @@
 - [x] Workspace-owned artifacts (`autoresearch-results/`) and repo-local pointers for managed repos
 - [x] Companion repo registration through `--companion-repo-scope PATH=SCOPE`
 - [x] Companion repo preflight, health, and runtime dirty-worktree safeguards
-- [ ] Cross-repo change execution and rollback across companion repos
+- [x] Cross-repo change execution and rollback across companion repos
 - [x] Workspace-aware scope expansion (monorepo package boundaries)
 - [x] Cross-repo guard command presets
 - [x] Shared lessons across repos in a workspace

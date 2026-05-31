@@ -198,6 +198,7 @@ Covered in detail in the [guide](guide/):
 - **Package-manager metadata** — `cargo-binstall` archive metadata and a Homebrew formula template track the release assets
 - **Documentation site** — `book.toml` and `docs/SUMMARY.md` build the full docs set as an mdBook site for GitHub Pages
 - **Workspace scope expansion** — `autoresearch scope expand --format json` resolves primary and companion repo globs and annotates package roots for monorepos
+- **Cross-repo execution** — `autoresearch workspace exec --rollback-on-failure` runs one screened command across all repo targets and restores attempted repos on failure
 - **Cross-repo guard presets** — `autoresearch guard-presets --format json` suggests per-repo guard commands for primary and companion repos
 - **Shared workspace lessons** — `autoresearch lessons --workspace-context --last 5` proves companion repos read the shared workspace lessons log
 - **Mode plugin manifests** — `autoresearch plugin list` and `autoresearch plugin validate` load TOML mode definitions with safety screening

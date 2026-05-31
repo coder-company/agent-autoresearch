@@ -473,6 +473,12 @@ enum Commands {
         #[command(subcommand)]
         command: ScopeCommands,
     },
+
+    /// Execute commands across primary and companion repo targets
+    Workspace {
+        #[command(subcommand)]
+        command: WorkspaceCommands,
+    },
 }
 
 #[derive(Subcommand)]
@@ -647,6 +653,22 @@ enum ScopeCommands {
         /// Output format: json or text
         #[arg(long, default_value = "json")]
         format: String,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+}
+
+#[derive(Subcommand)]
+enum WorkspaceCommands {
+    /// Run one command in each repo target from the active run context
+    Exec {
+        /// Command to run in each target repo
+        #[arg(long)]
+        command: String,
+        /// Reset attempted repo targets back to their original HEAD on failure
+        #[arg(long)]
+        rollback_on_failure: bool,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -945,6 +967,13 @@ fn main() -> Result<()> {
                 format,
                 cwd,
             } => cmd_scope_expand(package_boundary, &format, cwd),
+        },
+        Commands::Workspace { command } => match command {
+            WorkspaceCommands::Exec {
+                command,
+                rollback_on_failure,
+                cwd,
+            } => cmd_workspace_exec(&command, rollback_on_failure, cwd),
         },
     }
 }
@@ -1445,6 +1474,152 @@ fn cmd_scope_expand(
         "json" => println!("{}", serde_json::to_string_pretty(&out)?),
         "text" => print!("{}", render_scope_expand_text(&out)),
         other => anyhow::bail!("Invalid scope expand format {other:?}; use json or text"),
+    }
+    Ok(())
+}
+
+fn cmd_workspace_exec(
+    command: &str,
+    rollback_on_failure: bool,
+    cwd: Option<PathBuf>,
+) -> Result<()> {
+    verify::screen_command(command).context("unsafe workspace exec command")?;
+    let workspace = resolve_results_workspace(cwd);
+    let run_context = load_run_context(&workspace)?;
+    let targets = prepare_workspace_exec_targets(&run_context)?;
+    let mut results = Vec::new();
+    let mut attempted = Vec::new();
+    let mut failure = None;
+
+    for target in &targets {
+        let output = Command::new("sh")
+            .arg("-c")
+            .arg(command)
+            .current_dir(&target.path)
+            .env("AUTORESEARCH_REPO_PATH", &target.path)
+            .env("AUTORESEARCH_REPO_ROLE", &target.role)
+            .env("AUTORESEARCH_REPO_SCOPE", &target.scope)
+            .output()
+            .with_context(|| {
+                format!(
+                    "failed to run workspace exec command in {}",
+                    target.path.display()
+                )
+            })?;
+        let success = output.status.success();
+        attempted.push(target.clone());
+        results.push(serde_json::json!({
+            "path": target.path.display().to_string(),
+            "role": &target.role,
+            "scope": &target.scope,
+            "head_before": &target.head,
+            "exit_code": output.status.code(),
+            "success": success,
+            "stdout": String::from_utf8_lossy(&output.stdout).trim_end().to_string(),
+            "stderr": String::from_utf8_lossy(&output.stderr).trim_end().to_string(),
+        }));
+        if !success {
+            failure = Some(format!(
+                "workspace exec failed in {} with {}",
+                target.path.display(),
+                output.status
+            ));
+            break;
+        }
+    }
+
+    let mut rolled_back = false;
+    if failure.is_some() && rollback_on_failure {
+        rollback_workspace_exec_targets(&attempted)?;
+        rolled_back = true;
+    }
+
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&serde_json::json!({
+            "ok": failure.is_none(),
+            "rolled_back": rolled_back,
+            "command": command,
+            "repo_results": results,
+        }))?
+    );
+
+    if let Some(message) = failure {
+        anyhow::bail!(message);
+    }
+    Ok(())
+}
+
+#[derive(Clone)]
+struct WorkspaceExecTarget {
+    path: PathBuf,
+    role: String,
+    scope: String,
+    head: String,
+}
+
+fn prepare_workspace_exec_targets(
+    run_context: &context::RunContext,
+) -> Result<Vec<WorkspaceExecTarget>> {
+    let mut targets = Vec::new();
+    for target in &run_context.repo_targets {
+        let path = PathBuf::from(&target.path);
+        let repo = GitRepo::open(&path)
+            .with_context(|| format!("workspace target {} is not a git repository", target.path))?;
+        if repo.head_detached()? {
+            anyhow::bail!("workspace target {} is detached_head", target.path);
+        }
+        match repo.worktree_status()? {
+            WorktreeStatus::Clean | WorktreeStatus::OnlyArtifacts => {}
+            WorktreeStatus::Dirty(paths) => {
+                anyhow::bail!(
+                    "workspace target {} has unexpected worktree changes: {}",
+                    target.path,
+                    paths.join(", ")
+                );
+            }
+        }
+        targets.push(WorkspaceExecTarget {
+            path,
+            role: target.role.clone(),
+            scope: target.scope.clone(),
+            head: repo.head_full()?,
+        });
+    }
+    Ok(targets)
+}
+
+fn rollback_workspace_exec_targets(targets: &[WorkspaceExecTarget]) -> Result<()> {
+    for target in targets.iter().rev() {
+        let reset = Command::new("git")
+            .arg("-C")
+            .arg(&target.path)
+            .arg("reset")
+            .arg("--hard")
+            .arg(&target.head)
+            .output()
+            .with_context(|| format!("failed to reset {}", target.path.display()))?;
+        if !reset.status.success() {
+            anyhow::bail!(
+                "failed to reset {}: {}",
+                target.path.display(),
+                String::from_utf8_lossy(&reset.stderr).trim()
+            );
+        }
+        let clean = Command::new("git")
+            .arg("-C")
+            .arg(&target.path)
+            .arg("clean")
+            .arg("-fd")
+            .output()
+            .with_context(|| format!("failed to clean {}", target.path.display()))?;
+        if !clean.status.success() {
+            anyhow::bail!(
+                "failed to clean {}: {}",
+                target.path.display(),
+                String::from_utf8_lossy(&clean.stderr).trim()
+            );
+        }
     }
     Ok(())
 }

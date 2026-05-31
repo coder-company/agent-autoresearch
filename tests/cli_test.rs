@@ -436,6 +436,102 @@ fn test_guard_presets_include_primary_and_companion_repos() {
 }
 
 #[test]
+fn test_workspace_exec_runs_command_across_repo_targets() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let companion = TempDir::new().unwrap();
+    init_git_fixture(&companion);
+    write_metric_and_commit(&dir, "50\n");
+    write_metric_and_commit(&companion, "10\n");
+    let root = dir.path().to_str().unwrap();
+    let companion_root = companion.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+            "--companion-repo-scope",
+            &format!("{companion_root}=src/**/*.rs"),
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "workspace",
+            "exec",
+            "--command",
+            "sh -c 'echo $AUTORESEARCH_REPO_ROLE > cross-role.txt'",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"ok\": true"))
+        .stdout(predicate::str::contains("\"role\": \"primary\""))
+        .stdout(predicate::str::contains("\"role\": \"companion\""));
+
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("cross-role.txt")).unwrap(),
+        "primary\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(companion.path().join("cross-role.txt")).unwrap(),
+        "companion\n"
+    );
+}
+
+#[test]
+fn test_workspace_exec_rolls_back_attempted_repos_on_failure() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let companion = TempDir::new().unwrap();
+    init_git_fixture(&companion);
+    write_metric_and_commit(&dir, "50\n");
+    write_metric_and_commit(&companion, "10\n");
+    let root = dir.path().to_str().unwrap();
+    let companion_root = companion.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+            "--companion-repo-scope",
+            &format!("{companion_root}=src/**/*.rs"),
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "workspace",
+            "exec",
+            "--command",
+            "sh -c 'echo changed > cross-fail.txt; test \"$AUTORESEARCH_REPO_ROLE\" = primary'",
+            "--rollback-on-failure",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("\"ok\": false"))
+        .stdout(predicate::str::contains("\"rolled_back\": true"));
+
+    assert!(!dir.path().join("cross-fail.txt").exists());
+    assert!(!companion.path().join("cross-fail.txt").exists());
+}
+
+#[test]
 fn test_plugin_list_and_validate_mode_manifest() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

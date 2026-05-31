@@ -207,6 +207,11 @@ require_grep 'Stable CLI API — semver guarantees' docs/development-roadmap.md
 require_grep 'autoresearch scope expand --format json' README.md
 require_grep 'autoresearch scope expand --format json' docs/GUIDE.md
 require_grep 'Workspace-aware scope expansion \(monorepo package boundaries\)' docs/development-roadmap.md
+require_grep 'autoresearch workspace exec' README.md
+require_grep 'autoresearch workspace exec' docs/GUIDE.md
+require_grep 'autoresearch workspace exec' SKILL.md
+require_grep 'autoresearch workspace exec' .agents/skills/autoresearch/SKILL.md
+require_grep 'Cross-repo change execution and rollback across companion repos' docs/development-roadmap.md
 require_grep 'autoresearch guard-presets --format json' README.md
 require_grep 'autoresearch guard-presets --format json' docs/GUIDE.md
 require_grep 'Cross-repo guard command presets' docs/development-roadmap.md

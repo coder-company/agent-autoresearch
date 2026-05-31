@@ -39,6 +39,7 @@ autoresearch api --format json
 autoresearch mcp serve
 autoresearch mcp call --server-command "autoresearch mcp serve" --tool autoresearch_status
 autoresearch scope expand --format json
+autoresearch workspace exec --command "cargo test" --rollback-on-failure
 autoresearch guard-presets --format json
 autoresearch lessons --workspace-context --last 5
 autoresearch plugin list
@@ -63,6 +64,7 @@ Use `autoresearch api --format json` to inspect the stable command/flag manifest
 Use `autoresearch mcp serve` as a stdio MCP server exposing read-only `autoresearch_status` and `autoresearch_watch_snapshot` tools.
 Use `autoresearch mcp call --server-command <cmd> --tool <name> --arguments '{}'` to call a tool on an external stdio MCP server from an iteration script.
 Use `autoresearch scope expand --format json` to resolve active primary and companion repo scopes, with package roots inferred from `Cargo.toml`, `package.json`, `pyproject.toml`, and `go.mod`.
+Use `autoresearch workspace exec --command <cmd> --rollback-on-failure` to run one screened command across primary and companion repo targets, restoring attempted repos if any target fails.
 Use `autoresearch guard-presets --format json` to suggest per-repo guard commands for primary and companion repositories.
 Use `autoresearch lessons --workspace-context --last 5` from any managed repo to show the shared workspace lessons path and repo targets.
 Use `autoresearch plugin list` and `autoresearch plugin validate --path <file>` to load local TOML mode plugin manifests with command safety screening.

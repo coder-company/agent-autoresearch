@@ -51,6 +51,7 @@ The `autoresearch` binary handles mechanical operations:
 - `autoresearch lessons --workspace-context --last 5` — read shared workspace lessons with repo-target metadata
 - `autoresearch search --from-state --log` — build a run-aware search query, cache provider results, and log a search row; `decide` auto-runs this on Web Search escalation when `AUTORESEARCH_SEARCH_CMD` is configured
 - `autoresearch mcp serve` / `mcp call --server-command <cmd> --tool <name>` — expose read-only Autoresearch MCP tools and call external stdio MCP tools
+- `autoresearch workspace exec --command <cmd> --rollback-on-failure` — run one screened command across primary and companion repo targets with rollback
 - `autoresearch plugin list` / `plugin validate --path <file>` / `plugin marketplace` — load and validate local TOML mode plugins and marketplace indexes
 - `autoresearch hook <name>` — execute lifecycle hooks
 
