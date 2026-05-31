@@ -203,6 +203,7 @@ fn test_api_manifest_lists_nested_commands_and_flags() {
         .stdout(predicate::str::contains("\"stability\": \"stable\""))
         .stdout(predicate::str::contains("\"runtime\""))
         .stdout(predicate::str::contains("\"start\""))
+        .stdout(predicate::str::contains("\"env\""))
         .stdout(predicate::str::contains("\"cost\""))
         .stdout(predicate::str::contains("\"per-iteration-usd\""))
         .stdout(predicate::str::contains("\"dashboard\""))
@@ -230,6 +231,21 @@ fn test_api_manifest_rejects_invalid_format() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("Invalid api format"));
+}
+
+#[test]
+fn test_env_probe_reports_resources_and_toolchains() {
+    let dir = TempDir::new().unwrap();
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args(["env", "--format", "json", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"cpu_cores\""))
+        .stdout(predicate::str::contains("\"toolchains\""))
+        .stdout(predicate::str::contains("\"recommended_parallel_workers\""))
+        .stdout(predicate::str::contains("\"environment_summary\""));
 }
 
 #[test]

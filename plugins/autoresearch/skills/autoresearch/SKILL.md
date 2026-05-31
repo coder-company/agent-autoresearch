@@ -35,6 +35,7 @@ The `autoresearch` binary handles mechanical operations:
 - `autoresearch init --companion-repo-scope PATH=SCOPE` — register clean companion repos in state/context and write repo-local pointers
 - `autoresearch exec` — run a fully specified non-interactive loop from JSON config
 - `autoresearch health --strict` — preflight git/artifact/disk/verify/context state and fail on warnings
+- `autoresearch env --format json` — probe CPU, disk, container, toolchains, and recommended parallelism for planning
 - `autoresearch verify` — run verify command, parse metric or metrics JSON
 - `autoresearch decide` — evaluate keep/discard logic, criteria gates, rollback, and escalation
 - `autoresearch parallel prepare` — create branch-backed worker worktrees, prompts, manifest, and batch file

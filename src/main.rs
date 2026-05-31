@@ -275,6 +275,16 @@ enum Commands {
         cwd: Option<PathBuf>,
     },
 
+    /// Probe local resources and toolchains for run planning
+    Env {
+        /// Output format: json or text
+        #[arg(long, default_value = "json")]
+        format: String,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
     /// Manage background runtime artifacts and detached Codex sessions
     Runtime {
         #[command(subcommand)]
@@ -917,6 +927,8 @@ fn main() -> Result<()> {
             min_free_mb,
             cwd,
         } => cmd_health(verify.as_deref(), strict, min_free_mb, cwd),
+
+        Commands::Env { format, cwd } => cmd_env(cwd, &format),
 
         Commands::Runtime { command } => cmd_runtime(command),
 
@@ -3870,6 +3882,97 @@ fn cmd_health(
     println!("{}", serde_json::to_string_pretty(&report)?);
     if should_fail {
         std::process::exit(2);
+    }
+    Ok(())
+}
+
+fn env_disk_free_mb(path: &Path) -> Option<u64> {
+    let output = Command::new("df").arg("-Pk").arg(path).output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let line = stdout.lines().nth(1)?;
+    let available_kb = line.split_whitespace().nth(3)?.parse::<u64>().ok()?;
+    Some(available_kb / 1024)
+}
+
+fn binary_available(binary: &str) -> bool {
+    Command::new("which")
+        .arg(binary)
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
+
+fn cmd_env(cwd: Option<PathBuf>, format: &str) -> Result<()> {
+    let workspace = resolve_workspace_root(cwd);
+    let cpu_cores = std::thread::available_parallelism()
+        .map(|cores| cores.get())
+        .unwrap_or(1);
+    let free_mb = env_disk_free_mb(&workspace);
+    let in_container = Path::new("/.dockerenv").exists() || std::env::var("container").is_ok();
+    let mut toolchains = BTreeMap::new();
+    for binary in [
+        "cargo", "rustc", "python3", "node", "npm", "go", "java", "codex",
+    ] {
+        toolchains.insert(binary, binary_available(binary));
+    }
+    let present_toolchains = toolchains
+        .iter()
+        .filter_map(|(binary, present)| present.then_some(*binary))
+        .collect::<Vec<_>>();
+    let recommended_parallel_workers = std::cmp::min(3, std::cmp::max(1, cpu_cores / 2));
+    let summary = format!(
+        "cpu={} disk_mb={} container={} toolchains={}",
+        cpu_cores,
+        free_mb
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "unknown".to_string()),
+        if in_container { "yes" } else { "no" },
+        if present_toolchains.is_empty() {
+            "none".to_string()
+        } else {
+            present_toolchains.join(",")
+        }
+    );
+    let out = serde_json::json!({
+        "workspace": workspace.display().to_string(),
+        "cpu_cores": cpu_cores,
+        "free_mb": free_mb,
+        "container": in_container,
+        "toolchains": toolchains,
+        "recommended_parallel_workers": recommended_parallel_workers,
+        "environment_summary": summary,
+    });
+
+    match format {
+        "json" => println!("{}", serde_json::to_string_pretty(&out)?),
+        "text" => {
+            println!("--- Environment Probe ---");
+            println!("Workspace: {}", workspace.display());
+            println!("CPU cores: {}", cpu_cores);
+            println!(
+                "Free disk MB: {}",
+                free_mb
+                    .map(|value| value.to_string())
+                    .unwrap_or_else(|| "unknown".to_string())
+            );
+            println!("Container: {}", if in_container { "yes" } else { "no" });
+            println!(
+                "Recommended parallel workers: {}",
+                recommended_parallel_workers
+            );
+            println!("Toolchains:");
+            for (binary, present) in toolchains {
+                println!(
+                    "  {binary}: {}",
+                    if present { "present" } else { "missing" }
+                );
+            }
+            println!("Environment summary: {}", summary);
+        }
+        other => anyhow::bail!("Invalid env format {other:?}; use json or text"),
     }
     Ok(())
 }

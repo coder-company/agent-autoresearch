@@ -47,6 +47,7 @@
 - [x] Cross-repo change execution and rollback across companion repos
 - [x] Workspace-aware scope expansion (monorepo package boundaries)
 - [x] Cross-repo guard command presets
+- [x] Native environment probe command for CPU, disk, container, and toolchain context
 - [x] Shared lessons across repos in a workspace
 
 ## v1.0.0 — Stable API + Ecosystem

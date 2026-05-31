@@ -27,6 +27,7 @@ autoresearch progress
 autoresearch cost --per-iteration-usd 0.25 --format json
 autoresearch dashboard --once
 autoresearch health --strict
+autoresearch env --format json
 autoresearch watch --lines 20 --format jsonl
 autoresearch watch --websocket --websocket-addr 127.0.0.1:8765
 autoresearch lessons --add "Prefer fixture-level assertions" --context "reduced flaky tests"
@@ -52,6 +53,7 @@ autoresearch completions zsh > ~/.zfunc/_autoresearch
 ```
 
 Use `autoresearch runtime run` for supervised background Codex sessions and `autoresearch runtime status` / `autoresearch runtime stop` for control.
+Use `autoresearch env --format json` to capture CPU, disk, container, toolchain, and recommended parallel-worker context before planning long or parallel runs.
 Use `autoresearch status --summary` for compact monitor-friendly counters.
 Use `autoresearch progress` for the current metric, trend, counters, escalation state, and terminal metric history sparkline.
 Use `autoresearch cost --per-iteration-usd <usd>` or token/rate flags to estimate completed, remaining, and projected run spend.

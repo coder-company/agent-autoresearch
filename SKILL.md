@@ -112,6 +112,7 @@ Optional:
 | `autoresearch init --verify "..." --direction higher --acceptance-criteria "coverage >= 90"` | Measure baseline, create artifacts, save run config/context |
 | `autoresearch init --companion-repo-scope "../frontend=src/**/*.ts"` | Register a clean companion repo, persist it in context, and write its repo-local pointer |
 | `autoresearch health --strict` | Preflight git/artifact/disk/verify/context state before launch or resume; fail on warnings |
+| `autoresearch env --format json` | Probe CPU, disk, container, toolchains, and recommended parallelism for planning |
 | `autoresearch verify --command "..."` | Run verify → JSON `{metric, metrics, exit_code, duration_ms}` |
 | `autoresearch verify --format metrics_json --key coverage --command "..."` | Parse structured metrics and select the optimization key |
 | `autoresearch guard --command "..."` | Run guard → JSON `{passed, duration_ms}` |
