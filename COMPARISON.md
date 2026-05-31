@@ -21,15 +21,18 @@ The idea was simple enough that several people generalized it:
 | | Karpathy's | uditgoenka | codex-autoresearch | **This** |
 |---|---|---|---|---|
 | What it does | ML training loops | Any metric, 13 commands | Any metric, background mode | Any metric, 13 commands + runtime control |
-| Install | Clone + Python | Copy/plugin install | Skill installer | Binary, Claude marketplace/plugin, OpenCode assets, Codex skill, local Codex plugin marketplace |
-| Works with | Standalone | Claude Code | Codex CLI | **Claude Code, Codex, OpenCode, any agent** |
-| Commands | 1 (the loop) | 13 | Codex loop modes | **13 command protocols + exec + runtime + parallel closeout** |
+| Install | Clone + Python | Copy/plugin install | Skill installer | Binary, Claude marketplace/plugin, OpenCode assets, Codex skill, local Codex plugin marketplace, GitHub Action, VS Code package |
+| Works with | Standalone | Claude Code | Codex CLI | **Claude Code, Codex, OpenCode, VS Code, CI, any agent** |
+| Commands | 1 (the loop) | 13 | Codex loop modes | **13 command protocols + exec + runtime + dashboard + parallel closeout** |
 | When it gets stuck | You restart | Refine → Pivot → Stop | Re-anchor/resume | **Refine → Pivot → Web Search → Soft Blocker** |
 | Remembers across runs | No | Yes (lessons.md) | Yes (cross-run learning) | **Yes (lessons.md)** |
 | Health preflight | No | Markdown checklist | Helper scripts | **Native `autoresearch health` for git/artifact/disk/verify/guard/context** |
 | Background runs | No | No | Yes (daemon) | **Yes (`runtime run/start/status/supervise/stop`)** |
-| Parallel experiments | No | No | Yes | **Worktree workers + verified closeout** |
+| Parallel experiments | No | No | Yes | **Worktree workers + verified closeout + `parallel compare` A/B batches** |
 | Structured metrics | No | No | Limited | **`metrics_json`, primary key, acceptance and required-keep gates** |
+| Run visualization | Terminal logs | Markdown/evals output | Background status | **Terminal dashboard, WebSocket watch, VS Code status/dashboard/watch commands** |
+| Cost visibility | External GPU bill | None | None | **`autoresearch cost` projects completed, remaining, and total run spend** |
+| CI automation | Manual | Manual/plugin-driven | Exec helpers | **`exec` mode plus checked-in `.github/actions/autoresearch` composite action** |
 
 ---
 
@@ -46,7 +49,7 @@ The idea was simple enough that several people generalized it:
 - You want install choices: Claude marketplace/plugin, OpenCode global/local assets, `$skill-installer`, direct `.agents` skill copy, or `plugins/autoresearch` via `.agents/plugins/marketplace.json`
 - You care about **hook speed** — the safety checks fire on every tool call, and they're fast enough to be invisible
 - You want a **single binary** with no Python/Node.js dependency chain
-- You want the full 13-command surface **plus** native runtime control, health preflight, structured metrics, parallel verified closeout, escalation, and cross-run learning
+- You want the full 13-command surface **plus** native runtime control, health preflight, structured metrics, `parallel compare`, cost estimates, dashboards, CI action packaging, and cross-run learning
 
 ---
 

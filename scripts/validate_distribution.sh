@@ -321,6 +321,10 @@ require_grep 'Claude marketplace/plugin' COMPARISON.md
 require_grep '13-command surface' COMPARISON.md
 require_grep 'Structured metrics' COMPARISON.md
 require_grep 'Claude, Codex, and OpenCode packages' COMPARISON.md
+require_grep 'Run visualization' COMPARISON.md
+require_grep 'parallel compare' COMPARISON.md
+require_grep 'autoresearch cost' COMPARISON.md
+require_grep 'GitHub Action, VS Code package' COMPARISON.md
 require_grep '\.agents/skills/autoresearch/' AGENTS.md
 require_grep 'docs-manager helper agent' AGENTS.md
 require_grep '\.agents/skills/autoresearch/' docs/changelog.md
