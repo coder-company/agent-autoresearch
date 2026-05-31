@@ -12,6 +12,7 @@ autoresearch plan --goal "reduce any types" --format json
 autoresearch improve --goal "Improve onboarding activation" --icp "Developer tools teams"
 autoresearch prd --title "Improve onboarding" --problem "New users stall before first run"
 autoresearch security --scope "src/**/*.rs" --focus auth
+autoresearch ship --target "Release v1.2.0" --type code-release --dry-run
 autoresearch scenario --target "Checkout flow" --format threat-scenarios --scope "src/checkout/**"
 autoresearch predict --proposal "Add cache warming to search results" --scope "src/search/**"
 autoresearch reason --question "Should we replace the storage layer" --mode debate --domain software
@@ -28,6 +29,7 @@ autoresearch scope expand --format json
 `improve` writes a product-improvement artifact bundle with research findings, ranked plan, summary, improve-results TSV, and handoff JSON.
 `prd` writes a focused improve-mode markdown artifact with DECISION NEEDED markers, acceptance criteria, risks, success metrics, and a ready-to-run autoresearch config block.
 `security` writes a STRIDE + OWASP audit artifact bundle: overview, threat model, attack surface map, coverage, findings, recommendations, results TSV, and handoff JSON.
+`ship` writes an 8-phase checklist, summary, ship log TSV, and handoff JSON without performing external ship actions.
 `scenario` writes a markdown artifact covering all 12 scenario dimensions for the requested target, format, focus, and implementation scope.
 `predict` writes a five-persona pre-implementation review with architecture, security, performance, UX, and adversarial findings.
 `reason` writes an adversarial debate artifact with candidate solutions, blind judge rubric, and convergence criteria.

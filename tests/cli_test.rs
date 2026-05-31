@@ -205,6 +205,7 @@ fn test_api_manifest_lists_nested_commands_and_flags() {
         .stdout(predicate::str::contains("\"start\""))
         .stdout(predicate::str::contains("\"improve\""))
         .stdout(predicate::str::contains("\"security\""))
+        .stdout(predicate::str::contains("\"ship\""))
         .stdout(predicate::str::contains("\"plan\""))
         .stdout(predicate::str::contains("\"prd\""))
         .stdout(predicate::str::contains("\"scenario\""))
@@ -609,6 +610,43 @@ fn test_security_writes_audit_artifact_bundle() {
     assert!(findings.contains("Severity Labels"));
     assert!(tsv.contains("finding\tseverity\towasp\tstride"));
     assert!(handoff.contains("\"source\": \"security\""));
+}
+
+#[test]
+fn test_ship_writes_checklist_artifact_bundle() {
+    let dir = TempDir::new().unwrap();
+    let output_dir = dir.path().join("ship/release");
+
+    cmd()
+        .args([
+            "ship",
+            "--target",
+            "Release v1.2.0",
+            "--type",
+            "code-release",
+            "--dry-run",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\":\"written\""))
+        .stdout(predicate::str::contains("\"phases\":8"));
+
+    let checklist = std::fs::read_to_string(output_dir.join("checklist.md")).unwrap();
+    let summary = std::fs::read_to_string(output_dir.join("summary.md")).unwrap();
+    let log = std::fs::read_to_string(output_dir.join("ship-log.tsv")).unwrap();
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+
+    assert!(checklist.contains("# Ship Checklist: Release v1.2.0"));
+    assert!(checklist.contains("Preflight"));
+    assert!(checklist.contains("Push/PR"));
+    assert!(checklist.contains("Version bumped"));
+    assert!(summary.contains("Phase count: 8"));
+    assert!(log.contains("checklist_score"));
+    assert!(handoff.contains("\"source\": \"ship\""));
 }
 
 #[test]

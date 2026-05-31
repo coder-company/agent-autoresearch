@@ -38,6 +38,7 @@ use autoresearch::modes::probe::ProbePersona;
 use autoresearch::modes::reason::{ReasonDomain, ReasoningMode};
 use autoresearch::modes::scenario::{Dimension, ScenarioFormat};
 use autoresearch::modes::security::{OwaspCategory, Severity, StrideCategory};
+use autoresearch::modes::ship::ShipPhase;
 
 const RUNTIME_HARD_INVARIANTS_DOC: &str = include_str!("../references/runtime-hard-invariants.md");
 const CORE_PRINCIPLES_DOC: &str = include_str!("../references/core-principles.md");
@@ -595,6 +596,28 @@ enum Commands {
         /// Optional focus area such as auth, API, data handling, or CI
         #[arg(long)]
         focus: Option<String>,
+        /// Output directory. Relative paths resolve from the workspace root.
+        #[arg(long)]
+        output_dir: Option<PathBuf>,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
+    /// Generate an 8-phase ship checklist artifact bundle
+    Ship {
+        /// What is being shipped
+        #[arg(long)]
+        target: String,
+        /// Shipment type: code-pr, code-release, deployment, content, docs, package, config
+        #[arg(long = "type", default_value = "code-pr")]
+        ship_type: String,
+        /// Run all steps but do not perform external ship actions
+        #[arg(long)]
+        dry_run: bool,
+        /// Generate only checklist artifacts
+        #[arg(long)]
+        checklist_only: bool,
         /// Output directory. Relative paths resolve from the workspace root.
         #[arg(long)]
         output_dir: Option<PathBuf>,
@@ -1300,6 +1323,22 @@ fn main() -> Result<()> {
             output_dir,
             cwd,
         } => cmd_security(scope, focus, output_dir, cwd),
+
+        Commands::Ship {
+            target,
+            ship_type,
+            dry_run,
+            checklist_only,
+            output_dir,
+            cwd,
+        } => cmd_ship(
+            &target,
+            &ship_type,
+            dry_run,
+            checklist_only,
+            output_dir,
+            cwd,
+        ),
 
         Commands::Scenario {
             target,
@@ -2460,6 +2499,159 @@ fn cmd_security(
             "owasp_categories": OwaspCategory::all().len(),
             "stride_categories": StrideCategory::all().len(),
             "files_scanned": files.len(),
+        })
+    );
+    Ok(())
+}
+
+fn ship_type_checklist(ship_type: &str) -> &'static [&'static str] {
+    match ship_type {
+        "deployment" => &[
+            "Environment variables confirmed",
+            "Health checks configured",
+            "Rollback path documented",
+            "Monitoring window assigned",
+        ],
+        "code-release" | "package" => &[
+            "Version bumped",
+            "Changelog updated",
+            "Package/build artifacts verified",
+            "Breaking changes documented",
+        ],
+        "content" | "docs" => &[
+            "Links checked",
+            "Images and assets verified",
+            "Metadata reviewed",
+            "Spell and formatting pass completed",
+        ],
+        _ => &[
+            "Tests pass",
+            "Lint or type checks pass",
+            "No secrets in diff",
+            "PR description and reviewers ready",
+        ],
+    }
+}
+
+fn render_ship_checklist(
+    target: &str,
+    ship_type: &str,
+    dry_run: bool,
+    checklist_only: bool,
+) -> String {
+    let mut out = String::new();
+    writeln!(out, "# Ship Checklist: {target}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "- Type: {ship_type}").unwrap();
+    writeln!(out, "- Dry run: {dry_run}").unwrap();
+    writeln!(out, "- Checklist only: {checklist_only}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## 8 Phases").unwrap();
+    writeln!(out).unwrap();
+    for phase in ShipPhase::all() {
+        writeln!(out, "- [ ] {}", phase.label()).unwrap();
+    }
+    writeln!(out).unwrap();
+    writeln!(out, "## Type-Specific Gates").unwrap();
+    writeln!(out).unwrap();
+    for item in ship_type_checklist(ship_type) {
+        writeln!(out, "- [ ] {item}").unwrap();
+    }
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "DECISION NEEDED: explicit approval is required before external ship actions."
+    )
+    .unwrap();
+    out
+}
+
+fn render_ship_summary(
+    target: &str,
+    ship_type: &str,
+    dry_run: bool,
+    checklist_only: bool,
+) -> String {
+    format!(
+        "# Ship Summary: {target}\n\n\
+         - Type: {ship_type}\n\
+         - Dry run: {dry_run}\n\
+         - Checklist only: {checklist_only}\n\
+         - Phase count: {}\n\
+         - Status: DRY_RUN\n\n\
+         This artifact does not perform external side effects. Run the checklist, capture blockers, and only execute Ship after explicit approval.\n",
+        ShipPhase::all().len()
+    )
+}
+
+fn render_ship_log(target: &str, ship_type: &str, dry_run: bool, checklist_only: bool) -> String {
+    let mut out = String::new();
+    let timestamp = chrono::Utc::now().to_rfc3339();
+    writeln!(
+        out,
+        "timestamp\ttype\ttarget\tchecklist_score\tdry_run\tshipped\tverified\tduration\tnotes"
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "{timestamp}\t{ship_type}\t{target}\t0\t{dry_run}\tfalse\tfalse\t0\tchecklist_only={checklist_only}"
+    )
+    .unwrap();
+    out
+}
+
+fn cmd_ship(
+    target: &str,
+    ship_type: &str,
+    dry_run: bool,
+    checklist_only: bool,
+    output_dir: Option<PathBuf>,
+    cwd: Option<PathBuf>,
+) -> Result<()> {
+    let workspace = resolve_workspace_root(cwd);
+    let output_dir = output_dir
+        .unwrap_or_else(|| PathBuf::from("ship").join(format!("ship-{}", slugify(target))));
+    let output_dir = resolve_workspace_path(&workspace, output_dir);
+    std::fs::create_dir_all(&output_dir)
+        .with_context(|| format!("failed to create {}", output_dir.display()))?;
+    write_text_file(
+        &output_dir.join("checklist.md"),
+        &render_ship_checklist(target, ship_type, dry_run, checklist_only),
+    )?;
+    write_text_file(
+        &output_dir.join("summary.md"),
+        &render_ship_summary(target, ship_type, dry_run, checklist_only),
+    )?;
+    write_text_file(
+        &output_dir.join("ship-log.tsv"),
+        &render_ship_log(target, ship_type, dry_run, checklist_only),
+    )?;
+    let handoff = serde_json::json!({
+        "version": "2.1.0",
+        "source": "ship",
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "status": if dry_run || checklist_only { "DRY_RUN" } else { "COMPLETE" },
+        "results_tsv": output_dir.join("ship-log.tsv").display().to_string(),
+        "findings": [],
+        "config": {
+            "target": target,
+            "type": ship_type,
+            "dry_run": dry_run,
+            "checklist_only": checklist_only,
+            "phases": ShipPhase::all().len(),
+        }
+    });
+    write_json_file(&output_dir.join("handoff.json"), &handoff)?;
+    println!(
+        "{}",
+        serde_json::json!({
+            "status": "written",
+            "output_dir": output_dir.display().to_string(),
+            "target": target,
+            "type": ship_type,
+            "phases": ShipPhase::all().len(),
+            "dry_run": dry_run,
+            "checklist_only": checklist_only,
         })
     );
     Ok(())

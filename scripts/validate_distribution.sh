@@ -181,6 +181,11 @@ require_grep 'autoresearch security --scope' docs/GUIDE.md
 require_grep 'autoresearch security --scope' references/binary-operations.md
 require_grep 'Native security generator' docs/development-roadmap.md
 require_grep '`autoresearch security` writes' COMPARISON.md
+require_grep 'autoresearch ship --target' README.md
+require_grep 'autoresearch ship --target' docs/GUIDE.md
+require_grep 'autoresearch ship --target' references/binary-operations.md
+require_grep 'Native ship generator' docs/development-roadmap.md
+require_grep '`autoresearch ship` writes' COMPARISON.md
 require_grep 'autoresearch scenario --target' README.md
 require_grep 'autoresearch scenario --target' docs/GUIDE.md
 require_grep 'autoresearch scenario --target' references/binary-operations.md

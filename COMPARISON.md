@@ -33,6 +33,7 @@ The idea was simple enough that several people generalized it:
 | Improve research | Manual notes | Research findings + plans | Protocol guidance | **`autoresearch improve` writes findings, plan, TSV, summary, and handoff** |
 | PRD output | No | Improve-mode PRDs | No | **`autoresearch prd` writes selected-improvement PRD artifacts** |
 | Security output | No | STRIDE/OWASP reports | Protocol guidance | **`autoresearch security` writes audit bundles with coverage and handoff** |
+| Ship output | Manual release | Checklist + ship logs | Protocol guidance | **`autoresearch ship` writes 8-phase checklist bundles** |
 | Scenario output | No | Scenario markdown reports | Protocol guidance | **`autoresearch scenario` writes 12-dimension edge-case artifacts** |
 | Predict output | No | Persona debate reports | Protocol guidance | **`autoresearch predict` writes five-persona review artifacts** |
 | Reason output | No | Adversarial reasoning reports | Protocol guidance | **`autoresearch reason` writes candidate debate artifacts** |
@@ -60,7 +61,7 @@ The idea was simple enough that several people generalized it:
 - You want install choices: Claude marketplace/plugin, OpenCode global/local assets, `$skill-installer`, direct `.agents` skill copy, or `plugins/autoresearch` via `.agents/plugins/marketplace.json`
 - You care about **hook speed** — the safety checks fire on every tool call, and they're fast enough to be invisible
 - You want a **single binary** with no Python/Node.js dependency chain
-- You want the full 13-command surface **plus** native runtime control, health preflight, structured metrics, security/scenario/predict/reason/probe/learn artifacts, `parallel compare`, cost estimates, dashboards, CI action packaging, and cross-run learning
+- You want the full 13-command surface **plus** native runtime control, health preflight, structured metrics, security/ship/scenario/predict/reason/probe/learn artifacts, `parallel compare`, cost estimates, dashboards, CI action packaging, and cross-run learning
 
 ---
 
