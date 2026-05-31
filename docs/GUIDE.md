@@ -54,7 +54,7 @@ autoresearch parallel template --workers 3 --output autoresearch-results/paralle
 autoresearch parallel compare --a "simplify parser" --b "cache scan results"
 autoresearch parallel closeout --batch-file autoresearch-results/parallel-workers.json --merge-strategy cherry-pick
 autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.json
-autoresearch evals --file autoresearch-results/results.tsv --format json --recommend --plateau-window 5 --target 90 --chain ship
+autoresearch evals --file autoresearch-results/results.tsv --format json --recommend --plateau-window 5 --target 90 --fail-on goal-not-met --chain ship
 autoresearch evals --file autoresearch-results/results.tsv --compare autoresearch-results/previous-results.tsv --format json
 autoresearch api --format json
 autoresearch mcp serve
@@ -84,7 +84,7 @@ Use `autoresearch lessons --add <strategy> --context <note>` to append reusable 
 Use `autoresearch search --from-state` with `--provider-command` or `AUTORESEARCH_SEARCH_CMD` to run cached, run-aware web searches. Add `--log` to append a `search` meta-iteration. When `decide` escalates to Web Search, it automatically runs the same cached helper with `AUTORESEARCH_SEARCH_CMD` and logs the result when timing/cooldown limits allow it.
 Use `autoresearch parallel closeout --merge-strategy <cherry-pick|fast-forward|squash|rebase>` to select how the retained worker commit is merged.
 Use `autoresearch parallel compare --a <hypothesis> --b <hypothesis>` to prepare a two-arm A/B batch that reuses `parallel run` and verified `parallel closeout`.
-Use `autoresearch evals --file <path> --format json --recommend --plateau-window 5 --target <metric-threshold> --chain ship` after parallel closeout to include worker improvement counts, a sign-test summary, anomaly detection, goal-achieved status, CI-friendly next-step guidance, and downstream handoff metadata.
+Use `autoresearch evals --file <path> --format json --recommend --plateau-window 5 --target <metric-threshold> --fail-on goal-not-met --chain ship` after parallel closeout to include worker improvement counts, a sign-test summary, anomaly detection, goal-achieved status, CI-friendly exit gating, next-step guidance, and downstream handoff metadata.
 Use `autoresearch evals --file <path> --compare <other-results.tsv> --format json` to compare run improvement, efficiency, and plateau length before choosing the next strategy.
 Use `autoresearch completions <bash|zsh|fish|elvish|powershell>` to generate shell completions.
 Use `autoresearch manpages --output-dir man/man1` to generate a local `autoresearch.1` manual page.

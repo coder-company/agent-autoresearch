@@ -3469,6 +3469,44 @@ fn test_evals_target_reports_goal_met() {
 }
 
 #[test]
+fn test_evals_fail_on_goal_not_met_exits_nonzero() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: higher").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t50\t0\t-\tbaseline\tinitial state").unwrap();
+    writeln!(file, "1\tbcd2345\t52\t+2\tpass\tkeep\tsmall win").unwrap();
+
+    cmd()
+        .args([
+            "evals",
+            "--file",
+            tsv_path.to_str().unwrap(),
+            "--target",
+            "55",
+            "--fail-on",
+            "goal-not-met",
+            "--format",
+            "json",
+        ])
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("\"goal_achieved\": false"))
+        .stdout(predicate::str::contains(
+            "\"fail_reason\": \"evals fail-on goal-not-met: target was not achieved\"",
+        ))
+        .stderr(predicate::str::contains(
+            "evals fail-on goal-not-met: target was not achieved",
+        ));
+}
+
+#[test]
 fn test_evals_reports_parallel_worker_significance() {
     let dir = TempDir::new().unwrap();
     let tsv_path = dir.path().join("results.tsv");

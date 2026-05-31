@@ -282,6 +282,9 @@ enum Commands {
         /// Target metric threshold used to report goal achievement
         #[arg(long, value_name = "NUMBER", allow_hyphen_values = true)]
         target: Option<String>,
+        /// Exit non-zero when a gate condition is met: no-go, hold, goal-not-met, or anomaly
+        #[arg(long, value_name = "CONDITION")]
+        fail_on: Option<String>,
         /// Output format: text, json, or md
         #[arg(long, default_value = "text")]
         format: String,
@@ -1477,6 +1480,7 @@ fn main() -> Result<()> {
             chain,
             compare,
             target,
+            fail_on,
             format,
         } => {
             if path.is_some() && file.is_some() {
@@ -1490,6 +1494,7 @@ fn main() -> Result<()> {
                 chain.as_deref(),
                 compare.as_deref(),
                 target.as_deref(),
+                fail_on.as_deref(),
             )
         }
 
@@ -7407,6 +7412,7 @@ fn cmd_evals(
     chain: Option<&str>,
     compare: Option<&Path>,
     target: Option<&str>,
+    fail_on: Option<&str>,
 ) -> Result<()> {
     if plateau_window == 0 {
         anyhow::bail!("evals plateau window must be greater than zero");
@@ -7612,6 +7618,7 @@ fn cmd_evals(
         guard_failed_improvements,
         longest_failure_streak,
     );
+    let fail_reason = evals_fail_reason(fail_on, go_no_go, goal_achieved, &anomalies)?;
     let summary_dir = tsv_path.parent().unwrap_or_else(|| Path::new("."));
     let comparison = if let Some(compare_path) = compare {
         let compare_content = std::fs::read_to_string(compare_path)
@@ -7684,6 +7691,8 @@ fn cmd_evals(
                 "next_step": next_step,
                 "goal_target": goal_target.as_ref().map(ToString::to_string),
                 "goal_achieved": goal_achieved,
+                "fail_on": fail_on,
+                "fail_reason": fail_reason.as_deref(),
                 "comparison": &comparison,
                 "anomalies": &anomalies,
             },
@@ -7693,6 +7702,7 @@ fn cmd_evals(
                 "recommend": recommend,
                 "plateau_window": plateau_window,
                 "target": goal_target.as_ref().map(ToString::to_string),
+                "fail_on": fail_on,
                 "unknown_columns": &unknown_columns,
                 "comparison": &comparison,
             },
@@ -7731,6 +7741,8 @@ fn cmd_evals(
                 "plateau_detected": plateau_detected,
                 "goal_target": goal_target.as_ref().map(ToString::to_string),
                 "goal_achieved": goal_achieved,
+                "fail_on": fail_on,
+                "fail_reason": fail_reason.as_deref(),
                 "trend": trend,
                 "recommendation": recommendation,
                 "unknown_columns": &unknown_columns,
@@ -7807,6 +7819,8 @@ fn cmd_evals(
                 plateau_window,
                 goal_target,
                 goal_achieved,
+                fail_on,
+                fail_reason: fail_reason.as_deref(),
                 recommendation,
                 recommend,
                 unknown_columns: &unknown_columns,
@@ -7845,6 +7859,8 @@ fn cmd_evals(
                 plateau_window,
                 goal_target,
                 goal_achieved,
+                fail_on,
+                fail_reason: fail_reason.as_deref(),
                 recommendation,
                 recommend,
                 unknown_columns: &unknown_columns,
@@ -7859,6 +7875,10 @@ fn cmd_evals(
             print!("{report}");
         }
         other => anyhow::bail!("Invalid evals format {other:?}; use text, json, or md"),
+    }
+
+    if let Some(reason) = fail_reason {
+        anyhow::bail!("{reason}");
     }
 
     Ok(())
@@ -7909,6 +7929,7 @@ fn cmd_checkpoint(cwd: Option<PathBuf>, interval: Option<u32>, format: &str) -> 
         format,
         false,
         5,
+        None,
         None,
         None,
         None,
@@ -8015,6 +8036,8 @@ struct EvalsReport<'a> {
     plateau_window: u32,
     goal_target: Option<Decimal>,
     goal_achieved: Option<bool>,
+    fail_on: Option<&'a str>,
+    fail_reason: Option<&'a str>,
     recommendation: &'a str,
     recommend: bool,
     unknown_columns: &'a [String],
@@ -8238,6 +8261,12 @@ fn render_evals_markdown(report: EvalsReport<'_>) -> String {
     if let Some(achieved) = report.goal_achieved {
         writeln!(out, "| Goal achieved | {} |", achieved).unwrap();
     }
+    if let Some(fail_on) = report.fail_on {
+        writeln!(out, "| Fail on | {} |", fail_on).unwrap();
+    }
+    if let Some(fail_reason) = report.fail_reason {
+        writeln!(out, "| Fail reason | {} |", fail_reason).unwrap();
+    }
     if !report.unknown_columns.is_empty() {
         writeln!(
             out,
@@ -8455,6 +8484,40 @@ fn evals_anomalies(
     }
 
     anomalies
+}
+
+fn evals_fail_reason(
+    fail_on: Option<&str>,
+    go_no_go: &str,
+    goal_achieved: Option<bool>,
+    anomalies: &[EvalsAnomaly],
+) -> Result<Option<String>> {
+    match fail_on {
+        None => Ok(None),
+        Some("no-go") if go_no_go == "NO-GO" => Ok(Some(
+            "evals fail-on no-go: recommendation is NO-GO".to_string(),
+        )),
+        Some("no-go") => Ok(None),
+        Some("hold") if go_no_go != "GO" => Ok(Some(format!(
+            "evals fail-on hold: recommendation decision is {go_no_go}"
+        ))),
+        Some("hold") => Ok(None),
+        Some("goal-not-met") => match goal_achieved {
+            Some(true) => Ok(None),
+            Some(false) => Ok(Some(
+                "evals fail-on goal-not-met: target was not achieved".to_string(),
+            )),
+            None => anyhow::bail!("evals fail-on goal-not-met requires --target"),
+        },
+        Some("anomaly") if !anomalies.is_empty() => Ok(Some(format!(
+            "evals fail-on anomaly: {} anomaly/anomalies detected",
+            anomalies.len()
+        ))),
+        Some("anomaly") => Ok(None),
+        Some(other) => anyhow::bail!(
+            "Invalid evals fail-on condition {other:?}; use no-go, hold, goal-not-met, or anomaly"
+        ),
+    }
 }
 
 fn evals_comparison(

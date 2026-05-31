@@ -154,7 +154,7 @@ One success resets all counters.
 | `/autoresearch:reason` | Debate a subjective decision with blind judges |
 | `/autoresearch:probe` | Interrogate requirements until nothing's ambiguous |
 | `/autoresearch:improve` | Research ICP needs and generate product improvement PRDs |
-| `/autoresearch:evals` | Analyze past runs: trends, plateaus, anomalies, goal achievement, run comparison, parallel worker significance, `--recommend`, `--plateau-window`, and `--chain` guidance |
+| `/autoresearch:evals` | Analyze past runs: trends, plateaus, anomalies, goal achievement, CI gates, run comparison, parallel worker significance, `--recommend`, `--plateau-window`, and `--chain` guidance |
 
 Just type the command. It asks for what it needs.
 
@@ -195,6 +195,7 @@ Covered in detail in the [guide](guide/):
 - **Eval chain handoff** — `autoresearch evals --file autoresearch-results/results.tsv --recommend --chain ship` writes analysis, go/no-go, and next-target metadata beside the TSV
 - **Eval run comparison** — `autoresearch evals --file current.tsv --compare previous.tsv --format json` reports improvement, efficiency, plateau deltas, and a winner
 - **Eval target gate** — `autoresearch evals --file results.tsv --target 90 --recommend --format json` reports `goal_achieved` and recommends `goal_met` when the threshold is crossed
+- **Eval CI exit gate** — `autoresearch evals --file results.tsv --target 90 --fail-on goal-not-met --format json` prints the report and exits non-zero when the gate fails
 - **Protocol re-anchor checks** — `autoresearch reanchor --format json` reports 10-iteration fingerprint due state and reload references for long sessions
 - **Parallel worker execution** — `autoresearch parallel prepare/run/closeout/cleanup` creates isolated worker worktrees, launches prompts, merges and verifies the best result, logs `5a`/`5b` audit rows, and cleans up branches
 - **A/B compare mode** — `autoresearch parallel compare --a "..." --b "..."` prepares two explicit hypotheses for head-to-head metric closeout

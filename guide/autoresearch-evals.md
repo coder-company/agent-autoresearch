@@ -76,6 +76,17 @@ Reports the winning run plus improvement, efficiency, and plateau deltas.
 
 Reports `goal_achieved` and switches the recommendation to `goal_met` when the final metric crosses the threshold for the run direction.
 
+### Fail CI on Gate
+
+```
+/autoresearch:evals --file autoresearch-results/results.tsv
+--target 90
+--fail-on goal-not-met
+--format json
+```
+
+Prints the JSON report, then exits non-zero when the selected gate condition is met. Conditions: `no-go`, `hold`, `goal-not-met`, `anomaly`.
+
 ## What It Reports
 
 ```
@@ -140,6 +151,7 @@ If plateau detected for 3+ consecutive checkpoints → recommends early stop.
 - `--format json` → writes `evals-summary.json` with structured data
 - Anomalies → reports plateaus, failure streaks, guard failures, and declining trends when present
 - `--target <number>` → reports goal achievement and a `goal_met` recommendation when achieved
+- `--fail-on <condition>` → exits non-zero for CI gates after printing the report
 - `--compare <path>` → includes cross-run deltas and a winner
 - `--chain <targets>` → writes `handoff.json` next to the input TSV for downstream commands
 

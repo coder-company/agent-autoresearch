@@ -267,10 +267,11 @@ require_grep 'autoresearch evals --file' references/binary-operations.md
 require_grep 'evals --compare <path>' references/binary-operations.md
 require_grep 'evals --recommend' references/binary-operations.md
 require_grep 'plateau-window <n>' references/binary-operations.md
-require_grep 'evals --recommend --plateau-window <n> --target <number> --chain <targets>' references/binary-operations.md
+require_grep 'evals --recommend --plateau-window <n> --target <number> --fail-on <condition> --chain <targets>' references/binary-operations.md
 require_grep 'recommend` — include explicit go/no-go' commands/autoresearch/evals.md
 require_grep 'plateau-window N' commands/autoresearch/evals.md
 require_grep 'target <number>' commands/autoresearch/evals.md
+require_grep 'fail-on <condition>' commands/autoresearch/evals.md
 require_grep 'compare <path>' commands/autoresearch/evals.md
 require_grep 'chain <targets>' commands/autoresearch/evals.md
 require_grep 'structured anomaly detection' commands/autoresearch/evals.md

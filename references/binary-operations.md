@@ -82,13 +82,13 @@ autoresearch watch --lines 20 --format jsonl
 autoresearch watch --websocket --websocket-addr 127.0.0.1:8765
 autoresearch checkpoint --format json
 autoresearch reanchor --format json
-autoresearch evals --file autoresearch-results/results.tsv --format json --recommend --plateau-window 5 --target 90 --chain ship
+autoresearch evals --file autoresearch-results/results.tsv --format json --recommend --plateau-window 5 --target 90 --fail-on goal-not-met --chain ship
 autoresearch evals --file autoresearch-results/results.tsv --compare autoresearch-results/previous-results.tsv --format json
 autoresearch cost --per-iteration-usd 0.25 --format json
 ```
 
 `watch --websocket` streams snapshot and row update payloads for WebSocket watch streams. `checkpoint` runs evals only when the active run reaches its configured or adaptive checkpoint interval.
-`evals --recommend --plateau-window <n> --target <number> --chain <targets>` adds anomaly detection, explicit go/no-go, goal-achieved status, and next-step guidance to text, markdown, or JSON output using the requested plateau threshold, then writes downstream handoff metadata when chaining is requested.
+`evals --recommend --plateau-window <n> --target <number> --fail-on <condition> --chain <targets>` adds anomaly detection, explicit go/no-go, goal-achieved status, and next-step guidance to text, markdown, or JSON output using the requested plateau threshold, then applies CI-friendly exit gating and writes downstream handoff metadata when chaining is requested.
 `evals --compare <path>` compares improvement, efficiency, and plateau length against another results TSV and reports the winner plus deltas.
 `reanchor` reports whether the 10-iteration Protocol Fingerprint Check is due, verifies context paths, and prints the references to reload plus the `[RE-ANCHOR]` tag for the next TSV row when re-reading was needed.
 
