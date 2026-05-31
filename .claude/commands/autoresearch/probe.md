@@ -1,7 +1,7 @@
 ---
 name: autoresearch:probe
 description: "8 personas interrogate requirements until constraints saturate"
-argument-hint: "[Topic: <text>] [Scope: <glob>] [--depth shallow|standard|deep] [--personas N] [--mode interactive|autonomous] [Iterations: N] [--plan] [--evals]"
+argument-hint: "[Topic: <text>] [Scope: <glob>] [--depth shallow|standard|deep] [--personas N] [--mode interactive|autonomous] [Iterations: N] [--plan] [--improve] [--evals]"
 ---
 
 EXECUTE IMMEDIATELY.
@@ -18,6 +18,7 @@ Extract from $ARGUMENTS:
 - `--adversarial` — rotate hostile personas to front
 - `Iterations:` or `--iterations` — default 15 rounds. "unlimited" for unbounded.
 - `--plan` — shorthand for `--chain plan`
+- `--improve` — shorthand for `--chain improve`
 - `--evals`, `--evals-interval N`, `--chain`, `--<subcommand>`
 
 ## Setup (if Topic missing)

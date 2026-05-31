@@ -34,6 +34,7 @@ autoresearch predict --proposal "Add cache warming to search results" --scope "s
 autoresearch predict --proposal "Find product improvements for onboarding" --scope "src/**" --improve
 autoresearch reason --question "Should we replace the storage layer" --mode debate --domain software
 autoresearch probe --subject "Payment retry workflow" --scope "src/payments/**"
+autoresearch probe --subject "Onboarding activation workflow" --scope "src/**" --improve
 autoresearch learn --mode summarize --scope "src/**/*.rs"
 autoresearch decide --decision auto --metric 4 --commit abc1234 --description "improved"
 autoresearch status --summary
@@ -121,6 +122,7 @@ Use `autoresearch reason --question <decision> --iterations 11 --judges 7 --conv
 Use `autoresearch probe --subject <requirement>` to write eight persona-driven questions, constraint slots, and a saturation rule before implementation.
 Use `autoresearch probe --subject <requirement> --mode autonomous --depth deep --iterations 9 --adversarial` to override the interrogation round budget and record saturation metadata.
 Use `autoresearch probe --subject <requirement> --plan` to pass discovered constraints into planning through handoff metadata.
+Use `autoresearch probe --subject <product-area> --improve` to pass discovered constraints into product improvement research.
 Use `autoresearch learn --mode <init|update|check|summarize> --scope <glob>` to write documentation summary, validation, TSV, and handoff artifacts.
 Use `autoresearch learn --mode check --file <path> --depth overview --iterations 14 --topics architecture,api --no-fix --evals` to record learn profile, specific-file scope, validation behavior, chain, and checkpoint metadata.
 Use `autoresearch api --format json` to inspect the stable command/flag manifest and semver policy used by wrappers and agents.

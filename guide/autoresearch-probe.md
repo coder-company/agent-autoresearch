@@ -96,6 +96,8 @@ The summary includes a derived autoresearch config block — Goal, Scope, Metric
 | `--personas N` | Active persona count per round (3-8, default 6) |
 | `--adversarial` | Hostile personas first |
 | `--saturation-threshold N` | Net-new constraint threshold (default 2) |
+| `--plan` | Shorthand for `--chain plan` |
+| `--improve` | Shorthand for `--chain improve` |
 | `--evals` | Periodic progress reports |
 
 ## Tips
