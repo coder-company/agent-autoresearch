@@ -1,0 +1,45 @@
+{
+  "name": "autoresearch",
+  "displayName": "Autoresearch",
+  "description": "View Autoresearch run status, dashboard snapshots, and live results from VS Code.",
+  "version": "0.1.0",
+  "publisher": "coder-company",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:autoresearch.showStatus",
+    "onCommand:autoresearch.showDashboard",
+    "onCommand:autoresearch.watchResults"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Autoresearch",
+      "properties": {
+        "autoresearch.binaryPath": {
+          "type": "string",
+          "default": "autoresearch",
+          "description": "Path to the autoresearch binary."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "autoresearch.showStatus",
+        "title": "Autoresearch: Show Status"
+      },
+      {
+        "command": "autoresearch.showDashboard",
+        "title": "Autoresearch: Show Dashboard"
+      },
+      {
+        "command": "autoresearch.watchResults",
+        "title": "Autoresearch: Watch Results"
+      }
+    ]
+  }
+}

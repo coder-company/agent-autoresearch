@@ -336,3 +336,20 @@ fn github_action_packages_autoresearch_exec() {
     assert!(action.contains("\"scope\": scope"));
     assert!(action.contains("exec --iterations \"$INPUT_ITERATIONS\" --cwd \"$INPUT_CWD\""));
 }
+
+#[test]
+fn vscode_extension_delegates_to_autoresearch_binary() {
+    let root = repo_root();
+    let package = std::fs::read_to_string(root.join("integrations/vscode/package.json")).unwrap();
+    let extension = std::fs::read_to_string(root.join("integrations/vscode/extension.js")).unwrap();
+    let manifest: serde_json::Value = serde_json::from_str(&package).unwrap();
+
+    assert_eq!(manifest["main"], "./extension.js");
+    assert!(package.contains("\"command\": \"autoresearch.showStatus\""));
+    assert!(package.contains("\"command\": \"autoresearch.showDashboard\""));
+    assert!(package.contains("\"command\": \"autoresearch.watchResults\""));
+    assert!(package.contains("\"autoresearch.binaryPath\""));
+    assert!(extension.contains("[\"status\", \"--summary\", \"--cwd\", cwd]"));
+    assert!(extension.contains("[\"dashboard\", \"--once\", \"--cwd\", cwd]"));
+    assert!(extension.contains("watch --format jsonl --cwd"));
+}

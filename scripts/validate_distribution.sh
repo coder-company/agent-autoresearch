@@ -85,6 +85,9 @@ required_paths=(
     docs/EXAMPLES.md
     docs/system-architecture.md
     docs/project-changelog.md
+    integrations/vscode/package.json
+    integrations/vscode/extension.js
+    integrations/vscode/README.md
     guide/README.md
     guide/autoresearch-codex.md
     references/core-principles.md
@@ -348,6 +351,12 @@ require_grep 'exec --iterations "\$INPUT_ITERATIONS" --cwd "\$INPUT_CWD"' .githu
 require_grep '\.github/actions/autoresearch' README.md
 require_grep '\.github/actions/autoresearch' docs/GUIDE.md
 require_grep '\[x\] GitHub Action for autoresearch in CI' docs/development-roadmap.md
+require_grep '"command": "autoresearch\.showDashboard"' integrations/vscode/package.json
+require_grep 'autoresearch dashboard --once' integrations/vscode/README.md
+require_grep 'dashboard", "--once"' integrations/vscode/extension.js
+require_grep 'integrations/vscode' README.md
+require_grep 'integrations/vscode' docs/GUIDE.md
+require_grep '\[x\] VS Code extension for run visualization' docs/development-roadmap.md
 require_grep 'src = "docs"' book.toml
 require_grep '\[Installation\]\(INSTALL\.md\)' docs/SUMMARY.md
 require_grep 'actions/deploy-pages@v4' .github/workflows/docs.yml

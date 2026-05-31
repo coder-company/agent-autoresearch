@@ -65,7 +65,8 @@
 - [x] Cost tracking — estimate token/API spend per iteration
 - [x] A/B experiment mode — compare two approaches head-to-head
 - [x] Interactive TUI dashboard for monitoring runs
+- [x] VS Code extension for run visualization
 
 ## Future Ideas (unscheduled)
 
-- VS Code extension for run visualization
+- Re-check upstream autoresearch projects before the next feature milestone
