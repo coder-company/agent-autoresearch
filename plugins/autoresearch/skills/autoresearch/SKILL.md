@@ -46,6 +46,7 @@ The `autoresearch` binary handles mechanical operations:
 - `autoresearch runtime run` — execute the supervised background loop; `start/status/supervise/stop` remain available for manual control
 - `autoresearch status --summary|resume|progress|watch|lessons|evals` — inspect/resume/monitor/analyze runs, including JSONL and WebSocket watch streams plus parallel worker sign-test summaries
 - `autoresearch cost --per-iteration-usd <usd> --format json` — estimate completed, remaining, and projected token/API spend for an active run
+- `autoresearch dashboard --once` — render a combined terminal dashboard for the active run
 - `autoresearch api --format json` — emit the stable CLI command/flag manifest and semver policy
 - `autoresearch scope expand --format json` — resolve primary and companion repo scopes with package-root annotations
 - `autoresearch guard-presets --format json` — suggest cross-repo guard commands for primary and companion repositories

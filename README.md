@@ -185,6 +185,7 @@ Covered in detail in the [guide](guide/):
 - **Background runtime control** — `autoresearch runtime run` preflights each Codex turn, manages `launch.json`, `runtime.json`, `runtime.log`, and relaunches until stop or needs-human; `start/status/supervise/stop` remain available for manual control
 - **Live results tailing** — `autoresearch watch --lines 20 --format jsonl` follows `autoresearch-results/results.tsv` from the workspace root or any repo subdirectory
 - **Progress WebSocket** — `autoresearch watch --websocket` streams snapshot and row update payloads to real-time dashboards
+- **Terminal dashboard** — `autoresearch dashboard --once` renders status, metric history, escalation, and recent rows in one view
 - **Compact run status** — `autoresearch status --summary` prints monitor-friendly counters without full config payloads
 - **Metric history sparkline** — `autoresearch progress` graphs retained metric history directly in terminal output
 - **Cost estimates** — `autoresearch cost --per-iteration-usd 0.25` projects completed and remaining token/API spend

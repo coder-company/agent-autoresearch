@@ -145,9 +145,12 @@ require_grep 'autoresearch watch --lines 20 --format jsonl' SKILL.md
 require_grep 'autoresearch watch --lines 20 --format jsonl' skills/autoresearch/SKILL.md
 require_grep 'autoresearch watch --websocket' README.md
 require_grep 'autoresearch watch --websocket' docs/GUIDE.md
+require_grep 'autoresearch dashboard --once' README.md
+require_grep 'autoresearch dashboard --once' docs/GUIDE.md
 require_grep 'WebSocket watch streams' .agents/skills/autoresearch/SKILL.md
 require_grep 'WebSocket watch streams' plugins/autoresearch/skills/autoresearch/SKILL.md
 require_grep 'Progress websocket for real-time monitoring' docs/development-roadmap.md
+require_grep '\[x\] Interactive TUI dashboard for monitoring runs' docs/development-roadmap.md
 require_grep 'autoresearch watch' guide/advanced-patterns.md
 require_grep 'format jsonl' README.md
 require_grep 'format jsonl' docs/GUIDE.md

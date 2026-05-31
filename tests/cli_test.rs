@@ -205,6 +205,7 @@ fn test_api_manifest_lists_nested_commands_and_flags() {
         .stdout(predicate::str::contains("\"start\""))
         .stdout(predicate::str::contains("\"cost\""))
         .stdout(predicate::str::contains("\"per-iteration-usd\""))
+        .stdout(predicate::str::contains("\"dashboard\""))
         .stdout(predicate::str::contains("\"compare\""))
         .stdout(predicate::str::contains("\"hypothesis\""))
         .stdout(predicate::str::contains("\"mcp\""))
@@ -1778,6 +1779,59 @@ fn test_cost_estimates_active_run_spend() {
         .stdout(predicate::str::contains(
             "\"projected_total_usd\": \"1.50\"",
         ));
+}
+
+#[test]
+fn test_dashboard_once_summarizes_active_run() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "log",
+            "--iteration",
+            "1",
+            "--commit",
+            "abc1234",
+            "--metric",
+            "55",
+            "--delta",
+            "+5",
+            "--guard",
+            "pass",
+            "--status",
+            "keep",
+            "--description",
+            "first improvement",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["dashboard", "--once", "--lines", "2", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Autoresearch Dashboard"))
+        .stdout(predicate::str::contains("Iteration: 1"))
+        .stdout(predicate::str::contains("Metric history:"))
+        .stdout(predicate::str::contains("Recent results:"))
+        .stdout(predicate::str::contains("first improvement"));
 }
 
 #[test]

@@ -345,6 +345,22 @@ enum Commands {
         cwd: Option<PathBuf>,
     },
 
+    /// Show a live terminal dashboard for the active run
+    Dashboard {
+        /// Number of recent result rows to show
+        #[arg(long, default_value_t = 8)]
+        lines: usize,
+        /// Render one snapshot and exit
+        #[arg(long)]
+        once: bool,
+        /// Refresh interval while following
+        #[arg(long, default_value_t = 1000, value_parser = clap::value_parser!(u64).range(1..))]
+        interval_ms: u64,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
     /// Tail the active results.tsv for live run monitoring
     Watch {
         /// Number of recent data rows to print on startup
@@ -941,6 +957,13 @@ fn main() -> Result<()> {
             output_usd_per_million.as_deref(),
             &format,
         ),
+
+        Commands::Dashboard {
+            lines,
+            once,
+            interval_ms,
+            cwd,
+        } => cmd_dashboard(cwd, lines, once, interval_ms),
 
         Commands::Watch {
             lines,
@@ -5263,6 +5286,35 @@ fn metric_history_sparkline(metrics: &[Decimal]) -> Option<String> {
     Some(sparkline)
 }
 
+fn progress_trend_from_rows(rows: &[ParsedRow], direction: Direction) -> &'static str {
+    let keep_metrics: Vec<Decimal> = rows
+        .iter()
+        .filter(|row| is_keep_status(&row.status))
+        .map(|row| row.metric)
+        .collect();
+    let last5: Vec<&Decimal> = keep_metrics.iter().rev().take(5).collect();
+    if last5.len() < 2 {
+        "insufficient_data"
+    } else {
+        match direction {
+            Direction::Lower if last5.windows(2).all(|w| w[0] <= w[1]) => "improving",
+            Direction::Lower if last5.windows(2).all(|w| w[0] >= w[1]) => "declining",
+            _ if last5.windows(2).all(|w| w[0] >= w[1]) => "improving",
+            _ if last5.windows(2).all(|w| w[0] <= w[1]) => "declining",
+            _ => "flat",
+        }
+    }
+}
+
+fn retained_metric_history(rows: &[ParsedRow]) -> Vec<Decimal> {
+    rows.iter()
+        .filter(|row| {
+            row.status == "baseline" || row.status == "drift" || is_keep_status(&row.status)
+        })
+        .map(|row| row.metric)
+        .collect()
+}
+
 fn parse_cost_decimal(label: &str, value: Option<&str>) -> Result<Option<Decimal>> {
     value
         .map(|raw| {
@@ -5399,6 +5451,87 @@ fn cmd_cost(
     Ok(())
 }
 
+fn render_dashboard(workspace: &Path, lines: usize) -> Result<String> {
+    let results_dir = workspace.join("autoresearch-results");
+    let state_path = results_dir.join("state.json");
+    if !state_path.exists() {
+        anyhow::bail!("No active run (state.json not found)");
+    }
+
+    let state: RunState = serde_json::from_str(&std::fs::read_to_string(&state_path)?)?;
+    let esc_path = results_dir.join("escalation.json");
+    let escalation_label = if esc_path.exists() {
+        let esc: EscalationState = serde_json::from_str(&std::fs::read_to_string(&esc_path)?)?;
+        format!("{:?}", esc.last_action).to_lowercase()
+    } else {
+        "none".to_string()
+    };
+
+    let tsv_path = results_dir.join("results.tsv");
+    let (trend, metric_history, recent_rows) = if tsv_path.exists() {
+        let content = std::fs::read_to_string(&tsv_path)?;
+        let rows = parse_results_tsv(&content)?;
+        let trend = progress_trend_from_rows(&rows, state.direction);
+        let metric_history = metric_history_sparkline(&retained_metric_history(&rows));
+        let recent_rows = ResultsLog::open(tsv_path)?.tail(lines)?;
+        (trend, metric_history, recent_rows)
+    } else {
+        ("insufficient_data", None, Vec::new())
+    };
+
+    let mut out = String::new();
+    writeln!(out, "Autoresearch Dashboard").unwrap();
+    writeln!(out, "Workspace: {}", workspace.display()).unwrap();
+    writeln!(out, "Iteration: {}", state.iteration).unwrap();
+    writeln!(
+        out,
+        "Metric: {} -> {} (best: {} at {})",
+        state.baseline_metric, state.current_metric, state.best_metric, state.best_iteration
+    )
+    .unwrap();
+    if let Some(metric_history) = metric_history {
+        writeln!(out, "Metric history: {}", metric_history).unwrap();
+    }
+    writeln!(
+        out,
+        "Kept: {} | Discarded: {} | Crashes: {} | No-op: {} | Blocked: {}",
+        state.keeps, state.discards, state.crashes, state.no_ops, state.blocked
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "Trend: {} | Consecutive discards: {} | Escalation: {}",
+        trend, state.consecutive_discards, escalation_label
+    )
+    .unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "Recent results:").unwrap();
+    if recent_rows.is_empty() {
+        writeln!(out, "  (none)").unwrap();
+    } else {
+        for row in recent_rows {
+            writeln!(out, "  {row}").unwrap();
+        }
+    }
+    Ok(out)
+}
+
+fn cmd_dashboard(cwd: Option<PathBuf>, lines: usize, once: bool, interval_ms: u64) -> Result<()> {
+    let workspace = resolve_results_workspace(cwd);
+    loop {
+        if !once {
+            print!("\x1b[2J\x1b[H");
+        }
+        print!("{}", render_dashboard(&workspace, lines)?);
+        std::io::stdout().flush()?;
+        if once {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(interval_ms));
+    }
+    Ok(())
+}
+
 // ── Progress ─────────────────────────────────────────────────────────
 
 fn cmd_progress(cwd: Option<PathBuf>) -> Result<()> {
@@ -5427,31 +5560,8 @@ fn cmd_progress(cwd: Option<PathBuf>) -> Result<()> {
     let trend = if tsv_path.exists() {
         let content = std::fs::read_to_string(&tsv_path)?;
         let rows = parse_results_tsv(&content)?;
-        let keep_metrics: Vec<Decimal> = rows
-            .iter()
-            .filter(|row| is_keep_status(&row.status))
-            .map(|row| row.metric)
-            .collect();
-        let retained_metrics: Vec<Decimal> = rows
-            .iter()
-            .filter(|row| {
-                row.status == "baseline" || row.status == "drift" || is_keep_status(&row.status)
-            })
-            .map(|row| row.metric)
-            .collect();
-        metric_history = metric_history_sparkline(&retained_metrics);
-        let last5: Vec<&Decimal> = keep_metrics.iter().rev().take(5).collect();
-        if last5.len() < 2 {
-            "insufficient_data"
-        } else {
-            match state.direction {
-                Direction::Lower if last5.windows(2).all(|w| w[0] <= w[1]) => "improving",
-                Direction::Lower if last5.windows(2).all(|w| w[0] >= w[1]) => "declining",
-                _ if last5.windows(2).all(|w| w[0] >= w[1]) => "improving",
-                _ if last5.windows(2).all(|w| w[0] <= w[1]) => "declining",
-                _ => "flat",
-            }
-        }
+        metric_history = metric_history_sparkline(&retained_metric_history(&rows));
+        progress_trend_from_rows(&rows, state.direction)
     } else {
         "insufficient_data"
     };

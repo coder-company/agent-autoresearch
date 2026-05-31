@@ -25,6 +25,7 @@ autoresearch decide --decision auto --metric 4 --commit abc1234 --description "i
 autoresearch status --summary
 autoresearch progress
 autoresearch cost --per-iteration-usd 0.25 --format json
+autoresearch dashboard --once
 autoresearch health --strict
 autoresearch watch --lines 20 --format jsonl
 autoresearch watch --websocket --websocket-addr 127.0.0.1:8765
@@ -54,6 +55,7 @@ Use `autoresearch runtime run` for supervised background Codex sessions and `aut
 Use `autoresearch status --summary` for compact monitor-friendly counters.
 Use `autoresearch progress` for the current metric, trend, counters, escalation state, and terminal metric history sparkline.
 Use `autoresearch cost --per-iteration-usd <usd>` or token/rate flags to estimate completed, remaining, and projected run spend.
+Use `autoresearch dashboard --once` for a combined terminal view of status, trend, metric history, escalation, and recent rows; omit `--once` for live refresh.
 Use `autoresearch watch --format <tsv|jsonl>` for human-readable tails or machine-readable JSON Lines.
 Use `autoresearch watch --websocket --websocket-addr <host:port>` to serve snapshot and row update payloads to real-time dashboards. Add `--once` to print the initial WebSocket snapshot envelope without starting a server.
 Use `autoresearch lessons --add <strategy> --context <note>` to append reusable lessons without editing `lessons.md` by hand.
