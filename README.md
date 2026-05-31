@@ -203,23 +203,23 @@ Covered in detail in the [guide](guide/):
 - **Man pages** — `autoresearch manpages --output-dir man/man1` writes a local `autoresearch.1` page for packages and offline docs
 - **Project defaults** — `.autoresearch.toml` stores repeatable init settings such as goal, scope, metric, verify, guard, and iteration cap
 - **Native planning** — `autoresearch plan --goal "..." --format json` suggests scope, metric, direction, verify, guard, and iteration count from repo tooling
-- **Plan chain handoff** — `autoresearch plan --goal "..." --chain debug` writes the derived config into a downstream handoff
+- **Plan chain handoff** — `autoresearch plan --goal "..." --debug` writes the derived config into a downstream handoff
 - **Ignored artifact defaults** — native artifact generators write under `autoresearch-results/<mode>/` unless you pass an explicit output path
 - **Debug artifact generation** — `autoresearch debug --symptom ... --scope ...` writes hypothesis, findings, eliminated, TSV, and handoff artifacts
 - **Debug investigation controls** — `autoresearch debug --depth deep --iterations 12 --severity high` records investigation budget and severity filter metadata
 - **Fix artifact generation** — `autoresearch fix --target ... --scope ... --iterations 7` writes a one-error-at-a-time repair plan, TSV, and handoff under `autoresearch-results/fix`
 - **Debug-to-fix import** — `autoresearch fix --from-debug` imports the latest debug handoff scope and symptom into a repair plan
-- **Fix chain controls** — `autoresearch fix --chain learn --evals` records downstream handoff and checkpoint propagation metadata
+- **Fix chain controls** — `autoresearch fix --learn --evals` records downstream handoff and checkpoint propagation metadata
 - **Improve artifact bundle** — `autoresearch improve --goal ... --icp ... --depth deep --iterations 24 --evals` writes research findings, ranked plan, summary, TSV, and handoff with research budget metadata
-- **Improve research controls** — `autoresearch improve --seeds 5 --no-discover --chain learn` records seed volume, discovery posture, and downstream handoff metadata
+- **Improve research controls** — `autoresearch improve --seeds 5 --no-discover --learn` records seed volume, discovery posture, and downstream handoff metadata
 - **PRD artifact generation** — `autoresearch prd --title ... --problem ...` writes improve-mode PRDs with decision markers and ready-to-run config blocks
 - **Security artifact generation** — `autoresearch security --scope ... --focus ...` writes STRIDE, OWASP, findings, recommendations, TSV, and handoff artifacts
 - **Security gating** — `autoresearch security --fail-on high --fix` records CI threshold and downstream repair handoff metadata
-- **Security audit controls** — `autoresearch security --depth deep --iterations 18 --diff --chain fix --evals` records audit budget, delta mode, chain, and checkpoint metadata
+- **Security audit controls** — `autoresearch security --depth deep --iterations 18 --diff --fix --evals` records audit budget, delta mode, repair handoff, and checkpoint metadata
 - **Ship artifact generation** — `autoresearch ship --target ... --type ... --dry-run` writes an 8-phase checklist, summary, ship log, and handoff
-- **Ship workflow controls** — `autoresearch ship --auto --force --rollback --monitor 15 --chain learn` records approval, rollback, monitoring, and downstream metadata without external side effects
+- **Ship workflow controls** — `autoresearch ship --auto --force --rollback --monitor 15 --learn` records approval, rollback, monitoring, and downstream metadata without external side effects
 - **Scenario artifact generation** — `autoresearch scenario --target ... --domain api --format test-scenarios` writes a 12-dimension edge-case matrix grounded in scope
-- **Scenario exploration controls** — `autoresearch scenario --domain web --depth deep --iterations 16 --evals --chain debug` records domain, exploration budget, checkpoint metadata, and downstream handoff
+- **Scenario exploration controls** — `autoresearch scenario --domain web --depth deep --iterations 16 --evals --debug` records domain, exploration budget, checkpoint metadata, and downstream handoff
 - **Predict artifact generation** — `autoresearch predict --proposal ...` writes a five-persona pre-implementation review
 - **Predict review controls** — `autoresearch predict --depth deep --adversarial --fail-on high` records review profile and CI gate metadata
 - **Predict-to-improve handoff** — `autoresearch predict --proposal ... --improve` passes expert findings into product improvement research
@@ -247,7 +247,7 @@ Covered in detail in the [guide](guide/):
 - **Plugin marketplace index** — `autoresearch plugin marketplace` validates a local community plugin catalog and the manifests it references
 - **Manual lessons** — `autoresearch lessons --add "strategy" --context "why it matters"` appends reusable run knowledge
 - **Search helper and escalation** — `autoresearch search --from-state --log` builds a run-aware query, calls a configured provider, caches results, and records a search meta-iteration; `decide` automatically runs the same helper when escalation reaches Web Search and `AUTORESEARCH_SEARCH_CMD` is configured
-- **Chaining** — `debug --fix`, `probe --chain plan`, `predict --chain debug`
+- **Chaining** — `debug --fix`, `probe --plan`, `probe --improve`, `predict --debug`, `predict --improve`
 - **CI/CD mode** (`exec`) — non-interactive, JSON output, for automation pipelines
 - **Dual-gate verification** — separate verify (did it improve?) and guard (did anything break?)
 - **Safety hooks** — blocks dangerous commands, secrets exposure, and scope violations automatically
