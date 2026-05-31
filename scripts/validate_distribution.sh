@@ -130,6 +130,10 @@ require_grep 'autoresearch watch --lines 20 --format jsonl' skills/autoresearch/
 require_grep 'autoresearch watch' guide/advanced-patterns.md
 require_grep 'format jsonl' README.md
 require_grep 'format jsonl' docs/GUIDE.md
+require_grep 'autoresearch lessons --add' README.md
+require_grep 'autoresearch lessons --add' docs/GUIDE.md
+require_grep 'autoresearch lessons --add' SKILL.md
+require_grep 'autoresearch lessons --add' .agents/skills/autoresearch/SKILL.md
 require_grep 'autoresearch parallel prepare' SKILL.md
 require_grep 'autoresearch parallel run' SKILL.md
 require_grep 'timeout-seconds' SKILL.md

@@ -25,6 +25,7 @@ autoresearch decide --decision auto --metric 4 --commit abc1234 --description "i
 autoresearch progress
 autoresearch health --strict
 autoresearch watch --lines 20 --format jsonl
+autoresearch lessons --add "Prefer fixture-level assertions" --context "reduced flaky tests"
 autoresearch parallel prepare --workers 3
 autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json --timeout-seconds 1200
 autoresearch parallel template --workers 3 --output autoresearch-results/parallel-workers.json
@@ -36,6 +37,7 @@ autoresearch completions zsh > ~/.zfunc/_autoresearch
 
 Use `autoresearch runtime run` for supervised background Codex sessions and `autoresearch runtime status` / `autoresearch runtime stop` for control.
 Use `autoresearch watch --format <tsv|jsonl>` for human-readable tails or machine-readable JSON Lines.
+Use `autoresearch lessons --add <strategy> --context <note>` to append reusable lessons without editing `lessons.md` by hand.
 Use `autoresearch parallel closeout --merge-strategy <cherry-pick|fast-forward|squash>` to select how the retained worker commit is merged.
 Use `autoresearch completions <bash|zsh|fish|elvish|powershell>` to generate shell completions.
 Use `autoresearch manpages --output-dir man/man1` to generate a local `autoresearch.1` manual page.

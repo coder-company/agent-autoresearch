@@ -1643,6 +1643,63 @@ fn test_lessons_defaults_to_repo_root_results_from_subdir() {
 }
 
 #[test]
+fn test_lessons_add_appends_entry() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "lessons",
+            "--add",
+            "Prefer fixture-level assertions",
+            "--category",
+            "positive",
+            "--outcome",
+            "success",
+            "--context",
+            "reduced flaky tests",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\":\"ok\""))
+        .stdout(predicate::str::contains("lessons.md"));
+
+    let lessons =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/lessons.md")).unwrap();
+    assert!(lessons.contains("Prefer fixture-level assertions"));
+    assert!(lessons.contains("reduced flaky tests"));
+
+    cmd()
+        .args(["lessons", "--search", "fixture-level", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Prefer fixture-level assertions"));
+}
+
+#[test]
+fn test_lessons_add_rejects_invalid_category() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+
+    cmd()
+        .args([
+            "lessons",
+            "--add",
+            "bad category",
+            "--category",
+            "mixed",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Invalid lesson category"));
+}
+
+#[test]
 fn test_handoff_defaults_to_repo_root_results_from_subdir() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

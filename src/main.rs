@@ -319,6 +319,18 @@ enum Commands {
 
     /// Query the lessons.md file for relevant strategies
     Lessons {
+        /// Append a lesson strategy/context entry
+        #[arg(long)]
+        add: Option<String>,
+        /// Lesson category for --add: positive, negative, or strategic
+        #[arg(long, default_value = "strategic")]
+        category: String,
+        /// Lesson outcome for --add: success, failure, or neutral
+        #[arg(long, default_value = "neutral")]
+        outcome: String,
+        /// Context for --add
+        #[arg(long, default_value = "manual")]
+        context: String,
         /// Filter lessons containing this query (case-insensitive)
         #[arg(long)]
         search: Option<String>,
@@ -687,7 +699,23 @@ fn main() -> Result<()> {
             cwd,
         } => cmd_watch(cwd, lines, &format, once, interval_ms),
 
-        Commands::Lessons { search, last, cwd } => cmd_lessons(search.as_deref(), last, cwd),
+        Commands::Lessons {
+            add,
+            category,
+            outcome,
+            context,
+            search,
+            last,
+            cwd,
+        } => cmd_lessons(
+            add.as_deref(),
+            &category,
+            &outcome,
+            &context,
+            search.as_deref(),
+            last,
+            cwd,
+        ),
 
         Commands::Handoff {
             source,
@@ -3771,10 +3799,37 @@ fn write_stdout_line(line: &str) -> Result<bool> {
 
 // ── Lessons ──────────────────────────────────────────────────────────
 
-fn cmd_lessons(search: Option<&str>, last: Option<usize>, cwd: Option<PathBuf>) -> Result<()> {
+fn cmd_lessons(
+    add: Option<&str>,
+    category: &str,
+    outcome: &str,
+    context: &str,
+    search: Option<&str>,
+    last: Option<usize>,
+    cwd: Option<PathBuf>,
+) -> Result<()> {
     let workspace = resolve_results_workspace(cwd);
     let results_dir = workspace.join("autoresearch-results");
     let log = LessonsLog::open_or_create(&results_dir)?;
+
+    if let Some(strategy) = add {
+        let lesson = lessons::Lesson {
+            timestamp: chrono::Utc::now().format("%Y-%m-%d %H:%M").to_string(),
+            category: parse_lesson_category(category)?,
+            strategy: strategy.to_string(),
+            outcome: parse_lesson_outcome(outcome)?,
+            context: context.to_string(),
+        };
+        log.append(&lesson)?;
+        println!(
+            "{}",
+            serde_json::json!({
+                "status": "ok",
+                "path": log.path(),
+            })
+        );
+        return Ok(());
+    }
 
     let entries = match search {
         Some(q) => log.search(q)?,
@@ -3794,6 +3849,28 @@ fn cmd_lessons(search: Option<&str>, last: Option<usize>, cwd: Option<PathBuf>) 
     let out = serde_json::to_string_pretty(&tail)?;
     println!("{out}");
     Ok(())
+}
+
+fn parse_lesson_category(value: &str) -> Result<lessons::LessonCategory> {
+    match value.trim() {
+        "positive" => Ok(lessons::LessonCategory::Positive),
+        "negative" => Ok(lessons::LessonCategory::Negative),
+        "strategic" => Ok(lessons::LessonCategory::Strategic),
+        other => {
+            anyhow::bail!("Invalid lesson category {other:?}; use positive, negative, or strategic")
+        }
+    }
+}
+
+fn parse_lesson_outcome(value: &str) -> Result<lessons::LessonOutcome> {
+    match value.trim() {
+        "success" => Ok(lessons::LessonOutcome::Success),
+        "failure" => Ok(lessons::LessonOutcome::Failure),
+        "neutral" => Ok(lessons::LessonOutcome::Neutral),
+        other => {
+            anyhow::bail!("Invalid lesson outcome {other:?}; use success, failure, or neutral")
+        }
+    }
 }
 
 // ── Handoff ──────────────────────────────────────────────────────────
