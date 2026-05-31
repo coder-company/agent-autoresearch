@@ -196,6 +196,11 @@ require_grep 'autoresearch probe --subject' docs/GUIDE.md
 require_grep 'autoresearch probe --subject' references/binary-operations.md
 require_grep 'Native probe generator' docs/development-roadmap.md
 require_grep '`autoresearch probe` writes' COMPARISON.md
+require_grep 'autoresearch learn --mode' README.md
+require_grep 'autoresearch learn --mode' docs/GUIDE.md
+require_grep 'autoresearch learn --mode' references/binary-operations.md
+require_grep 'Native learn generator' docs/development-roadmap.md
+require_grep '`autoresearch learn` writes' COMPARISON.md
 require_grep 'autoresearch cost --per-iteration-usd' README.md
 require_grep 'autoresearch cost --per-iteration-usd' docs/GUIDE.md
 require_grep '\[x\] Cost tracking — estimate token/API spend per iteration' docs/development-roadmap.md

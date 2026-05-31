@@ -62,6 +62,7 @@
 - [x] Native predict generator for five-persona review artifacts
 - [x] Native reason generator for adversarial candidate debate artifacts
 - [x] Native probe generator for eight-persona constraint artifacts
+- [x] Native learn generator for documentation summary artifacts
 - [x] Adaptive eval checkpoint command for long-running loops
 - [x] Native protocol re-anchor command for long-running Codex sessions
 - [x] Plugin system — loadable mode definitions (TOML or YAML)

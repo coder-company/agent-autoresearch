@@ -15,6 +15,7 @@ autoresearch scenario --target "Checkout flow" --format threat-scenarios --scope
 autoresearch predict --proposal "Add cache warming to search results" --scope "src/search/**"
 autoresearch reason --question "Should we replace the storage layer" --mode debate --domain software
 autoresearch probe --subject "Payment retry workflow" --scope "src/payments/**"
+autoresearch learn --mode summarize --scope "src/**/*.rs"
 autoresearch health --strict
 autoresearch env --format json
 autoresearch guard-presets --format json
@@ -29,6 +30,7 @@ autoresearch scope expand --format json
 `predict` writes a five-persona pre-implementation review with architecture, security, performance, UX, and adversarial findings.
 `reason` writes an adversarial debate artifact with candidate solutions, blind judge rubric, and convergence criteria.
 `probe` writes eight persona-driven requirement questions, constraint slots, and the saturation rule used to decide when enough constraints have been found.
+`learn` writes documentation summary artifacts: summary, validation report, learn-results TSV, and handoff JSON.
 
 ## Verify, Decide, And Log
 

@@ -210,6 +210,7 @@ fn test_api_manifest_lists_nested_commands_and_flags() {
         .stdout(predicate::str::contains("\"predict\""))
         .stdout(predicate::str::contains("\"reason\""))
         .stdout(predicate::str::contains("\"probe\""))
+        .stdout(predicate::str::contains("\"learn\""))
         .stdout(predicate::str::contains("\"env\""))
         .stdout(predicate::str::contains("\"checkpoint\""))
         .stdout(predicate::str::contains("\"reanchor\""))
@@ -660,6 +661,46 @@ fn test_probe_writes_requirement_interrogation_artifact() {
     assert!(report.contains("Compliance Officer"));
     assert!(report.contains("Saturation Rule"));
     assert!(report.contains("src/payments/**"));
+}
+
+#[test]
+fn test_learn_writes_documentation_summary_artifacts() {
+    let dir = TempDir::new().unwrap();
+    std::fs::create_dir_all(dir.path().join("src")).unwrap();
+    std::fs::write(
+        dir.path().join("src/lib.rs"),
+        "pub fn answer() -> i32 { 42 }\n",
+    )
+    .unwrap();
+    let output_dir = dir.path().join("learn/summary");
+
+    cmd()
+        .args([
+            "learn",
+            "--mode",
+            "summarize",
+            "--scope",
+            "src/**/*.rs",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\":\"written\""))
+        .stdout(predicate::str::contains("\"files_scanned\":1"));
+
+    let summary = std::fs::read_to_string(output_dir.join("summary.md")).unwrap();
+    let validation = std::fs::read_to_string(output_dir.join("validation-report.md")).unwrap();
+    let tsv = std::fs::read_to_string(output_dir.join("learn-results.tsv")).unwrap();
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+
+    assert!(summary.contains("# Learn Summary"));
+    assert!(summary.contains("src/lib.rs"));
+    assert!(validation.contains("# Learn Validation Report"));
+    assert!(tsv.contains("file_documented"));
+    assert!(handoff.contains("\"source\": \"learn\""));
 }
 
 #[test]

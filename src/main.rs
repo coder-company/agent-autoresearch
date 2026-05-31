@@ -31,6 +31,7 @@ use autoresearch::escalation::lessons::{self, LessonsLog};
 use autoresearch::escalation::pivot::{EscalationAction, EscalationState};
 use autoresearch::hooks;
 use autoresearch::modes::evals::{parse_results_tsv, ParsedRow};
+use autoresearch::modes::learn::LearnSubMode;
 use autoresearch::modes::plan::{scan_repo_files, suggest_metrics, PATTERN_INDICATORS};
 use autoresearch::modes::predict::Persona;
 use autoresearch::modes::probe::ProbePersona;
@@ -656,6 +657,22 @@ enum Commands {
         /// Output path. Relative paths resolve from the workspace root.
         #[arg(long)]
         output: Option<PathBuf>,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
+    /// Generate learn-mode documentation summary artifacts
+    Learn {
+        /// Learn mode: init, update, check, or summarize
+        #[arg(long, default_value = "summarize")]
+        mode: String,
+        /// File globs to document or summarize. Repeatable.
+        #[arg(long)]
+        scope: Vec<String>,
+        /// Output directory. Relative paths resolve from the workspace root.
+        #[arg(long)]
+        output_dir: Option<PathBuf>,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -1291,6 +1308,13 @@ fn main() -> Result<()> {
             output,
             cwd,
         } => cmd_probe(&subject, scope, output, cwd),
+
+        Commands::Learn {
+            mode,
+            scope,
+            output_dir,
+            cwd,
+        } => cmd_learn(&mode, scope, output_dir, cwd),
 
         Commands::Completions { shell } => cmd_completions(shell),
         Commands::Manpages { output_dir } => cmd_manpages(&output_dir),
@@ -2799,6 +2823,230 @@ fn cmd_probe(
             "subject": subject,
             "personas": ProbePersona::all().len(),
             "saturation_rule": "2 consecutive rounds with zero new constraints",
+        })
+    );
+    Ok(())
+}
+
+fn parse_learn_sub_mode(value: &str) -> Result<LearnSubMode> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "init" => Ok(LearnSubMode::Init),
+        "update" => Ok(LearnSubMode::Update),
+        "check" => Ok(LearnSubMode::Check),
+        "summarize" | "summary" => Ok(LearnSubMode::Summarize),
+        other => {
+            anyhow::bail!("Invalid learn mode {other:?}; use init, update, check, or summarize")
+        }
+    }
+}
+
+fn learn_sub_mode_label(mode: LearnSubMode) -> &'static str {
+    match mode {
+        LearnSubMode::Init => "init",
+        LearnSubMode::Update => "update",
+        LearnSubMode::Check => "check",
+        LearnSubMode::Summarize => "summarize",
+    }
+}
+
+fn collect_learn_files(workspace: &Path, scope: &[String]) -> Vec<String> {
+    let patterns = if scope.is_empty() {
+        vec![
+            "README.md".to_string(),
+            "src/**/*".to_string(),
+            "docs/**/*.md".to_string(),
+        ]
+    } else {
+        scope.to_vec()
+    };
+    let mut files = BTreeSet::new();
+    for pattern in patterns {
+        let full = format!("{}/{}", workspace.display(), pattern);
+        if let Ok(entries) = glob::glob(&full) {
+            for entry in entries.flatten().filter(|path| path.is_file()) {
+                let rel = entry.strip_prefix(workspace).unwrap_or(&entry);
+                files.insert(rel.display().to_string());
+                if files.len() >= 50 {
+                    break;
+                }
+            }
+        }
+    }
+    files.into_iter().collect()
+}
+
+fn render_learn_summary(mode: LearnSubMode, files: &[String], scope: &[String]) -> String {
+    let mut out = String::new();
+    let scope_lines = if scope.is_empty() {
+        "- README.md\n- src/**/*\n- docs/**/*.md".to_string()
+    } else {
+        scope
+            .iter()
+            .map(|item| format!("- {item}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    writeln!(out, "# Learn Summary").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "- Mode: {}", learn_sub_mode_label(mode)).unwrap();
+    writeln!(out, "- Files scanned: {}", files.len()).unwrap();
+    writeln!(out, "- Validation status: not run").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Scope").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "{scope_lines}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## File Inventory").unwrap();
+    writeln!(out).unwrap();
+    if files.is_empty() {
+        writeln!(
+            out,
+            "- DECISION NEEDED: no files matched the requested scope."
+        )
+        .unwrap();
+    } else {
+        for file in files.iter().take(25) {
+            writeln!(out, "- {file}").unwrap();
+        }
+        if files.len() > 25 {
+            writeln!(out, "- ... {} more", files.len() - 25).unwrap();
+        }
+    }
+    writeln!(out).unwrap();
+    writeln!(out, "## Documentation Next Steps").unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "- Fill missing module, command, and artifact descriptions for the highest-traffic files first."
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "- Validate examples and links before treating generated docs as complete."
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "- DECISION NEEDED: choose the documentation acceptance metric."
+    )
+    .unwrap();
+    out
+}
+
+fn render_learn_validation(files: &[String]) -> String {
+    let mut out = String::new();
+    writeln!(out, "# Learn Validation Report").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "- Files considered: {}", files.len()).unwrap();
+    writeln!(out, "- Issues found: DECISION NEEDED").unwrap();
+    writeln!(out, "- Issues fixed: 0").unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "Run project-specific doc tests, link checks, or examples before closing this learn pass."
+    )
+    .unwrap();
+    out
+}
+
+fn render_learn_results_tsv(files: &[String]) -> String {
+    let mut out = String::new();
+    let timestamp = chrono::Utc::now().to_rfc3339();
+    writeln!(out, "# metric_direction: higher_is_better").unwrap();
+    writeln!(
+        out,
+        "iteration\ttimestamp\tfile_documented\tvalidation_status\tissues_found\tissues_fixed\tdescription"
+    )
+    .unwrap();
+    for (index, file) in files.iter().take(25).enumerate() {
+        writeln!(
+            out,
+            "{}\t{}\t{}\tpending\t0\t0\tinventory",
+            index + 1,
+            timestamp,
+            file
+        )
+        .unwrap();
+    }
+    out
+}
+
+fn cmd_learn(
+    mode: &str,
+    scope: Vec<String>,
+    output_dir: Option<PathBuf>,
+    cwd: Option<PathBuf>,
+) -> Result<()> {
+    let mode = parse_learn_sub_mode(mode)?;
+    let workspace = resolve_workspace_root(cwd);
+    let output_dir = output_dir.unwrap_or_else(|| {
+        PathBuf::from("learn").join(format!("learn-{}", learn_sub_mode_label(mode)))
+    });
+    let output_dir = resolve_workspace_path(&workspace, output_dir);
+    std::fs::create_dir_all(&output_dir)
+        .with_context(|| format!("failed to create {}", output_dir.display()))?;
+    let files = collect_learn_files(&workspace, &scope);
+
+    std::fs::write(
+        output_dir.join("summary.md"),
+        render_learn_summary(mode, &files, &scope),
+    )
+    .with_context(|| {
+        format!(
+            "failed to write {}",
+            output_dir.join("summary.md").display()
+        )
+    })?;
+    std::fs::write(
+        output_dir.join("validation-report.md"),
+        render_learn_validation(&files),
+    )
+    .with_context(|| {
+        format!(
+            "failed to write {}",
+            output_dir.join("validation-report.md").display()
+        )
+    })?;
+    std::fs::write(
+        output_dir.join("learn-results.tsv"),
+        render_learn_results_tsv(&files),
+    )
+    .with_context(|| {
+        format!(
+            "failed to write {}",
+            output_dir.join("learn-results.tsv").display()
+        )
+    })?;
+    let handoff = serde_json::json!({
+        "version": "2.1.0",
+        "source": "learn",
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "status": "COMPLETE",
+        "results_tsv": output_dir.join("learn-results.tsv").display().to_string(),
+        "findings": [],
+        "config": {
+            "mode": learn_sub_mode_label(mode),
+            "scope": scope,
+            "files_scanned": files.len(),
+        }
+    });
+    std::fs::write(
+        output_dir.join("handoff.json"),
+        serde_json::to_string_pretty(&handoff)?,
+    )
+    .with_context(|| {
+        format!(
+            "failed to write {}",
+            output_dir.join("handoff.json").display()
+        )
+    })?;
+    println!(
+        "{}",
+        serde_json::json!({
+            "status": "written",
+            "output_dir": output_dir.display().to_string(),
+            "mode": learn_sub_mode_label(mode),
+            "files_scanned": files.len(),
         })
     );
     Ok(())

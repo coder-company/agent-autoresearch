@@ -29,6 +29,7 @@ autoresearch scenario --target "Checkout flow" --format test-scenarios --scope "
 autoresearch predict --proposal "Add cache warming to search results" --scope "src/search/**"
 autoresearch reason --question "Should we replace the storage layer" --mode debate --domain software
 autoresearch probe --subject "Payment retry workflow" --scope "src/payments/**"
+autoresearch learn --mode summarize --scope "src/**/*.rs"
 autoresearch decide --decision auto --metric 4 --commit abc1234 --description "improved"
 autoresearch status --summary
 autoresearch progress
@@ -90,6 +91,7 @@ Use `autoresearch scenario --target <feature> --format <test-scenarios|threat-sc
 Use `autoresearch predict --proposal <change>` to write a five-persona review covering architecture, security, performance, UX, and adversarial risks.
 Use `autoresearch reason --question <decision>` to write an adversarial debate artifact with candidate solutions, blind judge rubric, and convergence criteria.
 Use `autoresearch probe --subject <requirement>` to write eight persona-driven questions, constraint slots, and a saturation rule before implementation.
+Use `autoresearch learn --mode <init|update|check|summarize> --scope <glob>` to write documentation summary, validation, TSV, and handoff artifacts.
 Use `autoresearch api --format json` to inspect the stable command/flag manifest and semver policy used by wrappers and agents.
 Use `autoresearch mcp serve` as a stdio MCP server exposing read-only `autoresearch_status` and `autoresearch_watch_snapshot` tools.
 Use `autoresearch mcp call --server-command <cmd> --tool <name> --arguments '{}'` to call a tool on an external stdio MCP server from an iteration script.
