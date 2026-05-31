@@ -142,7 +142,7 @@ In addition to the ship-specific output directory, ship mode still writes the ge
 ## Output Directory
 
 ```text
-ship/{YYMMDD}-{HHMM}-{slug}/
+autoresearch-results/ship/{YYMMDD}-{HHMM}-{slug}/
   checklist.md
   ship-log.tsv
   summary.md

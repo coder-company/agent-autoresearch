@@ -89,6 +89,7 @@ Use `autoresearch manpages --output-dir man/man1` to generate a local `autoresea
 Use `autoresearch config template --output .autoresearch.toml` to write a starter project defaults file.
 Use `autoresearch config validate` to parse defaults, validate options, and screen configured commands without running them.
 Use `autoresearch plan --goal <goal> --format json` to get a launch-ready suggested scope, metric, direction, verify, guard, and iteration count from detected repo tooling.
+Native artifact generators default to ignored `autoresearch-results/<mode>/` paths; pass `--output` or `--output-dir` only when you intentionally want a different artifact location.
 Use `autoresearch debug --symptom <failure> --scope <glob>` to write a hypothesis-driven investigation bundle with summary, findings, eliminated hypotheses, TSV, and handoff JSON.
 Use `autoresearch fix --target <verify-command> --scope <glob>` to write a repair-plan bundle under `autoresearch-results/fix` with priority order, results TSV, and handoff JSON.
 Use `autoresearch improve --goal <product-area> --icp <persona>` to write an improve-mode artifact bundle: research findings, ranked plan, summary, TSV, and handoff JSON.

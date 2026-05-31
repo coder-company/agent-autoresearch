@@ -1890,6 +1890,12 @@ fn slugify(value: &str) -> String {
     }
 }
 
+fn default_artifact_path(mode: &str, leaf: impl Into<PathBuf>) -> PathBuf {
+    PathBuf::from("autoresearch-results")
+        .join(mode)
+        .join(leaf.into())
+}
+
 fn render_prd_markdown(
     title: &str,
     problem: &str,
@@ -1986,7 +1992,7 @@ fn cmd_prd(
 ) -> Result<()> {
     let workspace = resolve_workspace_root(cwd);
     let output = output
-        .unwrap_or_else(|| PathBuf::from("improve").join(format!("prd-{}.md", slugify(title))));
+        .unwrap_or_else(|| default_artifact_path("improve", format!("prd-{}.md", slugify(title))));
     let output = resolve_workspace_path(&workspace, output);
     let markdown = render_prd_markdown(
         title,
@@ -2204,7 +2210,7 @@ fn cmd_improve(
         .filter(|value| !value.is_empty())
         .unwrap_or("DECISION NEEDED: define the target ICP.");
     let output_dir = output_dir
-        .unwrap_or_else(|| PathBuf::from("improve").join(format!("improve-{}", slugify(goal))));
+        .unwrap_or_else(|| default_artifact_path("improve", format!("improve-{}", slugify(goal))));
     let output_dir = resolve_workspace_path(&workspace, output_dir);
     std::fs::create_dir_all(&output_dir)
         .with_context(|| format!("failed to create {}", output_dir.display()))?;
@@ -2500,8 +2506,9 @@ fn cmd_security(
         scope.clone()
     };
     let files = collect_learn_files(&workspace, &scan_scope);
-    let output_dir = output_dir
-        .unwrap_or_else(|| PathBuf::from("security").join(format!("security-{}", slugify(focus))));
+    let output_dir = output_dir.unwrap_or_else(|| {
+        default_artifact_path("security", format!("security-{}", slugify(focus)))
+    });
     let output_dir = resolve_workspace_path(&workspace, output_dir);
     std::fs::create_dir_all(&output_dir)
         .with_context(|| format!("failed to create {}", output_dir.display()))?;
@@ -2670,7 +2677,7 @@ fn cmd_ship(
 ) -> Result<()> {
     let workspace = resolve_workspace_root(cwd);
     let output_dir = output_dir
-        .unwrap_or_else(|| PathBuf::from("ship").join(format!("ship-{}", slugify(target))));
+        .unwrap_or_else(|| default_artifact_path("ship", format!("ship-{}", slugify(target))));
     let output_dir = resolve_workspace_path(&workspace, output_dir);
     std::fs::create_dir_all(&output_dir)
         .with_context(|| format!("failed to create {}", output_dir.display()))?;
@@ -2804,7 +2811,7 @@ fn cmd_debug(
     };
     let files = collect_learn_files(&workspace, &scan_scope);
     let output_dir = output_dir
-        .unwrap_or_else(|| PathBuf::from("debug").join(format!("debug-{}", slugify(symptom))));
+        .unwrap_or_else(|| default_artifact_path("debug", format!("debug-{}", slugify(symptom))));
     let output_dir = resolve_workspace_path(&workspace, output_dir);
     std::fs::create_dir_all(&output_dir)
         .with_context(|| format!("failed to create {}", output_dir.display()))?;
@@ -3155,7 +3162,7 @@ fn cmd_scenario(
     let format = parse_scenario_format(format)?;
     let workspace = resolve_workspace_root(cwd);
     let output = output.unwrap_or_else(|| {
-        PathBuf::from("scenario").join(format!("scenario-{}.md", slugify(target)))
+        default_artifact_path("scenario", format!("scenario-{}.md", slugify(target)))
     });
     let output = resolve_workspace_path(&workspace, output);
 
@@ -3279,7 +3286,7 @@ fn cmd_predict(
 ) -> Result<()> {
     let workspace = resolve_workspace_root(cwd);
     let output = output.unwrap_or_else(|| {
-        PathBuf::from("predict").join(format!("predict-{}.md", slugify(proposal)))
+        default_artifact_path("predict", format!("predict-{}.md", slugify(proposal)))
     });
     let output = resolve_workspace_path(&workspace, output);
 
@@ -3483,7 +3490,7 @@ fn cmd_reason(
     let domain = parse_reason_domain(domain)?;
     let workspace = resolve_workspace_root(cwd);
     let output = output.unwrap_or_else(|| {
-        PathBuf::from("reason").join(format!("reason-{}.md", slugify(question)))
+        default_artifact_path("reason", format!("reason-{}.md", slugify(question)))
     });
     let output = resolve_workspace_path(&workspace, output);
 
@@ -3601,8 +3608,9 @@ fn cmd_probe(
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let workspace = resolve_workspace_root(cwd);
-    let output = output
-        .unwrap_or_else(|| PathBuf::from("probe").join(format!("probe-{}.md", slugify(subject))));
+    let output = output.unwrap_or_else(|| {
+        default_artifact_path("probe", format!("probe-{}.md", slugify(subject)))
+    });
     let output = resolve_workspace_path(&workspace, output);
 
     let markdown = render_probe_markdown(subject, &scope);
@@ -3772,7 +3780,7 @@ fn cmd_learn(
     let mode = parse_learn_sub_mode(mode)?;
     let workspace = resolve_workspace_root(cwd);
     let output_dir = output_dir.unwrap_or_else(|| {
-        PathBuf::from("learn").join(format!("learn-{}", learn_sub_mode_label(mode)))
+        default_artifact_path("learn", format!("learn-{}", learn_sub_mode_label(mode)))
     });
     let output_dir = resolve_workspace_path(&workspace, output_dir);
     std::fs::create_dir_all(&output_dir)

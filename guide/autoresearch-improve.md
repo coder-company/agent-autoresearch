@@ -90,7 +90,7 @@ Score = impact × confidence × ICP alignment / effort (each 1-10).
 ## Output
 
 ```
-improve/250527-cli-productivity/
+autoresearch-results/improve/250527-cli-productivity/
 ├── report.md              # Full research by category
 ├── ranked.md              # Flat ranked list of ICP-validated ideas
 ├── {idea-slug}.md         # PRD per selected improvement

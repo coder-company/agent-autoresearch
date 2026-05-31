@@ -106,7 +106,7 @@ Debug mode also persists the generic run-control artifacts under `autoresearch-r
 Output directory:
 
 ```text
-debug/{YYMMDD}-{HHMM}-{slug}/
+autoresearch-results/debug/{YYMMDD}-{HHMM}-{slug}/
   findings.md
   eliminated.md
   debug-results.tsv
@@ -139,7 +139,7 @@ Security mode also persists the generic run-control artifacts under `autoresearc
 Output directory:
 
 ```text
-security/{YYMMDD}-{HHMM}-{slug}/
+autoresearch-results/security/{YYMMDD}-{HHMM}-{slug}/
   overview.md
   threat-model.md
   attack-surface-map.md
@@ -162,7 +162,7 @@ Ship mode also persists the generic iterating-run artifacts:
 Output directory:
 
 ```text
-ship/{YYMMDD}-{HHMM}-{slug}/
+autoresearch-results/ship/{YYMMDD}-{HHMM}-{slug}/
   checklist.md
   ship-log.tsv
   summary.md

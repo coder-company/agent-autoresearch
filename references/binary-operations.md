@@ -28,6 +28,7 @@ autoresearch scope expand --format json
 
 `init` creates `autoresearch-results/results.tsv`, `state.json`, `context.json`, and repo-local `.codex-autoresearch/pointer.json` files. For multi-repo runs, every companion repo needs a clean worktree and its own `--companion-repo-scope PATH=SCOPE`.
 `plan` scans repo tooling and returns a suggested scope, metric, direction, verify, guard, and iteration count without starting a run.
+Native artifact generators default to ignored `autoresearch-results/<mode>/` paths. Use explicit output flags only for intentional non-default locations.
 `debug` writes a hypothesis-driven investigation bundle with summary, findings, eliminated hypotheses, debug-results TSV, and handoff JSON.
 `fix` writes a repair-plan artifact bundle under `autoresearch-results/fix` with priority order, fix-results TSV, and handoff JSON.
 `improve` writes a product-improvement artifact bundle with research findings, ranked plan, summary, improve-results TSV, and handoff JSON.

@@ -731,6 +731,198 @@ fn test_fix_writes_repair_plan_artifact_bundle() {
 }
 
 #[test]
+fn test_native_artifact_defaults_stay_under_ignored_results_root() {
+    let dir = TempDir::new().unwrap();
+    let cwd = dir.path().to_str().unwrap();
+    std::fs::create_dir_all(dir.path().join("src")).unwrap();
+    std::fs::write(
+        dir.path().join("src/lib.rs"),
+        "pub fn answer() -> i32 { 42 }\n",
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "prd",
+            "--title",
+            "Improve onboarding",
+            "--problem",
+            "Activation is slow",
+            "--cwd",
+            cwd,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("autoresearch-results/improve"));
+    assert!(dir
+        .path()
+        .join("autoresearch-results/improve/prd-improve-onboarding.md")
+        .exists());
+
+    cmd()
+        .args([
+            "improve",
+            "--goal",
+            "Improve onboarding",
+            "--icp",
+            "Developer tools teams",
+            "--cwd",
+            cwd,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("autoresearch-results/improve"));
+    assert!(dir
+        .path()
+        .join("autoresearch-results/improve/improve-improve-onboarding/research-findings.md")
+        .exists());
+
+    cmd()
+        .args([
+            "security",
+            "--focus",
+            "auth",
+            "--scope",
+            "src/**/*.rs",
+            "--cwd",
+            cwd,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("autoresearch-results/security"));
+    assert!(dir
+        .path()
+        .join("autoresearch-results/security/security-auth/overview.md")
+        .exists());
+
+    cmd()
+        .args([
+            "ship",
+            "--target",
+            "Release v1.2.0",
+            "--dry-run",
+            "--cwd",
+            cwd,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("autoresearch-results/ship"));
+    assert!(dir
+        .path()
+        .join("autoresearch-results/ship/ship-release-v1-2-0/checklist.md")
+        .exists());
+
+    cmd()
+        .args([
+            "debug",
+            "--symptom",
+            "API returns 500",
+            "--scope",
+            "src/**/*.rs",
+            "--cwd",
+            cwd,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("autoresearch-results/debug"));
+    assert!(dir
+        .path()
+        .join("autoresearch-results/debug/debug-api-returns-500/summary.md")
+        .exists());
+
+    cmd()
+        .args([
+            "fix",
+            "--target",
+            "npx tsc --noEmit",
+            "--scope",
+            "src/**/*.ts",
+            "--cwd",
+            cwd,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("autoresearch-results/fix"));
+    assert!(dir
+        .path()
+        .join("autoresearch-results/fix/fix-npx-tsc-noemit/repair-plan.md")
+        .exists());
+
+    cmd()
+        .args(["scenario", "--target", "Checkout flow", "--cwd", cwd])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("autoresearch-results/scenario"));
+    assert!(dir
+        .path()
+        .join("autoresearch-results/scenario/scenario-checkout-flow.md")
+        .exists());
+
+    cmd()
+        .args(["predict", "--proposal", "Cache review", "--cwd", cwd])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("autoresearch-results/predict"));
+    assert!(dir
+        .path()
+        .join("autoresearch-results/predict/predict-cache-review.md")
+        .exists());
+
+    cmd()
+        .args([
+            "reason",
+            "--question",
+            "Storage decision",
+            "--mode",
+            "debate",
+            "--cwd",
+            cwd,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("autoresearch-results/reason"));
+    assert!(dir
+        .path()
+        .join("autoresearch-results/reason/reason-storage-decision.md")
+        .exists());
+
+    cmd()
+        .args(["probe", "--subject", "Payment retry", "--cwd", cwd])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("autoresearch-results/probe"));
+    assert!(dir
+        .path()
+        .join("autoresearch-results/probe/probe-payment-retry.md")
+        .exists());
+
+    cmd()
+        .args([
+            "learn",
+            "--mode",
+            "summarize",
+            "--scope",
+            "src/**/*.rs",
+            "--cwd",
+            cwd,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("autoresearch-results/learn"));
+    assert!(dir
+        .path()
+        .join("autoresearch-results/learn/learn-summarize/summary.md")
+        .exists());
+
+    for root_artifact_dir in [
+        "debug", "fix", "improve", "learn", "predict", "probe", "reason", "scenario", "security",
+        "ship",
+    ] {
+        assert!(!dir.path().join(root_artifact_dir).exists());
+    }
+}
+
+#[test]
 fn test_predict_writes_five_persona_artifact() {
     let dir = TempDir::new().unwrap();
     let output = dir.path().join("predict/cache-review.md");

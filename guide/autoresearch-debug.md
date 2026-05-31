@@ -69,7 +69,7 @@ Force a technique with `--technique <name>`.
 ## Output
 
 ```
-autoresearch/debug-250527-1430/
+autoresearch-results/debug/debug-250527-1430/
 ├── debug-results.tsv    # Every hypothesis tested
 └── handoff.json         # For chaining to fix
 ```

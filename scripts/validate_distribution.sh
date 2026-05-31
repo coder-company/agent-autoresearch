@@ -166,6 +166,12 @@ require_grep 'autoresearch plan --goal' docs/GUIDE.md
 require_grep 'autoresearch plan --goal' references/binary-operations.md
 require_grep 'Native plan command' docs/development-roadmap.md
 require_grep 'native `autoresearch plan --goal`' COMPARISON.md
+require_grep 'autoresearch-results/<mode>/' README.md
+require_grep 'autoresearch-results/<mode>/' docs/GUIDE.md
+require_grep 'autoresearch-results/<mode>/' references/binary-operations.md
+require_grep 'autoresearch-results/debug' references/structured-output-spec.md
+require_grep 'autoresearch-results/security' references/security-workflow.md
+require_grep 'autoresearch-results/ship' references/ship-workflow.md
 require_grep 'autoresearch debug --symptom' README.md
 require_grep 'autoresearch debug --symptom' docs/GUIDE.md
 require_grep 'autoresearch debug --symptom' references/binary-operations.md
