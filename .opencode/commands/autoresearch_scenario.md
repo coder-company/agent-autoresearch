@@ -1,7 +1,7 @@
 ---
 name: autoresearch_scenario
 description: "Generate edge cases across 12 dimensions from a seed scenario"
-argument-hint: "[Scenario: <text>] [Domain: <type>] [Scope: <glob>] [Iterations: N] [--depth <level>] [--focus <area>] [--evals]"
+argument-hint: "[Scenario: <text>] [Domain: <type>] [Scope: <glob>] [Iterations: N] [--depth <level>] [--format <type>] [--focus <area>] [--evals]"
 ---
 
 EXECUTE IMMEDIATELY.
@@ -13,9 +13,9 @@ Extract from $ARGUMENTS:
 - `Domain:` or `--domain` — web, mobile, API, CLI, data pipeline, infrastructure
 - `Scope:` or `--scope` — file globs for codebase context
 - `Focus:` or `--focus` — specific dimension to prioritize
-- `--depth` — shallow (10), standard (20), deep (40+)
-- `--format` — markdown (default), json, gherkin
-- `Iterations:` or `--iterations` — default 20. "unlimited" for unbounded.
+- `--depth` — shallow (10), standard (20), deep (40)
+- `--format` — test-scenarios (default), threat-scenarios, use-cases, user-stories
+- `Iterations:` or `--iterations` — positive number; default 20 for standard depth.
 - `--evals`, `--evals-interval N`, `--chain`, `--<subcommand>`
 
 ## Setup (if Scenario or Domain missing)
