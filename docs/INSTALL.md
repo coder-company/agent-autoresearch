@@ -2,6 +2,10 @@
 
 Autoresearch ships as a Rust binary plus agent-specific skill or command packages.
 
+## Pre-Built Binaries
+
+Tagged releases publish `.tar.gz` archives for Linux x86_64, Linux aarch64, macOS x86_64, macOS aarch64, and Windows x86_64. Download the archive for your platform from the GitHub release, verify the adjacent `.sha256` file, and place the `autoresearch` binary on your `PATH`.
+
 ## Claude Code
 
 ```bash

@@ -248,3 +248,27 @@ fn ci_workflow_runs_full_contributor_gate_with_operational_guards() {
     assert!(workflow.contains("bash -n \"$script\""));
     assert!(workflow.contains("./scripts/run_contributor_gate.sh"));
 }
+
+#[test]
+fn release_workflow_builds_prebuilt_binary_matrix() {
+    let root = repo_root();
+    let workflow = std::fs::read_to_string(root.join(".github/workflows/release.yml")).unwrap();
+
+    assert!(workflow.contains("tags:"));
+    assert!(workflow.contains("\"v*\""));
+    assert!(workflow.contains("workflow_dispatch:"));
+    assert!(workflow.contains("linux-x86_64"));
+    assert!(workflow.contains("linux-aarch64"));
+    assert!(workflow.contains("macos-x86_64"));
+    assert!(workflow.contains("macos-aarch64"));
+    assert!(workflow.contains("windows-x86_64"));
+    assert!(workflow.contains("ubuntu-24.04-arm"));
+    assert!(workflow.contains("macos-15-intel"));
+    assert!(workflow.contains("macos-14"));
+    assert!(workflow.contains("cargo build --locked --release --target ${{ matrix.target }}"));
+    assert!(workflow.contains("actions/upload-artifact@v4"));
+    assert!(workflow.contains("actions/download-artifact@v4"));
+    assert!(workflow.contains("gh release upload \"$TAG\" --clobber"));
+    assert!(workflow.contains("sha256sum"));
+    assert!(workflow.contains("shasum -a 256"));
+}

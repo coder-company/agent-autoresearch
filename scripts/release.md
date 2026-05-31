@@ -40,8 +40,8 @@ Manual steps for cutting a release. For automation, use `./scripts/release.sh <v
 
 ## GitHub Release
 
-- [ ] `gh release create v<VERSION> --generate-notes`
-- [ ] Upload binary: `gh release upload v<VERSION> target/release/autoresearch`
+- [ ] Confirm the `Release` workflow completed for tag `v<VERSION>`
+- [ ] Confirm GitHub release assets include Linux x86_64, Linux aarch64, macOS x86_64, macOS aarch64, and Windows x86_64 archives plus `.sha256` files
 - [ ] Review auto-generated notes, edit if needed
 
 ## Post-release

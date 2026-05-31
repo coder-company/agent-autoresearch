@@ -72,6 +72,7 @@ required_paths=(
     scripts/transform.sh
     tests/test-hooks.sh
     .github/workflows/ci.yml
+    .github/workflows/release.yml
     docs/README.md
     docs/INSTALL.md
     docs/GUIDE.md
@@ -290,6 +291,13 @@ require_grep '"\$ROOT/scripts/validate_distribution\.sh"' scripts/release.sh
 require_grep '\[10/10\] Committing and tagging' scripts/release.sh
 require_grep 'git -C "\$ROOT" log --format=' scripts/release.sh
 require_grep 'update_cargo_version "\$ROOT/Cargo.toml" "\$VERSION"' scripts/release.sh
+require_grep 'linux-aarch64' .github/workflows/release.yml
+require_grep 'macos-15-intel' .github/workflows/release.yml
+require_grep 'macos-aarch64' .github/workflows/release.yml
+require_grep 'windows-x86_64' .github/workflows/release.yml
+require_grep 'gh release upload "\$TAG" --clobber' .github/workflows/release.yml
+require_grep 'Pre-built binaries for Linux \(x86_64, aarch64\), macOS \(x86_64, aarch64\), Windows' docs/development-roadmap.md
+require_grep 'Tagged releases publish `\.tar\.gz` archives' docs/INSTALL.md
 if grep -q 'sed -i' "$ROOT/scripts/release.sh"; then
     fail "release script still uses non-portable sed -i"
 fi

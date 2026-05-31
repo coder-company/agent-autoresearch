@@ -57,7 +57,7 @@
 - [x] Configuration file (`.autoresearch.toml`) for project-level defaults
 - [x] Shell completions (bash, zsh, fish, elvish, PowerShell)
 - [x] Man pages generation
-- [ ] Pre-built binaries for Linux (x86_64, aarch64), macOS (x86_64, aarch64), Windows
+- [x] Pre-built binaries for Linux (x86_64, aarch64), macOS (x86_64, aarch64), Windows
 - [ ] Homebrew formula and cargo-binstall support
 - [ ] Comprehensive documentation site
 
