@@ -279,6 +279,9 @@ enum Commands {
         /// Compare against another results TSV
         #[arg(long, value_name = "PATH")]
         compare: Option<PathBuf>,
+        /// Target metric threshold used to report goal achievement
+        #[arg(long, value_name = "NUMBER", allow_hyphen_values = true)]
+        target: Option<String>,
         /// Output format: text, json, or md
         #[arg(long, default_value = "text")]
         format: String,
@@ -1473,6 +1476,7 @@ fn main() -> Result<()> {
             plateau_window,
             chain,
             compare,
+            target,
             format,
         } => {
             if path.is_some() && file.is_some() {
@@ -1485,6 +1489,7 @@ fn main() -> Result<()> {
                 plateau_window,
                 chain.as_deref(),
                 compare.as_deref(),
+                target.as_deref(),
             )
         }
 
@@ -7401,6 +7406,7 @@ fn cmd_evals(
     plateau_window: u32,
     chain: Option<&str>,
     compare: Option<&Path>,
+    target: Option<&str>,
 ) -> Result<()> {
     if plateau_window == 0 {
         anyhow::bail!("evals plateau window must be greater than zero");
@@ -7575,6 +7581,15 @@ fn cmd_evals(
             _ => "flat",
         }
     };
+    let goal_target = target
+        .map(|value| {
+            Decimal::from_str(value).with_context(|| format!("Invalid evals target {value:?}"))
+        })
+        .transpose()?;
+    let goal_achieved = goal_target.map(|target| match direction {
+        "lower" => final_metric <= target,
+        _ => final_metric >= target,
+    });
     let recommendation = evals_recommendation(
         longest_plateau,
         crashes,
@@ -7583,6 +7598,7 @@ fn cmd_evals(
         total_iterations,
         trend,
         plateau_window,
+        goal_achieved,
     );
     let go_no_go = evals_go_no_go(recommendation);
     let next_step = evals_next_step(recommendation);
@@ -7666,6 +7682,8 @@ fn cmd_evals(
                 "recommendation": recommendation,
                 "go_no_go": go_no_go,
                 "next_step": next_step,
+                "goal_target": goal_target.as_ref().map(ToString::to_string),
+                "goal_achieved": goal_achieved,
                 "comparison": &comparison,
                 "anomalies": &anomalies,
             },
@@ -7674,6 +7692,7 @@ fn cmd_evals(
                 "format": format,
                 "recommend": recommend,
                 "plateau_window": plateau_window,
+                "target": goal_target.as_ref().map(ToString::to_string),
                 "unknown_columns": &unknown_columns,
                 "comparison": &comparison,
             },
@@ -7710,6 +7729,8 @@ fn cmd_evals(
                 "longest_plateau": longest_plateau,
                 "plateau_window": plateau_window,
                 "plateau_detected": plateau_detected,
+                "goal_target": goal_target.as_ref().map(ToString::to_string),
+                "goal_achieved": goal_achieved,
                 "trend": trend,
                 "recommendation": recommendation,
                 "unknown_columns": &unknown_columns,
@@ -7784,6 +7805,8 @@ fn cmd_evals(
                 trend,
                 longest_plateau,
                 plateau_window,
+                goal_target,
+                goal_achieved,
                 recommendation,
                 recommend,
                 unknown_columns: &unknown_columns,
@@ -7820,6 +7843,8 @@ fn cmd_evals(
                 trend,
                 longest_plateau,
                 plateau_window,
+                goal_target,
+                goal_achieved,
                 recommendation,
                 recommend,
                 unknown_columns: &unknown_columns,
@@ -7884,6 +7909,7 @@ fn cmd_checkpoint(cwd: Option<PathBuf>, interval: Option<u32>, format: &str) -> 
         format,
         false,
         5,
+        None,
         None,
         None,
     )
@@ -7987,6 +8013,8 @@ struct EvalsReport<'a> {
     trend: &'a str,
     longest_plateau: u32,
     plateau_window: u32,
+    goal_target: Option<Decimal>,
+    goal_achieved: Option<bool>,
     recommendation: &'a str,
     recommend: bool,
     unknown_columns: &'a [String],
@@ -8204,6 +8232,12 @@ fn render_evals_markdown(report: EvalsReport<'_>) -> String {
         report.longest_plateau
     )
     .unwrap();
+    if let Some(target) = report.goal_target {
+        writeln!(out, "| Goal target | {} |", target).unwrap();
+    }
+    if let Some(achieved) = report.goal_achieved {
+        writeln!(out, "| Goal achieved | {} |", achieved).unwrap();
+    }
     if !report.unknown_columns.is_empty() {
         writeln!(
             out,
@@ -8523,8 +8557,11 @@ fn evals_recommendation(
     total_iterations: usize,
     trend: &str,
     plateau_window: u32,
+    goal_achieved: Option<bool>,
 ) -> &'static str {
-    if longest_plateau >= plateau_window
+    if goal_achieved == Some(true) {
+        "goal_met"
+    } else if longest_plateau >= plateau_window
         || trend == "declining"
         || (efficiency < 20 && total_iterations > 10)
     {
@@ -8538,7 +8575,7 @@ fn evals_recommendation(
 
 fn evals_go_no_go(recommendation: &str) -> &'static str {
     match recommendation {
-        "continue" => "GO",
+        "continue" | "goal_met" => "GO",
         "check_verify" => "HOLD",
         _ => "NO-GO",
     }
@@ -8547,6 +8584,7 @@ fn evals_go_no_go(recommendation: &str) -> &'static str {
 fn evals_next_step(recommendation: &str) -> &'static str {
     match recommendation {
         "continue" => "Continue the current approach; keep eval checkpoints enabled.",
+        "goal_met" => "Goal met; stop the loop or hand off to ship.",
         "check_verify" => "Stabilize the verify or guard command before continuing.",
         _ => "Stop this line of attack and pivot to a new hypothesis or scope.",
     }

@@ -3433,6 +3433,42 @@ fn test_evals_compare_reports_winner() {
 }
 
 #[test]
+fn test_evals_target_reports_goal_met() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: higher").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t50\t0\t-\tbaseline\tinitial state").unwrap();
+    writeln!(file, "1\tbcd2345\t60\t+10\tpass\tkeep\tlarge win").unwrap();
+
+    cmd()
+        .args([
+            "evals",
+            "--file",
+            tsv_path.to_str().unwrap(),
+            "--target",
+            "55",
+            "--recommend",
+            "--format",
+            "json",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"goal_target\": \"55\""))
+        .stdout(predicate::str::contains("\"goal_achieved\": true"))
+        .stdout(predicate::str::contains("\"recommendation\": \"goal_met\""))
+        .stdout(predicate::str::contains(
+            "Goal met; stop the loop or hand off to ship",
+        ));
+}
+
+#[test]
 fn test_evals_reports_parallel_worker_significance() {
     let dir = TempDir::new().unwrap();
     let tsv_path = dir.path().join("results.tsv");

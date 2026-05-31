@@ -1,7 +1,7 @@
 ---
 name: autoresearch_evals
 description: "Analyze iteration results: trends, plateaus, regressions, recommendations"
-argument-hint: "[path/to/results.tsv] [--file <path>] [--format text|json|md] [--recommend] [--plateau-window N] [--compare <path>] [--chain <targets>]"
+argument-hint: "[path/to/results.tsv] [--file <path>] [--format text|json|md] [--recommend] [--plateau-window N] [--target <number>] [--compare <path>] [--chain <targets>]"
 ---
 
 EXECUTE IMMEDIATELY.
@@ -13,6 +13,7 @@ Extract from $ARGUMENTS:
 - `--format` — output format: text (default console), json, md (markdown file)
 - `--recommend` — include explicit go/no-go decision and next-step guidance
 - `--plateau-window N` — consecutive non-keep iterations that define a plateau (default 5)
+- `--target <number>` — report whether the final metric crossed the target threshold using metric direction
 - `--compare <path>` — compare improvement, efficiency, and plateau length against another results TSV
 - `--chain <targets>` — write handoff.json for downstream command(s) after analysis
 
@@ -89,6 +90,7 @@ Unknown columns: report presence but skip analysis. Forward-compatible with futu
 - All outputs include structured anomaly detection for plateaus, failure streaks, guard failures, and declining trends when present
 - If `--recommend` → include go/no-go and next-step guidance in the selected output
 - If `--plateau-window N` → use N consecutive non-keep iterations for plateau detection
+- If `--target <number>` → include goal_target, goal_achieved, and `goal_met` recommendation when achieved
 - If `--compare <path>` → include winner, improvement delta, efficiency delta, and plateau delta
 - If `--chain <targets>` → write `handoff.json` next to the input TSV with recommendation, findings, and next target
 

@@ -65,6 +65,17 @@ Writes `handoff.json` beside the TSV with the recommendation, findings, and next
 
 Reports the winning run plus improvement, efficiency, and plateau deltas.
 
+### Gate on Target
+
+```
+/autoresearch:evals --file autoresearch-results/results.tsv
+--target 90
+--recommend
+--format json
+```
+
+Reports `goal_achieved` and switches the recommendation to `goal_met` when the final metric crosses the threshold for the run direction.
+
 ## What It Reports
 
 ```
@@ -128,6 +139,7 @@ If plateau detected for 3+ consecutive checkpoints → recommends early stop.
 - `--format md` → writes `evals-summary.md` next to the input TSV
 - `--format json` → writes `evals-summary.json` with structured data
 - Anomalies → reports plateaus, failure streaks, guard failures, and declining trends when present
+- `--target <number>` → reports goal achievement and a `goal_met` recommendation when achieved
 - `--compare <path>` → includes cross-run deltas and a winner
 - `--chain <targets>` → writes `handoff.json` next to the input TSV for downstream commands
 
