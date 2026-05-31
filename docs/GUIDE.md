@@ -94,7 +94,7 @@ Native artifact generators default to ignored `autoresearch-results/<mode>/` pat
 Use `autoresearch debug --symptom <failure> --scope <glob>` to write a hypothesis-driven investigation bundle with summary, findings, eliminated hypotheses, TSV, and handoff JSON.
 Add `--fix` or `--chain <targets>` to `autoresearch debug` to record downstream chain metadata in the debug handoff.
 Use `autoresearch debug --depth deep --iterations 12 --severity high` to override the investigation budget and record severity filter metadata.
-Use `autoresearch fix --target <verify-command> --scope <glob>` to write a repair-plan bundle under `autoresearch-results/fix` with priority order, results TSV, and handoff JSON.
+Use `autoresearch fix --target <verify-command> --scope <glob> --iterations 7` to write a repair-plan bundle under `autoresearch-results/fix` with priority order, results TSV, iteration budget, and handoff JSON.
 Use `autoresearch fix --from-debug` to import the latest debug handoff scope, symptom, and finding count into the repair plan.
 Use `autoresearch fix --chain <targets> --evals` to record downstream handoff and checkpoint propagation metadata.
 Use `autoresearch improve --goal <product-area> --icp <persona>` to write an improve-mode artifact bundle: research findings, ranked plan, summary, TSV, and handoff JSON.

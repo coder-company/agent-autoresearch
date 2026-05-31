@@ -751,6 +751,9 @@ enum Commands {
         /// Error category to prioritize: crash, test, type, lint, build, warning
         #[arg(long)]
         category: Option<String>,
+        /// Error-repair iteration budget
+        #[arg(long)]
+        iterations: Option<u32>,
         /// Comma-separated downstream command targets to record in handoff.json
         #[arg(long)]
         chain: Option<String>,
@@ -1706,6 +1709,7 @@ fn main() -> Result<()> {
             from_debug,
             guard,
             category,
+            iterations,
             chain,
             evals,
             evals_interval,
@@ -1717,6 +1721,7 @@ fn main() -> Result<()> {
             from_debug,
             guard,
             category,
+            iterations,
             chain,
             evals,
             evals_interval,
@@ -3855,6 +3860,7 @@ fn render_fix_summary(
     scope: &[String],
     guard: Option<&str>,
     category: Option<ErrorCategory>,
+    iterations: u32,
 ) -> String {
     let scope_lines = if scope.is_empty() {
         "- DECISION NEEDED: identify editable scope.".to_string()
@@ -3876,6 +3882,7 @@ fn render_fix_summary(
         category.map(|value| value.label()).unwrap_or("auto")
     )
     .unwrap();
+    writeln!(out, "- Iteration budget: {iterations}").unwrap();
     writeln!(out, "- Strategy: one error per iteration").unwrap();
     writeln!(out).unwrap();
     writeln!(out, "## Scope").unwrap();
@@ -4054,6 +4061,7 @@ fn cmd_fix(
     from_debug: bool,
     guard: Option<String>,
     category: Option<String>,
+    iterations: Option<u32>,
     chain: Option<String>,
     evals: bool,
     evals_interval: Option<u32>,
@@ -4061,6 +4069,10 @@ fn cmd_fix(
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     validate_chain_evals_flags("fix", evals, evals_interval)?;
+    if iterations == Some(0) {
+        anyhow::bail!("fix iterations must be greater than zero");
+    }
+    let iteration_budget = iterations.unwrap_or(20);
     let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
     let next_target = next_chain_target_value(&chain_targets);
     let category = parse_fix_category(category.as_deref())?;
@@ -4097,7 +4109,13 @@ fn cmd_fix(
     let output_dir = resolve_workspace_path(&workspace, output_dir);
     std::fs::create_dir_all(&output_dir)
         .with_context(|| format!("failed to create {}", output_dir.display()))?;
-    let mut summary = render_fix_summary(&target, &scope, guard.as_deref(), category);
+    let mut summary = render_fix_summary(
+        &target,
+        &scope,
+        guard.as_deref(),
+        category,
+        iteration_budget,
+    );
     append_debug_import_section(&mut summary, debug_handoff.as_ref());
     write_text_file(&output_dir.join("summary.md"), &summary)?;
     write_text_file(
@@ -4121,6 +4139,7 @@ fn cmd_fix(
             "scope": scope,
             "guard": guard,
             "category": category.map(|value| value.label()),
+            "iteration_budget": iteration_budget,
             "from_debug": from_debug,
             "debug_handoff_path": debug_handoff.as_ref().map(|debug| debug.path.display().to_string()),
             "debug_symptom": debug_handoff.as_ref().and_then(|debug| debug.symptom.clone()),
@@ -4139,6 +4158,7 @@ fn cmd_fix(
             "output_dir": output_dir.display().to_string(),
             "target": target,
             "category": category.map(|value| value.label()).unwrap_or("auto"),
+            "iteration_budget": iteration_budget,
             "from_debug": from_debug,
             "next_target": next_target,
             "evals": evals,

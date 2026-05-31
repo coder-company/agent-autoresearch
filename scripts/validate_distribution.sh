@@ -183,6 +183,7 @@ require_grep '`autoresearch debug` writes' COMPARISON.md
 require_grep 'autoresearch fix --target' README.md
 require_grep 'autoresearch fix --target' docs/GUIDE.md
 require_grep 'autoresearch fix --target' references/binary-operations.md
+require_grep 'fix --iterations <n>' references/binary-operations.md
 require_grep 'fix --from-debug' README.md
 require_grep 'fix --from-debug' references/binary-operations.md
 require_grep 'fix --chain <targets> --evals' references/binary-operations.md
