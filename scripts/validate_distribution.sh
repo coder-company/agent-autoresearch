@@ -137,7 +137,9 @@ require_grep 'autoresearch health --strict' SKILL.md
 require_grep 'autoresearch health --strict' .agents/skills/autoresearch/SKILL.md
 require_grep 'autoresearch env --format json' README.md
 require_grep 'autoresearch env --format json' docs/GUIDE.md
-require_grep 'Native environment probe command' docs/development-roadmap.md
+require_grep 'init metadata' docs/development-roadmap.md
+require_grep 'environment-summary auto' docs/GUIDE.md
+require_grep 'environment-summary TEXT\|auto' commands/autoresearch.md
 require_grep 'autoresearch status --summary' README.md
 require_grep 'autoresearch status --summary' docs/GUIDE.md
 require_grep 'autoresearch status --summary' SKILL.md

@@ -4635,6 +4635,36 @@ fn test_init_persists_environment_summary_metadata() {
 }
 
 #[test]
+fn test_init_auto_environment_summary_uses_probe_metadata() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--environment-summary",
+            "auto",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let results =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/results.tsv")).unwrap();
+    assert!(results.starts_with("# environment: cpu="));
+    assert!(results.contains(" disk_mb="));
+    assert!(results.contains(" container="));
+    assert!(results.contains(" toolchains="));
+    assert!(results.contains("# metric_direction: higher\n"));
+}
+
+#[test]
 fn test_init_protects_pointer_in_separate_primary_repo() {
     let workspace = TempDir::new().unwrap();
     init_git_fixture(&workspace);

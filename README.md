@@ -183,7 +183,7 @@ Covered in detail in the [guide](guide/):
 - **Cross-run learning** — lessons from past runs bias future hypothesis generation
 - **Session resume** — interrupted runs pick up from the last consistent state
 - **Background runtime control** — `autoresearch runtime run` preflights each Codex turn, manages `launch.json`, `runtime.json`, `runtime.log`, and relaunches until stop or needs-human; `start/status/supervise/stop` remain available for manual control
-- **Environment probe** — `autoresearch env --format json` reports CPU, disk, container state, toolchains, and recommended parallelism
+- **Environment probe** — `autoresearch env --format json` reports CPU, disk, container state, toolchains, recommended parallelism, and can seed `init --environment-summary auto`
 - **Live results tailing** — `autoresearch watch --lines 20 --format jsonl` follows `autoresearch-results/results.tsv` from the workspace root or any repo subdirectory
 - **Progress WebSocket** — `autoresearch watch --websocket` streams snapshot and row update payloads to real-time dashboards
 - **Terminal dashboard** — `autoresearch dashboard --once` renders status, metric history, escalation, and recent rows in one view

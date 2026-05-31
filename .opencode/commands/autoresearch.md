@@ -20,7 +20,7 @@ Extract from $ARGUMENTS:
 - `Acceptance criteria:` — optional metric thresholds for stopping
 - `Required keep criteria:` — optional metric thresholds that every keep must satisfy
 - `Companion repo:` or `--companion-repo-scope PATH=SCOPE` — optional clean companion repos for multi-repo runs
-- `Environment summary:` or `--environment-summary TEXT` — optional resource/tool profile written to results TSV metadata
+- `Environment summary:` or `--environment-summary TEXT|auto` — optional resource/tool profile written to results TSV metadata; `auto` uses the native probe
 - `Iterations:` or `--iterations` — integer N for bounded mode (default: 25). "unlimited" for unbounded.
 - `--evals` — enable mid-loop checkpoints
 - `--evals-interval N` — checkpoint frequency override

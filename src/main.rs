@@ -1923,7 +1923,10 @@ fn cmd_init(
     let iterations = iterations.or(project_config.iterations);
     let run_tag = run_tag.or(project_config.run_tag.clone());
     let stop_condition = stop_condition.or(project_config.stop_condition.clone());
-    let environment_summary = environment_summary.or(project_config.environment_summary.clone());
+    let environment_summary = resolve_environment_summary(
+        &workspace,
+        environment_summary.or(project_config.environment_summary.clone()),
+    );
     let run_mode = run_mode.or(project_config.run_mode.clone());
     let companion_repo_scope = if companion_repo_scope.is_empty() {
         project_config
@@ -3967,22 +3970,31 @@ fn binary_available(binary: &str) -> bool {
         .unwrap_or(false)
 }
 
-fn cmd_env(cwd: Option<PathBuf>, format: &str) -> Result<()> {
-    let workspace = resolve_workspace_root(cwd);
+#[derive(Debug)]
+struct EnvironmentProbe {
+    cpu_cores: usize,
+    free_mb: Option<u64>,
+    in_container: bool,
+    toolchains: BTreeMap<String, bool>,
+    recommended_parallel_workers: usize,
+    summary: String,
+}
+
+fn build_environment_probe(workspace: &Path) -> EnvironmentProbe {
     let cpu_cores = std::thread::available_parallelism()
         .map(|cores| cores.get())
         .unwrap_or(1);
-    let free_mb = env_disk_free_mb(&workspace);
+    let free_mb = env_disk_free_mb(workspace);
     let in_container = Path::new("/.dockerenv").exists() || std::env::var("container").is_ok();
     let mut toolchains = BTreeMap::new();
     for binary in [
         "cargo", "rustc", "python3", "node", "npm", "go", "java", "codex",
     ] {
-        toolchains.insert(binary, binary_available(binary));
+        toolchains.insert(binary.to_string(), binary_available(binary));
     }
     let present_toolchains = toolchains
         .iter()
-        .filter_map(|(binary, present)| present.then_some(*binary))
+        .filter_map(|(binary, present)| present.then_some(binary.as_str()))
         .collect::<Vec<_>>();
     let recommended_parallel_workers = std::cmp::min(3, std::cmp::max(1, cpu_cores / 2));
     let summary = format!(
@@ -3998,14 +4010,37 @@ fn cmd_env(cwd: Option<PathBuf>, format: &str) -> Result<()> {
             present_toolchains.join(",")
         }
     );
+    EnvironmentProbe {
+        cpu_cores,
+        free_mb,
+        in_container,
+        toolchains,
+        recommended_parallel_workers,
+        summary,
+    }
+}
+
+fn resolve_environment_summary(workspace: &Path, summary: Option<String>) -> Option<String> {
+    summary.map(|value| {
+        if value.trim().eq_ignore_ascii_case("auto") {
+            build_environment_probe(workspace).summary
+        } else {
+            value
+        }
+    })
+}
+
+fn cmd_env(cwd: Option<PathBuf>, format: &str) -> Result<()> {
+    let workspace = resolve_workspace_root(cwd);
+    let probe = build_environment_probe(&workspace);
     let out = serde_json::json!({
         "workspace": workspace.display().to_string(),
-        "cpu_cores": cpu_cores,
-        "free_mb": free_mb,
-        "container": in_container,
-        "toolchains": toolchains,
-        "recommended_parallel_workers": recommended_parallel_workers,
-        "environment_summary": summary,
+        "cpu_cores": probe.cpu_cores,
+        "free_mb": probe.free_mb,
+        "container": probe.in_container,
+        "toolchains": probe.toolchains,
+        "recommended_parallel_workers": probe.recommended_parallel_workers,
+        "environment_summary": probe.summary,
     });
 
     match format {
@@ -4013,26 +4048,30 @@ fn cmd_env(cwd: Option<PathBuf>, format: &str) -> Result<()> {
         "text" => {
             println!("--- Environment Probe ---");
             println!("Workspace: {}", workspace.display());
-            println!("CPU cores: {}", cpu_cores);
+            println!("CPU cores: {}", probe.cpu_cores);
             println!(
                 "Free disk MB: {}",
-                free_mb
+                probe
+                    .free_mb
                     .map(|value| value.to_string())
                     .unwrap_or_else(|| "unknown".to_string())
             );
-            println!("Container: {}", if in_container { "yes" } else { "no" });
+            println!(
+                "Container: {}",
+                if probe.in_container { "yes" } else { "no" }
+            );
             println!(
                 "Recommended parallel workers: {}",
-                recommended_parallel_workers
+                probe.recommended_parallel_workers
             );
             println!("Toolchains:");
-            for (binary, present) in toolchains {
+            for (binary, present) in probe.toolchains {
                 println!(
                     "  {binary}: {}",
                     if present { "present" } else { "missing" }
                 );
             }
-            println!("Environment summary: {}", summary);
+            println!("Environment summary: {}", probe.summary);
         }
         other => anyhow::bail!("Invalid env format {other:?}; use json or text"),
     }

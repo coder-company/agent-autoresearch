@@ -128,6 +128,12 @@ Pass the same summary to the native initializer:
 autoresearch init --environment-summary "cpu=8 ram=16384MB gpu=A100(40GB) python=3.11 container=docker" ...
 ```
 
+Use the built-in probe when manual resource text is not needed:
+
+```bash
+autoresearch init --environment-summary auto ...
+```
+
 ## Refresh Policy
 
 - Full probe: once per run start.
