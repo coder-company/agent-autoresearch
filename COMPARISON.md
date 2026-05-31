@@ -26,6 +26,7 @@ The idea was simple enough that several people generalized it:
 | Commands | 1 (the loop) | 13 | Codex loop modes | **13 command protocols + exec + runtime + dashboard + parallel closeout** |
 | Token footprint | Small script | Thin routing commands | Thin skill + helper scripts | **Thin Codex router + reference-loaded protocols + native binary** |
 | When it gets stuck | You restart | Refine → Pivot → Stop | Re-anchor/resume | **Refine → Pivot → Web Search → Soft Blocker** |
+| Long-session drift | Manual restart | Protocol text | Protocol fingerprint check | **Native `reanchor` command + compaction hook** |
 | Remembers across runs | No | Yes (lessons.md) | Yes (cross-run learning) | **Yes (lessons.md)** |
 | Health preflight | No | Markdown checklist | Helper scripts | **Native `autoresearch health` for git/artifact/disk/verify/guard/context** |
 | Background runs | No | No | Yes (daemon) | **Yes (`runtime run/start/status/supervise/stop`)** |

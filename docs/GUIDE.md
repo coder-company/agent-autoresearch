@@ -31,6 +31,7 @@ autoresearch health --strict
 autoresearch env --format json
 autoresearch init --environment-summary auto --verify "cat metric.txt" --direction lower
 autoresearch checkpoint --format json
+autoresearch reanchor --format json
 autoresearch watch --lines 20 --format jsonl
 autoresearch watch --websocket --websocket-addr 127.0.0.1:8765
 autoresearch lessons --add "Prefer fixture-level assertions" --context "reduced flaky tests"
@@ -63,6 +64,7 @@ Use `autoresearch verify --repeat <n> --aggregate <median|mean|min|max|last>` fo
 Use `autoresearch cost --per-iteration-usd <usd>` or token/rate flags to estimate completed, remaining, and projected run spend.
 Use `autoresearch dashboard --once` for a combined terminal view of status, trend, metric history, escalation, and recent rows; omit `--once` for live refresh.
 Use `autoresearch checkpoint --format json` inside long loops to run evals only when the active iteration reaches the configured or adaptive checkpoint interval.
+Use `autoresearch reanchor --format json` every 10 iterations or after context compaction to print the protocol fingerprint, reload references, and `[RE-ANCHOR]` logging tag.
 Use `autoresearch watch --format <tsv|jsonl>` for human-readable tails or machine-readable JSON Lines.
 Use `autoresearch watch --websocket --websocket-addr <host:port>` to serve snapshot and row update payloads to real-time dashboards. Add `--once` to print the initial WebSocket snapshot envelope without starting a server.
 Use `autoresearch lessons --add <strategy> --context <note>` to append reusable lessons without editing `lessons.md` by hand.

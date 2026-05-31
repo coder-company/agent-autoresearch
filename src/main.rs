@@ -32,6 +32,10 @@ use autoresearch::escalation::pivot::{EscalationAction, EscalationState};
 use autoresearch::hooks;
 use autoresearch::modes::evals::{parse_results_tsv, ParsedRow};
 
+const RUNTIME_HARD_INVARIANTS_DOC: &str = include_str!("../references/runtime-hard-invariants.md");
+const CORE_PRINCIPLES_DOC: &str = include_str!("../references/core-principles.md");
+const LOOP_WORKFLOW_DOC: &str = include_str!("../references/loop-workflow.md");
+
 #[derive(Parser)]
 #[command(
     name = "autoresearch",
@@ -296,6 +300,16 @@ enum Commands {
 
     /// Probe local resources and toolchains for run planning
     Env {
+        /// Output format: json or text
+        #[arg(long, default_value = "json")]
+        format: String,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
+    /// Check whether a protocol re-anchor is due and print reload references
+    Reanchor {
         /// Output format: json or text
         #[arg(long, default_value = "json")]
         format: String,
@@ -956,6 +970,8 @@ fn main() -> Result<()> {
         } => cmd_health(verify.as_deref(), strict, min_free_mb, cwd),
 
         Commands::Env { format, cwd } => cmd_env(cwd, &format),
+
+        Commands::Reanchor { format, cwd } => cmd_reanchor(cwd, &format),
 
         Commands::Runtime { command } => cmd_runtime(command),
 
@@ -4154,6 +4170,179 @@ fn cmd_env(cwd: Option<PathBuf>, format: &str) -> Result<()> {
             println!("Environment summary: {}", probe.summary);
         }
         other => anyhow::bail!("Invalid env format {other:?}; use json or text"),
+    }
+    Ok(())
+}
+
+fn protocol_fingerprint_items() -> Vec<&'static str> {
+    vec![
+        "baseline before init",
+        "log every completed experiment before the next one starts",
+        "the autoresearch binary owns authoritative TSV/JSON updates and keep/stop gating",
+        "artifact paths come from workspace_root + autoresearch-results/ and repo-local pointer",
+        "background decisions come from runtime run or runtime supervise",
+        "current stop conditions",
+        "current rollback strategy",
+        "active pivot/refine escalation thresholds",
+        "selected mode workflow deviation from default loop",
+    ]
+}
+
+fn canonical_display(path: PathBuf) -> String {
+    path.canonicalize().unwrap_or(path).display().to_string()
+}
+
+fn run_phase_label(phase: &RunPhase) -> &'static str {
+    match phase {
+        RunPhase::Setup => "setup",
+        RunPhase::Baseline { .. } => "baseline",
+        RunPhase::Iterating { .. } => "iterating",
+        RunPhase::Complete { .. } => "complete",
+        RunPhase::Blocked { .. } => "blocked",
+    }
+}
+
+fn reanchor_reference_checks(
+    workspace: &Path,
+    context: &context::RunContext,
+) -> Vec<serde_json::Value> {
+    let expected_results = canonical_display(workspace.join("autoresearch-results/results.tsv"));
+    let expected_state = canonical_display(workspace.join("autoresearch-results/state.json"));
+    vec![
+        serde_json::json!({
+            "name": "context_results_path",
+            "ok": context.results_path == expected_results,
+            "expected": expected_results,
+            "actual": context.results_path,
+        }),
+        serde_json::json!({
+            "name": "context_state_path",
+            "ok": context.state_path == expected_state,
+            "expected": expected_state,
+            "actual": context.state_path,
+        }),
+        serde_json::json!({
+            "name": "runtime_hard_invariants_reference",
+            "ok": RUNTIME_HARD_INVARIANTS_DOC.contains("Protocol Fingerprint Check"),
+            "reference": "references/runtime-hard-invariants.md",
+        }),
+        serde_json::json!({
+            "name": "core_principles_reference",
+            "ok": CORE_PRINCIPLES_DOC.contains("One Change Per Iteration"),
+            "reference": "references/core-principles.md",
+        }),
+        serde_json::json!({
+            "name": "selected_mode_workflow_reference",
+            "ok": LOOP_WORKFLOW_DOC.contains("Iterate toward a measurable outcome"),
+            "reference": "references/loop-workflow.md",
+        }),
+    ]
+}
+
+fn render_reanchor_text(out: &serde_json::Value) -> String {
+    let mut text = String::new();
+    writeln!(text, "--- Protocol Reanchor ---").unwrap();
+    writeln!(
+        text,
+        "Status: {}",
+        out["status"].as_str().unwrap_or("unknown")
+    )
+    .unwrap();
+    writeln!(
+        text,
+        "Workspace: {}",
+        out["workspace"].as_str().unwrap_or("")
+    )
+    .unwrap();
+    writeln!(
+        text,
+        "Iteration: {}",
+        out["iteration"].as_u64().unwrap_or(0)
+    )
+    .unwrap();
+    writeln!(
+        text,
+        "Due now: {}",
+        if out["due"].as_bool().unwrap_or(false) {
+            "yes"
+        } else {
+            "no"
+        }
+    )
+    .unwrap();
+    writeln!(
+        text,
+        "Next due iteration: {}",
+        out["next_due_iteration"].as_u64().unwrap_or(10)
+    )
+    .unwrap();
+    writeln!(text, "Reload references:").unwrap();
+    if let Some(references) = out["reload_references"].as_array() {
+        for reference in references {
+            writeln!(text, "  - {}", reference.as_str().unwrap_or("")).unwrap();
+        }
+    }
+    writeln!(text, "Fingerprint items:").unwrap();
+    if let Some(items) = out["fingerprint_items"].as_array() {
+        for item in items {
+            writeln!(text, "  - {}", item.as_str().unwrap_or("")).unwrap();
+        }
+    }
+    if out["due"].as_bool().unwrap_or(false) {
+        writeln!(text, "Next logged iteration should include [RE-ANCHOR] if this check required re-reading protocol files.").unwrap();
+    }
+    text
+}
+
+fn cmd_reanchor(cwd: Option<PathBuf>, format: &str) -> Result<()> {
+    let workspace = resolve_results_workspace(cwd);
+    let results_dir = workspace.join("autoresearch-results");
+    let state_path = results_dir.join("state.json");
+    let context = load_run_context(&workspace)?;
+    let state: RunState = serde_json::from_str(
+        &std::fs::read_to_string(&state_path)
+            .with_context(|| format!("failed to read {}", state_path.display()))?,
+    )
+    .with_context(|| format!("failed to parse {}", state_path.display()))?;
+    let due = state.iteration > 0 && state.iteration % 10 == 0;
+    let next_due_iteration = ((state.iteration / 10) + 1) * 10;
+    let checks = reanchor_reference_checks(&workspace, &context);
+    let status = if checks
+        .iter()
+        .all(|check| check["ok"].as_bool().unwrap_or(false))
+    {
+        "ok"
+    } else {
+        "failed"
+    };
+    let out = serde_json::json!({
+        "status": status,
+        "workspace": workspace.display().to_string(),
+        "active": context.active,
+        "iteration": state.iteration,
+        "due": due,
+        "next_due_iteration": next_due_iteration,
+        "selected_mode": "loop",
+        "phase": run_phase_label(&state.phase),
+        "last_status": state.last_status.as_str(),
+        "fingerprint_name": "Protocol Fingerprint Check",
+        "reload_references": [
+            "references/runtime-hard-invariants.md",
+            "references/core-principles.md",
+            "references/loop-workflow.md",
+        ],
+        "fingerprint_items": protocol_fingerprint_items(),
+        "checks": checks,
+        "log_tag": "[RE-ANCHOR]",
+    });
+
+    match format {
+        "json" => println!("{}", serde_json::to_string_pretty(&out)?),
+        "text" => print!("{}", render_reanchor_text(&out)),
+        other => anyhow::bail!("Invalid reanchor format {other:?}; use json or text"),
+    }
+    if status != "ok" {
+        std::process::exit(2);
     }
     Ok(())
 }

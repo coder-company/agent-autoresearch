@@ -156,6 +156,11 @@ require_grep 'Noise-aware scalar verification repeats' docs/development-roadmap.
 require_grep 'autoresearch checkpoint --format json' README.md
 require_grep 'autoresearch checkpoint --format json' docs/GUIDE.md
 require_grep 'Adaptive eval checkpoint command' docs/development-roadmap.md
+require_grep 'autoresearch reanchor --format json' README.md
+require_grep 'autoresearch reanchor --format json' docs/GUIDE.md
+require_grep 'autoresearch reanchor --format json' references/binary-operations.md
+require_grep 'Native protocol re-anchor command' docs/development-roadmap.md
+require_grep 'Native `reanchor` command' COMPARISON.md
 require_grep 'autoresearch cost --per-iteration-usd' README.md
 require_grep 'autoresearch cost --per-iteration-usd' docs/GUIDE.md
 require_grep '\[x\] Cost tracking — estimate token/API spend per iteration' docs/development-roadmap.md

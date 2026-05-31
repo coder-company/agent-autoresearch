@@ -205,6 +205,7 @@ fn test_api_manifest_lists_nested_commands_and_flags() {
         .stdout(predicate::str::contains("\"start\""))
         .stdout(predicate::str::contains("\"env\""))
         .stdout(predicate::str::contains("\"checkpoint\""))
+        .stdout(predicate::str::contains("\"reanchor\""))
         .stdout(predicate::str::contains("\"cost\""))
         .stdout(predicate::str::contains("\"per-iteration-usd\""))
         .stdout(predicate::str::contains("\"repeat\""))
@@ -337,6 +338,61 @@ fn test_checkpoint_skips_before_interval() {
         .success()
         .stdout(predicate::str::contains("\"status\": \"skipped\""))
         .stdout(predicate::str::contains("\"next_checkpoint_iteration\": 3"));
+}
+
+#[test]
+fn test_reanchor_reports_due_fingerprint_at_iteration_boundary() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    for iteration in 1..=10 {
+        cmd()
+            .args([
+                "log",
+                "--iteration",
+                &iteration.to_string(),
+                "--metric",
+                "1",
+                "--delta",
+                "0",
+                "--guard",
+                "skip",
+                "--status",
+                "no-op",
+                "--description",
+                "no-op fixture",
+                "--cwd",
+                root,
+            ])
+            .assert()
+            .success();
+    }
+
+    cmd()
+        .args(["reanchor", "--format", "json", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"due\": true"))
+        .stdout(predicate::str::contains("\"next_due_iteration\": 20"))
+        .stdout(predicate::str::contains("Protocol Fingerprint Check"))
+        .stdout(predicate::str::contains(
+            "references/runtime-hard-invariants.md",
+        ))
+        .stdout(predicate::str::contains("[RE-ANCHOR]"));
 }
 
 #[test]
