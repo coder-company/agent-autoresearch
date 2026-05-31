@@ -46,6 +46,7 @@ The `autoresearch` binary handles mechanical operations:
 - `autoresearch parallel cleanup` — remove worker worktrees and branches
 - `autoresearch runtime run` — execute the supervised background loop; `start/status/supervise/stop` remain available for manual control
 - `autoresearch status --summary|resume|progress|watch|lessons|evals` — inspect/resume/monitor/analyze runs, including JSONL and WebSocket watch streams plus parallel worker sign-test summaries
+- `autoresearch checkpoint --format json` — run evals only when the active run reaches its checkpoint interval
 - `autoresearch cost --per-iteration-usd <usd> --format json` — estimate completed, remaining, and projected token/API spend for an active run
 - `autoresearch dashboard --once` — render a combined terminal dashboard for the active run
 - `autoresearch api --format json` — emit the stable CLI command/flag manifest and semver policy

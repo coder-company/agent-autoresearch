@@ -204,6 +204,7 @@ fn test_api_manifest_lists_nested_commands_and_flags() {
         .stdout(predicate::str::contains("\"runtime\""))
         .stdout(predicate::str::contains("\"start\""))
         .stdout(predicate::str::contains("\"env\""))
+        .stdout(predicate::str::contains("\"checkpoint\""))
         .stdout(predicate::str::contains("\"cost\""))
         .stdout(predicate::str::contains("\"per-iteration-usd\""))
         .stdout(predicate::str::contains("\"dashboard\""))
@@ -246,6 +247,94 @@ fn test_env_probe_reports_resources_and_toolchains() {
         .stdout(predicate::str::contains("\"toolchains\""))
         .stdout(predicate::str::contains("\"recommended_parallel_workers\""))
         .stdout(predicate::str::contains("\"environment_summary\""));
+}
+
+#[test]
+fn test_checkpoint_runs_evals_when_interval_due() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--iterations",
+            "6",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    for (iteration, metric) in [("1", "55"), ("2", "60")] {
+        cmd()
+            .args([
+                "log",
+                "--iteration",
+                iteration,
+                "--commit",
+                "abc1234",
+                "--metric",
+                metric,
+                "--delta",
+                "+5",
+                "--guard",
+                "pass",
+                "--status",
+                "keep",
+                "--description",
+                "checkpoint improvement",
+                "--cwd",
+                root,
+            ])
+            .assert()
+            .success();
+    }
+
+    cmd()
+        .args(["checkpoint", "--format", "json", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"total_iterations\": 2"))
+        .stdout(predicate::str::contains("\"recommendation\""));
+
+    assert!(dir
+        .path()
+        .join("autoresearch-results/evals-summary.json")
+        .exists());
+}
+
+#[test]
+fn test_checkpoint_skips_before_interval() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--iterations",
+            "9",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["checkpoint", "--format", "json", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\": \"skipped\""))
+        .stdout(predicate::str::contains("\"next_checkpoint_iteration\": 3"));
 }
 
 #[test]

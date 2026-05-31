@@ -53,6 +53,7 @@
 ## v1.0.0 — Stable API + Ecosystem
 
 - [x] Stable CLI API — semver guarantees on commands, flags, and output formats
+- [x] Adaptive eval checkpoint command for long-running loops
 - [x] Plugin system — loadable mode definitions (TOML or YAML)
 - [x] Plugin marketplace — community-contributed modes
 - [x] Configuration file (`.autoresearch.toml`) for project-level defaults

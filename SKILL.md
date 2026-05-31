@@ -126,6 +126,7 @@ Optional:
 | `autoresearch log --iteration N --status keep --metric X --description "..."` | Append TSV row (alternative to decide) |
 | `autoresearch status --summary` | Show compact run counters |
 | `autoresearch progress` | Formatted progress summary |
+| `autoresearch checkpoint --format json` | Run evals only when the active run reaches its checkpoint interval |
 | `autoresearch cost --per-iteration-usd 0.25 --format json` | Estimate completed, remaining, and projected token/API spend |
 | `autoresearch dashboard --once` | Render a combined terminal dashboard for the active run |
 | `autoresearch watch --lines 20 --format jsonl` / `watch --websocket` | Tail the active results.tsv locally or over WebSocket for live monitoring |

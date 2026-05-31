@@ -47,6 +47,7 @@ This skill uses Claude Code's `/goal` command as the native continuation engine.
 - Read `autoresearch-results/context.json` when present
 - Use `autoresearch api --format json` when an integration needs the stable command/flag manifest
 - Use `autoresearch env --format json` before long or parallel runs to capture CPU, disk, container, toolchain, and parallelism context
+- Use `autoresearch checkpoint --format json` during long loops to run evals only when the active iteration reaches its checkpoint interval
 - Use `autoresearch cost --per-iteration-usd <usd> --format json` to estimate completed, remaining, and projected token/API spend for an active run
 - Use `autoresearch dashboard --once` for a combined terminal run snapshot; omit `--once` only when a live-refresh dashboard is useful
 - Use `autoresearch scope expand --format json` when a monorepo or companion repo scope needs concrete file/package context

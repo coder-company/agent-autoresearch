@@ -249,6 +249,19 @@ enum Commands {
         format: String,
     },
 
+    /// Run evals only when the active run reaches a checkpoint interval
+    Checkpoint {
+        /// Checkpoint interval. Defaults to floor(iterations / 3), minimum 1, or 10 for unbounded runs.
+        #[arg(long)]
+        interval: Option<u32>,
+        /// Output format passed to evals when checkpoint is due: text, json, or md
+        #[arg(long, default_value = "text")]
+        format: String,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
     /// Show current run status from state.json
     Status {
         /// Print compact status fields only
@@ -918,6 +931,12 @@ fn main() -> Result<()> {
         ),
 
         Commands::Evals { path, format } => cmd_evals(path, &format),
+
+        Commands::Checkpoint {
+            interval,
+            format,
+            cwd,
+        } => cmd_checkpoint(cwd, interval, &format),
 
         Commands::Status { summary, cwd } => cmd_status(cwd, summary),
 
@@ -3051,6 +3070,49 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn checkpoint_interval(state: &RunState, interval: Option<u32>) -> Result<u32> {
+    if interval == Some(0) {
+        anyhow::bail!("checkpoint interval must be greater than zero");
+    }
+    Ok(interval.unwrap_or_else(|| {
+        state
+            .config
+            .as_ref()
+            .and_then(|config| config.iterations)
+            .map(|iterations| std::cmp::max(1, iterations / 3))
+            .unwrap_or(10)
+    }))
+}
+
+fn cmd_checkpoint(cwd: Option<PathBuf>, interval: Option<u32>, format: &str) -> Result<()> {
+    let workspace = resolve_results_workspace(cwd);
+    let results_dir = workspace.join("autoresearch-results");
+    let state_path = results_dir.join("state.json");
+    if !state_path.exists() {
+        anyhow::bail!("No active run (state.json not found)");
+    }
+    let state: RunState = serde_json::from_str(&std::fs::read_to_string(&state_path)?)?;
+    let interval = checkpoint_interval(&state, interval)?;
+    let due = state.iteration > 0 && state.iteration % interval == 0;
+    if !due {
+        let next_iteration = if state.iteration == 0 {
+            interval
+        } else {
+            ((state.iteration / interval) + 1) * interval
+        };
+        let out = serde_json::json!({
+            "status": "skipped",
+            "iteration": state.iteration,
+            "interval": interval,
+            "next_checkpoint_iteration": next_iteration,
+        });
+        println!("{}", serde_json::to_string_pretty(&out)?);
+        return Ok(());
+    }
+
+    cmd_evals(Some(results_dir.join("results.tsv")), format)
 }
 
 fn parse_evals_direction(value: Option<&str>) -> Result<&'static str> {

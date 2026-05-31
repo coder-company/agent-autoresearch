@@ -144,6 +144,9 @@ require_grep 'autoresearch status --summary' SKILL.md
 require_grep 'Metric history sparkline' README.md
 require_grep 'terminal metric history sparkline' docs/GUIDE.md
 require_grep '\[x\] Metric history graphing \(sparklines in terminal\)' docs/development-roadmap.md
+require_grep 'autoresearch checkpoint --format json' README.md
+require_grep 'autoresearch checkpoint --format json' docs/GUIDE.md
+require_grep 'Adaptive eval checkpoint command' docs/development-roadmap.md
 require_grep 'autoresearch cost --per-iteration-usd' README.md
 require_grep 'autoresearch cost --per-iteration-usd' docs/GUIDE.md
 require_grep '\[x\] Cost tracking — estimate token/API spend per iteration' docs/development-roadmap.md

@@ -190,6 +190,7 @@ Covered in detail in the [guide](guide/):
 - **Compact run status** — `autoresearch status --summary` prints monitor-friendly counters without full config payloads
 - **Metric history sparkline** — `autoresearch progress` graphs retained metric history directly in terminal output
 - **Cost estimates** — `autoresearch cost --per-iteration-usd 0.25` projects completed and remaining token/API spend
+- **Eval checkpoints** — `autoresearch checkpoint --format json` runs evals only when the active run reaches its checkpoint interval
 - **Parallel worker execution** — `autoresearch parallel prepare/run/closeout/cleanup` creates isolated worker worktrees, launches prompts, merges and verifies the best result, logs `5a`/`5b` audit rows, and cleans up branches
 - **A/B compare mode** — `autoresearch parallel compare --a "..." --b "..."` prepares two explicit hypotheses for head-to-head metric closeout
 - **Shell completions** — `autoresearch completions bash|zsh|fish|elvish|powershell` prints native completion scripts for local installs
