@@ -799,7 +799,7 @@ enum Commands {
     /// Generate a five-persona prediction review artifact
     Predict {
         /// Proposal, change, or design decision to analyze
-        #[arg(long)]
+        #[arg(long, visible_alias = "goal")]
         proposal: String,
         /// Relevant implementation scope. Repeatable.
         #[arg(long)]

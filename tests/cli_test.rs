@@ -1521,6 +1521,27 @@ fn test_predict_chain_writes_handoff_sidecar() {
 }
 
 #[test]
+fn test_predict_accepts_protocol_goal_alias() {
+    let dir = TempDir::new().unwrap();
+
+    cmd()
+        .args([
+            "predict",
+            "--goal",
+            "Add cache warming to search results",
+            "--scope",
+            "src/search/**",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "\"proposal\":\"Add cache warming to search results\"",
+        ));
+}
+
+#[test]
 fn test_predict_review_options_are_recorded() {
     let dir = TempDir::new().unwrap();
     let output = dir
