@@ -45,6 +45,16 @@ Scans `autoresearch-results/` and `autoresearch/*/` for TSV files.
 --format json
 ```
 
+### Analyze Then Chain
+
+```
+/autoresearch:evals autoresearch-results/results.tsv
+--recommend
+--chain ship
+```
+
+Writes `handoff.json` beside the TSV with the recommendation, findings, and next target.
+
 ## What It Reports
 
 ```
@@ -107,6 +117,7 @@ If plateau detected for 3+ consecutive checkpoints → recommends early stop.
 - Console: 30-50 line structured report
 - `--format md` → writes `evals-summary.md` next to the input TSV
 - `--format json` → writes `evals-summary.json` with structured data
+- `--chain <targets>` → writes `handoff.json` next to the input TSV for downstream commands
 
 ## Backward Compatibility
 

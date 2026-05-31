@@ -82,12 +82,12 @@ autoresearch watch --lines 20 --format jsonl
 autoresearch watch --websocket --websocket-addr 127.0.0.1:8765
 autoresearch checkpoint --format json
 autoresearch reanchor --format json
-autoresearch evals --file autoresearch-results/results.tsv --format json --recommend --plateau-window 5
+autoresearch evals --file autoresearch-results/results.tsv --format json --recommend --plateau-window 5 --chain ship
 autoresearch cost --per-iteration-usd 0.25 --format json
 ```
 
 `watch --websocket` streams snapshot and row update payloads for WebSocket watch streams. `checkpoint` runs evals only when the active run reaches its configured or adaptive checkpoint interval.
-`evals --recommend --plateau-window <n>` adds explicit go/no-go and next-step guidance to text, markdown, or JSON output using the requested plateau threshold.
+`evals --recommend --plateau-window <n> --chain <targets>` adds explicit go/no-go and next-step guidance to text, markdown, or JSON output using the requested plateau threshold, then writes downstream handoff metadata when chaining is requested.
 `reanchor` reports whether the 10-iteration Protocol Fingerprint Check is due, verifies context paths, and prints the references to reload plus the `[RE-ANCHOR]` tag for the next TSV row when re-reading was needed.
 
 ## Background Runtime

@@ -273,6 +273,9 @@ enum Commands {
         /// Consecutive non-keep iterations that define a plateau
         #[arg(long, default_value_t = 5)]
         plateau_window: u32,
+        /// Chain evals output to downstream command(s)
+        #[arg(long)]
+        chain: Option<String>,
         /// Output format: text, json, or md
         #[arg(long, default_value = "text")]
         format: String,
@@ -1465,12 +1468,19 @@ fn main() -> Result<()> {
             file,
             recommend,
             plateau_window,
+            chain,
             format,
         } => {
             if path.is_some() && file.is_some() {
                 anyhow::bail!("evals accepts either a positional path or --file, not both");
             }
-            cmd_evals(path.or(file), &format, recommend, plateau_window)
+            cmd_evals(
+                path.or(file),
+                &format,
+                recommend,
+                plateau_window,
+                chain.as_deref(),
+            )
         }
 
         Commands::Checkpoint {
@@ -7384,6 +7394,7 @@ fn cmd_evals(
     format: &str,
     recommend: bool,
     plateau_window: u32,
+    chain: Option<&str>,
 ) -> Result<()> {
     if plateau_window == 0 {
         anyhow::bail!("evals plateau window must be greater than zero");
@@ -7569,7 +7580,102 @@ fn cmd_evals(
     );
     let go_no_go = evals_go_no_go(recommendation);
     let next_step = evals_next_step(recommendation);
+    let plateau_detected = longest_plateau >= plateau_window;
     let summary_dir = tsv_path.parent().unwrap_or_else(|| Path::new("."));
+    let chain_targets = parse_handoff_chain_targets(chain)?;
+    let handoff_path = if chain_targets.is_empty() {
+        None
+    } else {
+        let handoff_path = summary_dir.join("handoff.json");
+        let next_target = next_chain_target_value(&chain_targets);
+        let workspace = std::env::current_dir()?;
+        let (primary_repo, repo_targets) = handoff_context_values(summary_dir)?;
+        let mut findings = Vec::new();
+
+        if plateau_detected {
+            findings.push(serde_json::json!({
+                "type": "plateau",
+                "severity": "medium",
+                "message": format!(
+                    "Plateau detected: {longest_plateau} consecutive non-keep iterations"
+                ),
+                "plateau_window": plateau_window,
+            }));
+        }
+        if trend == "declining" {
+            findings.push(serde_json::json!({
+                "type": "trend",
+                "severity": "medium",
+                "message": "Recent kept metrics are declining",
+            }));
+        }
+        if guard_failures > 0 {
+            findings.push(serde_json::json!({
+                "type": "guard_failures",
+                "severity": "high",
+                "message": format!("{guard_failures} guard failure(s) recorded"),
+            }));
+        }
+        if findings.is_empty() {
+            findings.push(serde_json::json!({
+                "type": "recommendation",
+                "severity": "info",
+                "message": recommendation,
+            }));
+        }
+
+        let handoff = serde_json::json!({
+            "version": "2.1.0",
+            "protocol_version": "2.1.0",
+            "binary_version": env!("CARGO_PKG_VERSION"),
+            "source": "evals",
+            "source_command": "evals",
+            "timestamp": chrono::Utc::now().to_rfc3339(),
+            "status": "COMPLETE",
+            "workspace_root": workspace.display().to_string(),
+            "artifact_root": summary_dir.display().to_string(),
+            "primary_repo": primary_repo,
+            "repo_targets": repo_targets,
+            "results_tsv": tsv_path.display().to_string(),
+            "results_path": tsv_path.display().to_string(),
+            "handoff_path": handoff_path.display().to_string(),
+            "summary": {
+                "direction": direction,
+                "total_iterations": total_iterations,
+                "keeps": keeps,
+                "discards": discards,
+                "crashes": crashes,
+                "guard_failures": guard_failures,
+                "baseline": baseline.to_string(),
+                "final": final_metric.to_string(),
+                "best": best.to_string(),
+                "improvement": improvement.to_string(),
+                "improvement_pct": improvement_pct.as_deref(),
+                "efficiency_pct": efficiency,
+                "longest_plateau": longest_plateau,
+                "plateau_window": plateau_window,
+                "plateau_detected": plateau_detected,
+                "trend": trend,
+                "recommendation": recommendation,
+                "go_no_go": go_no_go,
+                "next_step": next_step,
+            },
+            "findings": findings,
+            "config": {
+                "format": format,
+                "recommend": recommend,
+                "plateau_window": plateau_window,
+                "unknown_columns": &unknown_columns,
+            },
+            "chain": chain_targets.clone(),
+            "next_target": next_target,
+            "chain_continue": should_continue_handoff_chain("COMPLETE"),
+            "propagate_evals": false,
+            "evals_interval": serde_json::Value::Null,
+        });
+        write_json_file(&handoff_path, &handoff)?;
+        Some(handoff_path)
+    };
 
     match format {
         "json" => {
@@ -7593,7 +7699,7 @@ fn cmd_evals(
                 "efficiency_pct": efficiency,
                 "longest_plateau": longest_plateau,
                 "plateau_window": plateau_window,
-                "plateau_detected": longest_plateau >= plateau_window,
+                "plateau_detected": plateau_detected,
                 "trend": trend,
                 "recommendation": recommendation,
                 "unknown_columns": &unknown_columns,
@@ -7614,6 +7720,29 @@ fn cmd_evals(
                     object.insert(
                         "next_step".to_string(),
                         serde_json::Value::String(next_step.to_string()),
+                    );
+                }
+            }
+            if !chain_targets.is_empty() {
+                if let Some(object) = out.as_object_mut() {
+                    object.insert("chain".to_string(), serde_json::json!(&chain_targets));
+                    object.insert(
+                        "next_target".to_string(),
+                        next_chain_target_value(&chain_targets),
+                    );
+                    object.insert(
+                        "chain_continue".to_string(),
+                        serde_json::Value::Bool(should_continue_handoff_chain("COMPLETE")),
+                    );
+                    object.insert(
+                        "handoff_path".to_string(),
+                        serde_json::Value::String(
+                            handoff_path
+                                .as_ref()
+                                .expect("chain handoff path must exist when targets are present")
+                                .display()
+                                .to_string(),
+                        ),
                     );
                 }
             }
@@ -7649,6 +7778,8 @@ fn cmd_evals(
                 parallel_workers: &parallel_workers,
                 top_keeps: &top_keeps,
                 top_regressions: &top_regressions,
+                chain_targets: &chain_targets,
+                handoff_path: handoff_path.as_deref(),
             });
             std::fs::write(summary_dir.join("evals-summary.md"), &report)?;
             print!("{report}");
@@ -7681,6 +7812,8 @@ fn cmd_evals(
                 parallel_workers: &parallel_workers,
                 top_keeps: &top_keeps,
                 top_regressions: &top_regressions,
+                chain_targets: &chain_targets,
+                handoff_path: handoff_path.as_deref(),
             });
             print!("{report}");
         }
@@ -7730,7 +7863,13 @@ fn cmd_checkpoint(cwd: Option<PathBuf>, interval: Option<u32>, format: &str) -> 
         return Ok(());
     }
 
-    cmd_evals(Some(results_dir.join("results.tsv")), format, false, 5)
+    cmd_evals(
+        Some(results_dir.join("results.tsv")),
+        format,
+        false,
+        5,
+        None,
+    )
 }
 
 fn parse_evals_direction(value: Option<&str>) -> Result<&'static str> {
@@ -7837,6 +7976,8 @@ struct EvalsReport<'a> {
     top_keeps: &'a [(Decimal, &'a str)],
     top_regressions: &'a [(Decimal, &'a str)],
     parallel_workers: &'a ParallelWorkerStats,
+    chain_targets: &'a [String],
+    handoff_path: Option<&'a Path>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -8127,6 +8268,22 @@ fn render_evals_markdown(report: EvalsReport<'_>) -> String {
             evals_next_step(report.recommendation)
         )
         .unwrap();
+    }
+    if let Some(handoff_path) = report.handoff_path {
+        writeln!(out).unwrap();
+        writeln!(out, "### Chain Handoff").unwrap();
+        writeln!(out).unwrap();
+        writeln!(
+            out,
+            "- Next target: {}",
+            report
+                .chain_targets
+                .first()
+                .map(String::as_str)
+                .unwrap_or("none")
+        )
+        .unwrap();
+        writeln!(out, "- Handoff: {}", handoff_path.display()).unwrap();
     }
     out
 }

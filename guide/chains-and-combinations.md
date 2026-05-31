@@ -92,6 +92,14 @@ Interrogate requirements until saturated → convert to config → iterate again
 
 Surface hidden constraints → debate the best approach with blind judges.
 
+### Evals then Ship
+
+```
+/autoresearch:evals --file autoresearch-results/results.tsv --recommend --chain ship
+```
+
+Analyze the run, write a go/no-go handoff, then pass the result to the ship workflow.
+
 ### Debug then Improve
 
 ```

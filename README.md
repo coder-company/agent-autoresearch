@@ -154,7 +154,7 @@ One success resets all counters.
 | `/autoresearch:reason` | Debate a subjective decision with blind judges |
 | `/autoresearch:probe` | Interrogate requirements until nothing's ambiguous |
 | `/autoresearch:improve` | Research ICP needs and generate product improvement PRDs |
-| `/autoresearch:evals` | Analyze past runs: trends, plateaus, parallel worker significance, `--recommend` and `--plateau-window` guidance |
+| `/autoresearch:evals` | Analyze past runs: trends, plateaus, parallel worker significance, `--recommend`, `--plateau-window`, and `--chain` guidance |
 
 Just type the command. It asks for what it needs.
 
@@ -192,6 +192,7 @@ Covered in detail in the [guide](guide/):
 - **Noise-aware verification** — `autoresearch verify --repeat 3 --aggregate median` reruns scalar metrics and returns an aggregate with all samples
 - **Cost estimates** — `autoresearch cost --per-iteration-usd 0.25` projects completed and remaining token/API spend
 - **Eval checkpoints** — `autoresearch checkpoint --format json` runs evals only when the active run reaches its checkpoint interval
+- **Eval chain handoff** — `autoresearch evals --file autoresearch-results/results.tsv --recommend --chain ship` writes analysis, go/no-go, and next-target metadata beside the TSV
 - **Protocol re-anchor checks** — `autoresearch reanchor --format json` reports 10-iteration fingerprint due state and reload references for long sessions
 - **Parallel worker execution** — `autoresearch parallel prepare/run/closeout/cleanup` creates isolated worker worktrees, launches prompts, merges and verifies the best result, logs `5a`/`5b` audit rows, and cleans up branches
 - **A/B compare mode** — `autoresearch parallel compare --a "..." --b "..."` prepares two explicit hypotheses for head-to-head metric closeout

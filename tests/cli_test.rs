@@ -3345,6 +3345,48 @@ fn test_evals_plateau_window_controls_recommendation() {
 }
 
 #[test]
+fn test_evals_chain_writes_handoff() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: higher").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t50\t0\t-\tbaseline\tinitial state").unwrap();
+    writeln!(file, "1\tbcd2345\t55\t+5\tpass\tkeep\timprovement").unwrap();
+
+    cmd()
+        .args([
+            "evals",
+            "--file",
+            tsv_path.to_str().unwrap(),
+            "--recommend",
+            "--chain",
+            "ship",
+            "--format",
+            "json",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"next_target\": \"ship\""))
+        .stdout(predicate::str::contains("\"handoff_path\""));
+
+    let handoff = std::fs::read_to_string(dir.path().join("handoff.json")).unwrap();
+    assert!(handoff.contains("\"source_command\": \"evals\""));
+    assert!(handoff.contains("\"chain\": ["));
+    assert!(handoff.contains("\"ship\""));
+    assert!(handoff.contains("\"next_target\": \"ship\""));
+    assert!(handoff.contains("\"chain_continue\": true"));
+    assert!(handoff.contains("\"recommendation\": \"continue\""));
+    assert!(handoff.contains("\"go_no_go\": \"GO\""));
+    assert!(handoff.contains("\"plateau_window\": 5"));
+}
+
+#[test]
 fn test_evals_reports_parallel_worker_significance() {
     let dir = TempDir::new().unwrap();
     let tsv_path = dir.path().join("results.tsv");
