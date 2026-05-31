@@ -639,6 +639,18 @@ enum Commands {
         /// Investigation technique to seed
         #[arg(long, default_value = "trace")]
         technique: String,
+        /// Chain into fix mode after writing debug findings
+        #[arg(long)]
+        fix: bool,
+        /// Comma-separated downstream command targets to record in handoff.json
+        #[arg(long)]
+        chain: Option<String>,
+        /// Propagate eval checkpoints to downstream chain targets
+        #[arg(long)]
+        evals: bool,
+        /// Propagated eval checkpoint interval
+        #[arg(long)]
+        evals_interval: Option<u32>,
         /// Output directory. Relative paths resolve from the workspace root.
         #[arg(long)]
         output_dir: Option<PathBuf>,
@@ -1387,9 +1399,23 @@ fn main() -> Result<()> {
             symptom,
             scope,
             technique,
+            fix,
+            chain,
+            evals,
+            evals_interval,
             output_dir,
             cwd,
-        } => cmd_debug(&symptom, scope, &technique, output_dir, cwd),
+        } => cmd_debug(
+            &symptom,
+            scope,
+            &technique,
+            fix,
+            chain,
+            evals,
+            evals_interval,
+            output_dir,
+            cwd,
+        ),
 
         Commands::Fix {
             target,
@@ -2796,13 +2822,56 @@ fn render_debug_results_tsv(symptom: &str, technique: &str) -> String {
     )
 }
 
+fn chain_targets_with_forced(chain: Option<&str>, forced: &[&str]) -> Result<Vec<String>> {
+    let mut targets = parse_handoff_chain_targets(chain)?;
+    for target in forced {
+        if !is_valid_handoff_source(target) {
+            anyhow::bail!("invalid handoff chain target {target:?}");
+        }
+        if !targets.iter().any(|existing| existing == target) {
+            targets.push((*target).to_string());
+        }
+    }
+    Ok(targets)
+}
+
+fn next_chain_target_value(targets: &[String]) -> serde_json::Value {
+    targets
+        .first()
+        .cloned()
+        .map(serde_json::Value::String)
+        .unwrap_or(serde_json::Value::Null)
+}
+
+fn validate_chain_evals_flags(
+    command: &str,
+    evals: bool,
+    evals_interval: Option<u32>,
+) -> Result<()> {
+    if evals_interval == Some(0) {
+        anyhow::bail!("{command} evals interval must be greater than zero");
+    }
+    if evals_interval.is_some() && !evals {
+        anyhow::bail!("{command} evals interval requires --evals");
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
 fn cmd_debug(
     symptom: &str,
     scope: Vec<String>,
     technique: &str,
+    fix: bool,
+    chain: Option<String>,
+    evals: bool,
+    evals_interval: Option<u32>,
     output_dir: Option<PathBuf>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
+    validate_chain_evals_flags("debug", evals, evals_interval)?;
+    let forced_targets = if fix { &["fix"][..] } else { &[][..] };
+    let chain_targets = chain_targets_with_forced(chain.as_deref(), forced_targets)?;
     let workspace = resolve_workspace_root(cwd);
     let scan_scope = if scope.is_empty() {
         vec!["**/*".to_string()]
@@ -2831,19 +2900,27 @@ fn cmd_debug(
         &output_dir.join("debug-results.tsv"),
         &render_debug_results_tsv(symptom, technique),
     )?;
+    let next_target = next_chain_target_value(&chain_targets);
     let handoff = serde_json::json!({
         "version": "2.1.0",
         "source": "debug",
+        "source_command": "debug",
         "timestamp": chrono::Utc::now().to_rfc3339(),
         "status": "COMPLETE",
         "results_tsv": output_dir.join("debug-results.tsv").display().to_string(),
+        "handoff_path": output_dir.join("handoff.json").display().to_string(),
         "findings": [],
         "config": {
             "scope": scope,
             "symptom": symptom,
             "technique": technique,
             "files_scanned": files.len(),
-        }
+        },
+        "chain": chain_targets,
+        "next_target": next_target,
+        "chain_continue": should_continue_handoff_chain("COMPLETE"),
+        "propagate_evals": evals,
+        "evals_interval": evals_interval,
     });
     write_json_file(&output_dir.join("handoff.json"), &handoff)?;
     println!(

@@ -175,6 +175,7 @@ require_grep 'autoresearch-results/ship' references/ship-workflow.md
 require_grep 'autoresearch debug --symptom' README.md
 require_grep 'autoresearch debug --symptom' docs/GUIDE.md
 require_grep 'autoresearch debug --symptom' references/binary-operations.md
+require_grep 'debug --fix' references/binary-operations.md
 require_grep 'Native debug generator' docs/development-roadmap.md
 require_grep '`autoresearch debug` writes' COMPARISON.md
 require_grep 'autoresearch fix --target' README.md

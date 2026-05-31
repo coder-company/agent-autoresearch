@@ -692,6 +692,41 @@ fn test_debug_writes_investigation_artifact_bundle() {
 }
 
 #[test]
+fn test_debug_fix_flag_writes_chain_handoff() {
+    let dir = TempDir::new().unwrap();
+    let output_dir = dir.path().join("autoresearch-results/debug/api-500");
+
+    cmd()
+        .args([
+            "debug",
+            "--symptom",
+            "API returns 500",
+            "--scope",
+            "src/**/*.rs",
+            "--fix",
+            "--evals",
+            "--evals-interval",
+            "2",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\":\"written\""));
+
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+    assert!(handoff.contains("\"source_command\": \"debug\""));
+    assert!(handoff.contains("\"chain\": ["));
+    assert!(handoff.contains("\"fix\""));
+    assert!(handoff.contains("\"next_target\": \"fix\""));
+    assert!(handoff.contains("\"chain_continue\": true"));
+    assert!(handoff.contains("\"propagate_evals\": true"));
+    assert!(handoff.contains("\"evals_interval\": 2"));
+}
+
+#[test]
 fn test_fix_writes_repair_plan_artifact_bundle() {
     let dir = TempDir::new().unwrap();
     let output_dir = dir.path().join("autoresearch-results/fix/type-errors");
