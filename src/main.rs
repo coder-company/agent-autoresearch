@@ -531,6 +531,15 @@ enum ConfigCommands {
         #[arg(long)]
         force: bool,
     },
+    /// Validate a project defaults file without running verify or guard
+    Validate {
+        /// Config path (default: .autoresearch.toml in the workspace root)
+        #[arg(long)]
+        path: Option<PathBuf>,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
 }
 
 fn main() -> Result<()> {
@@ -695,6 +704,7 @@ fn main() -> Result<()> {
         Commands::Manpages { output_dir } => cmd_manpages(&output_dir),
         Commands::Config { command } => match command {
             ConfigCommands::Template { output, force } => cmd_config_template(output, force),
+            ConfigCommands::Validate { path, cwd } => cmd_config_validate(path, cwd),
         },
     }
 }
@@ -781,6 +791,58 @@ run_tag = "local"
 # acceptance_criteria = "[{\"metric\":\"coverage\",\"op\":\">=\",\"value\":\"90\"}]"
 # required_keep_criteria = "[{\"metric\":\"failing\",\"op\":\"<=\",\"value\":\"0\"}]"
 "#
+}
+
+fn cmd_config_validate(path: Option<PathBuf>, cwd: Option<PathBuf>) -> Result<()> {
+    let workspace = resolve_workspace_root(cwd);
+    let config_path = resolve_project_config_path(&workspace, path);
+    if !config_path.exists() {
+        anyhow::bail!("config file not found: {}", config_path.display());
+    }
+
+    let config = load_project_config(&workspace, Some(config_path.clone()))?;
+    validate_project_config(&config)?;
+    println!(
+        "{}",
+        serde_json::json!({
+            "valid": true,
+            "path": config_path,
+        })
+    );
+    Ok(())
+}
+
+fn validate_project_config(config: &ProjectConfig) -> Result<()> {
+    if let Some(direction) = &config.direction {
+        parse_direction(direction).context("invalid direction in .autoresearch.toml")?;
+    }
+    if let Some(format) = &config.format {
+        parse_format(format).context("invalid format in .autoresearch.toml")?;
+    }
+    if let Some(format) = &config.verify_format {
+        parse_format(format).context("invalid verify_format in .autoresearch.toml")?;
+    }
+    if let Some(run_mode) = &config.run_mode {
+        parse_run_mode(run_mode).context("invalid run_mode in .autoresearch.toml")?;
+    }
+    if let Some(rollback) = &config.rollback {
+        parse_rollback_strategy(rollback).context("invalid rollback in .autoresearch.toml")?;
+    }
+    if config.iterations == Some(0) {
+        anyhow::bail!("iterations must be greater than zero in .autoresearch.toml");
+    }
+    criteria::parse_criteria_json(config.acceptance_criteria.as_deref(), "acceptance_criteria")?;
+    criteria::parse_criteria_json(
+        config.required_keep_criteria.as_deref(),
+        "required_keep_criteria",
+    )?;
+    if let Some(verify_cmd) = &config.verify {
+        verify::screen_command(verify_cmd).context("unsafe verify in .autoresearch.toml")?;
+    }
+    if let Some(guard_cmd) = &config.guard {
+        verify::screen_command(guard_cmd).context("unsafe guard in .autoresearch.toml")?;
+    }
+    Ok(())
 }
 
 // ── Init ──────────────────────────────────────────────────────────────
@@ -1046,10 +1108,8 @@ fn cmd_init(
 }
 
 fn load_project_config(workspace: &Path, config_path: Option<PathBuf>) -> Result<ProjectConfig> {
-    let (path, required) = match config_path {
-        Some(path) => (resolve_workspace_path(workspace, path), true),
-        None => (workspace.join(".autoresearch.toml"), false),
-    };
+    let required = config_path.is_some();
+    let path = resolve_project_config_path(workspace, config_path);
 
     if !path.exists() {
         if required {
@@ -1061,6 +1121,13 @@ fn load_project_config(workspace: &Path, config_path: Option<PathBuf>) -> Result
     let content = std::fs::read_to_string(&path)
         .with_context(|| format!("failed to read {}", path.display()))?;
     toml::from_str(&content).with_context(|| format!("failed to parse {}", path.display()))
+}
+
+fn resolve_project_config_path(workspace: &Path, config_path: Option<PathBuf>) -> PathBuf {
+    match config_path {
+        Some(path) => resolve_workspace_path(workspace, path),
+        None => workspace.join(".autoresearch.toml"),
+    }
 }
 
 fn existing_core_run_artifacts(workspace: &Path) -> Vec<String> {

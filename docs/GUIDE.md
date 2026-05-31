@@ -37,6 +37,7 @@ Use `autoresearch runtime run` for supervised background Codex sessions and `aut
 Use `autoresearch completions <bash|zsh|fish|elvish|powershell>` to generate shell completions.
 Use `autoresearch manpages --output-dir man/man1` to generate a local `autoresearch.1` manual page.
 Use `autoresearch config template --output .autoresearch.toml` to write a starter project defaults file.
+Use `autoresearch config validate` to parse defaults, validate options, and screen configured commands without running them.
 
 ## Project Defaults
 
@@ -64,6 +65,7 @@ Generate a starter file:
 
 ```bash
 autoresearch config template --output .autoresearch.toml
+autoresearch config validate
 ```
 
 ## Run Artifacts

@@ -109,6 +109,49 @@ fn test_config_template_writes_without_overwrite() {
         .stderr(predicate::str::contains("failed to create"));
 }
 
+#[test]
+fn test_config_validate_accepts_safe_config() {
+    let dir = TempDir::new().unwrap();
+    let path = dir.path().join(".autoresearch.toml");
+    std::fs::write(
+        &path,
+        r#"
+goal = "Reduce warnings"
+scope = ["src/**/*.rs"]
+metric = "warning count"
+direction = "lower"
+verify = "echo 0"
+guard = "cargo fmt -- --check"
+iterations = 2
+format = "scalar"
+rollback = "revert"
+"#,
+    )
+    .unwrap();
+
+    cmd()
+        .args(["config", "validate", "--path", path.to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"valid\":true"))
+        .stdout(predicate::str::contains(".autoresearch.toml"));
+}
+
+#[test]
+fn test_config_validate_rejects_invalid_direction() {
+    let dir = TempDir::new().unwrap();
+    let path = dir.path().join(".autoresearch.toml");
+    std::fs::write(&path, "direction = \"sideways\"\nverify = \"echo 0\"\n").unwrap();
+
+    cmd()
+        .args(["config", "validate", "--path", path.to_str().unwrap()])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "invalid direction in .autoresearch.toml",
+        ));
+}
+
 // ── Screen Command ───────────────────────────────────────────────────
 
 #[test]

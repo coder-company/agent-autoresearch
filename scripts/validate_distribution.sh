@@ -152,6 +152,9 @@ require_grep '\.autoresearch\.toml' docs/GUIDE.md
 require_grep 'autoresearch config template' README.md
 require_grep 'autoresearch config template' docs/GUIDE.md
 require_grep 'autoresearch config template' docs/INSTALL.md
+require_grep 'autoresearch config validate' README.md
+require_grep 'autoresearch config validate' docs/GUIDE.md
+require_grep 'autoresearch config validate' docs/INSTALL.md
 require_grep 'Configuration file \(`\.autoresearch\.toml`\) for project-level defaults' docs/development-roadmap.md
 require_grep '\$autoresearch exec' guide/autoresearch-codex.md
 require_grep 'Claude Code, Codex, and OpenCode' README.md
