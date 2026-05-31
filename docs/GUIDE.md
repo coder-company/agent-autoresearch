@@ -92,6 +92,7 @@ Use `autoresearch plan --goal <goal> --format json` to get a launch-ready sugges
 Native artifact generators default to ignored `autoresearch-results/<mode>/` paths; pass `--output` or `--output-dir` only when you intentionally want a different artifact location.
 Use `autoresearch debug --symptom <failure> --scope <glob>` to write a hypothesis-driven investigation bundle with summary, findings, eliminated hypotheses, TSV, and handoff JSON.
 Add `--fix` or `--chain <targets>` to `autoresearch debug` to record downstream chain metadata in the debug handoff.
+Use `autoresearch debug --depth deep --severity high` to record investigation budget and severity filter metadata.
 Use `autoresearch fix --target <verify-command> --scope <glob>` to write a repair-plan bundle under `autoresearch-results/fix` with priority order, results TSV, and handoff JSON.
 Use `autoresearch fix --from-debug` to import the latest debug handoff scope, symptom, and finding count into the repair plan.
 Use `autoresearch fix --chain <targets> --evals` to record downstream handoff and checkpoint propagation metadata.

@@ -9,7 +9,7 @@ autoresearch init --verify "<cmd>" --direction <higher|lower>
 autoresearch init --environment-summary auto --verify "<cmd>" --direction <higher|lower>
 autoresearch init --companion-repo-scope ../frontend='src/**/*.ts' ...
 autoresearch plan --goal "reduce any types" --format json
-autoresearch debug --symptom "API returns 500" --scope "src/**/*.rs"
+autoresearch debug --symptom "API returns 500" --scope "src/**/*.rs" --depth deep --severity high
 autoresearch fix --target "npx tsc --noEmit" --scope "src/**/*.ts" --category type --chain learn --evals
 autoresearch improve --goal "Improve onboarding activation" --icp "Developer tools teams" --depth deep --evals
 autoresearch prd --title "Improve onboarding" --problem "New users stall before first run"
@@ -31,6 +31,7 @@ autoresearch scope expand --format json
 Native artifact generators default to ignored `autoresearch-results/<mode>/` paths. Use explicit output flags only for intentional non-default locations.
 `debug` writes a hypothesis-driven investigation bundle with summary, findings, eliminated hypotheses, debug-results TSV, and handoff JSON.
 `debug --fix` records `fix` as the next handoff target. `debug --chain <targets>` records comma-separated downstream targets plus eval propagation metadata when requested.
+`debug --depth <level> --severity <level>` records investigation budget and severity filter metadata in the summary and handoff.
 `fix` writes a repair-plan artifact bundle under `autoresearch-results/fix` with priority order, fix-results TSV, and handoff JSON.
 `fix --from-debug` imports the latest debug handoff scope, symptom, and finding count before writing the repair-plan bundle.
 `fix --chain <targets> --evals` records comma-separated downstream targets and checkpoint propagation metadata in handoff JSON.

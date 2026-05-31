@@ -918,6 +918,46 @@ fn test_debug_writes_investigation_artifact_bundle() {
 }
 
 #[test]
+fn test_debug_depth_and_severity_are_recorded() {
+    let dir = TempDir::new().unwrap();
+    let output_dir = dir.path().join("debug/api-auth");
+
+    cmd()
+        .args([
+            "debug",
+            "--symptom",
+            "API auth bypass",
+            "--scope",
+            "src/**/*.rs",
+            "--technique",
+            "pattern-search",
+            "--depth",
+            "deep",
+            "--severity",
+            "high",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"depth\":\"deep\""))
+        .stdout(predicate::str::contains("\"iteration_budget\":30"))
+        .stdout(predicate::str::contains("\"severity\":\"HIGH\""));
+
+    let summary = std::fs::read_to_string(output_dir.join("summary.md")).unwrap();
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+
+    assert!(summary.contains("- Depth: deep"));
+    assert!(summary.contains("- Iteration budget: 30"));
+    assert!(summary.contains("- Severity filter: HIGH"));
+    assert!(handoff.contains("\"depth\": \"deep\""));
+    assert!(handoff.contains("\"iteration_budget\": 30"));
+    assert!(handoff.contains("\"severity\": \"HIGH\""));
+}
+
+#[test]
 fn test_debug_fix_flag_writes_chain_handoff() {
     let dir = TempDir::new().unwrap();
     let output_dir = dir.path().join("autoresearch-results/debug/api-500");

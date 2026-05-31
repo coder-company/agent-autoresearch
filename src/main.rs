@@ -684,6 +684,12 @@ enum Commands {
         /// Investigation technique to seed
         #[arg(long, default_value = "trace")]
         technique: String,
+        /// Investigation depth: quick, standard, or deep
+        #[arg(long, default_value = "standard")]
+        depth: String,
+        /// Severity filter: critical, high, medium, low, or info
+        #[arg(long)]
+        severity: Option<String>,
         /// Chain into fix mode after writing debug findings
         #[arg(long)]
         fix: bool,
@@ -1596,6 +1602,8 @@ fn main() -> Result<()> {
             symptom,
             scope,
             technique,
+            depth,
+            severity,
             fix,
             chain,
             evals,
@@ -1606,6 +1614,8 @@ fn main() -> Result<()> {
             &symptom,
             scope,
             &technique,
+            &depth,
+            severity,
             fix,
             chain,
             evals,
@@ -3372,11 +3382,38 @@ fn debug_phase_label(phase: DebugPhase) -> &'static str {
     }
 }
 
+#[derive(Debug, Clone)]
+struct DebugProfile {
+    depth: String,
+    iteration_budget: u32,
+    severity: Option<Severity>,
+}
+
+fn parse_debug_depth(value: &str) -> Result<(&'static str, u32)> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "quick" | "shallow" => Ok(("quick", 5)),
+        "standard" | "normal" => Ok(("standard", 15)),
+        "deep" | "comprehensive" => Ok(("deep", 30)),
+        other => anyhow::bail!("Invalid debug depth {other:?}; use quick, standard, or deep"),
+    }
+}
+
+fn resolve_debug_profile(depth: &str, severity: Option<&str>) -> Result<DebugProfile> {
+    let (depth, iteration_budget) = parse_debug_depth(depth)?;
+    let severity = parse_security_severity(severity, "--severity")?;
+    Ok(DebugProfile {
+        depth: depth.to_string(),
+        iteration_budget,
+        severity,
+    })
+}
+
 fn render_debug_summary(
     symptom: &str,
     technique: &str,
     scope: &[String],
     files: &[String],
+    profile: &DebugProfile,
 ) -> String {
     let scope_lines = if scope.is_empty() {
         "- DECISION NEEDED: identify investigation scope.".to_string()
@@ -3391,6 +3428,17 @@ fn render_debug_summary(
     writeln!(out, "# Debug Summary: {symptom}").unwrap();
     writeln!(out).unwrap();
     writeln!(out, "- Technique seed: {technique}").unwrap();
+    writeln!(out, "- Depth: {}", profile.depth).unwrap();
+    writeln!(out, "- Iteration budget: {}", profile.iteration_budget).unwrap();
+    writeln!(
+        out,
+        "- Severity filter: {}",
+        profile
+            .severity
+            .map(|severity| severity.label())
+            .unwrap_or("all")
+    )
+    .unwrap();
     writeln!(out, "- Files scanned: {}", files.len()).unwrap();
     writeln!(out, "- Confirmed findings: 0").unwrap();
     writeln!(out).unwrap();
@@ -3475,6 +3523,8 @@ fn cmd_debug(
     symptom: &str,
     scope: Vec<String>,
     technique: &str,
+    depth: &str,
+    severity: Option<String>,
     fix: bool,
     chain: Option<String>,
     evals: bool,
@@ -3483,6 +3533,7 @@ fn cmd_debug(
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     validate_chain_evals_flags("debug", evals, evals_interval)?;
+    let profile = resolve_debug_profile(depth, severity.as_deref())?;
     let forced_targets = if fix { &["fix"][..] } else { &[][..] };
     let chain_targets = chain_targets_with_forced(chain.as_deref(), forced_targets)?;
     let workspace = resolve_workspace_root(cwd);
@@ -3499,7 +3550,7 @@ fn cmd_debug(
         .with_context(|| format!("failed to create {}", output_dir.display()))?;
     write_text_file(
         &output_dir.join("summary.md"),
-        &render_debug_summary(symptom, technique, &scope, &files),
+        &render_debug_summary(symptom, technique, &scope, &files, &profile),
     )?;
     write_text_file(
         &output_dir.join("findings.md"),
@@ -3527,6 +3578,9 @@ fn cmd_debug(
             "scope": scope,
             "symptom": symptom,
             "technique": technique,
+            "depth": profile.depth.as_str(),
+            "iteration_budget": profile.iteration_budget,
+            "severity": profile.severity.map(|severity| severity.label()),
             "files_scanned": files.len(),
         },
         "chain": chain_targets,
@@ -3543,6 +3597,9 @@ fn cmd_debug(
             "output_dir": output_dir.display().to_string(),
             "symptom": symptom,
             "technique": technique,
+            "depth": profile.depth.as_str(),
+            "iteration_budget": profile.iteration_budget,
+            "severity": profile.severity.map(|severity| severity.label()),
             "phases": DebugPhase::all().len(),
             "files_scanned": files.len(),
         })
