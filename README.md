@@ -213,6 +213,7 @@ Covered in detail in the [guide](guide/):
 - **Predict review controls** — `autoresearch predict --depth deep --adversarial --fail-on high` records review profile and CI gate metadata
 - **Reason artifact generation** — `autoresearch reason --question ...` writes an adversarial candidate debate with a blind-judge rubric
 - **Probe artifact generation** — `autoresearch probe --subject ...` writes eight-persona requirement questions and constraint slots
+- **Probe interrogation controls** — `autoresearch probe --mode autonomous --depth deep --adversarial` records depth, persona count, and saturation settings
 - **Learn artifact generation** — `autoresearch learn --mode summarize --scope ...` writes summary, validation, TSV, and handoff documentation artifacts
 - **Config template** — `autoresearch config template --output .autoresearch.toml` writes a starter project defaults file
 - **Config validation** — `autoresearch config validate` checks project defaults without running verify or guard

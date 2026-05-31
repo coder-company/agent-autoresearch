@@ -45,6 +45,7 @@ Native artifact generators default to ignored `autoresearch-results/<mode>/` pat
 `reason` writes an adversarial debate artifact with candidate solutions, blind judge rubric, and convergence criteria.
 `reason --chain <targets>` writes a sidecar handoff with debate context and comma-separated downstream targets.
 `probe` writes eight persona-driven requirement questions, constraint slots, and the saturation rule used to decide when enough constraints have been found.
+`probe --mode autonomous --depth <level> --adversarial` records interrogation profile, persona count, rounds, and saturation threshold metadata.
 `probe --chain <targets>` writes a sidecar handoff with constraint context and comma-separated downstream targets.
 `learn` writes documentation summary artifacts: summary, validation report, learn-results TSV, and handoff JSON.
 

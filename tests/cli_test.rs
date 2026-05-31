@@ -1276,7 +1276,7 @@ fn test_probe_writes_requirement_interrogation_artifact() {
         .assert()
         .success()
         .stdout(predicate::str::contains("\"status\":\"written\""))
-        .stdout(predicate::str::contains("\"personas\":8"));
+        .stdout(predicate::str::contains("\"personas\":6"));
 
     let report = std::fs::read_to_string(output).unwrap();
     assert!(report.contains("# Requirement Probe: Payment retry workflow"));
@@ -1284,6 +1284,61 @@ fn test_probe_writes_requirement_interrogation_artifact() {
     assert!(report.contains("Compliance Officer"));
     assert!(report.contains("Saturation Rule"));
     assert!(report.contains("src/payments/**"));
+}
+
+#[test]
+fn test_probe_options_are_recorded() {
+    let dir = TempDir::new().unwrap();
+    let output = dir
+        .path()
+        .join("autoresearch-results/probe/payment-probe.md");
+
+    cmd()
+        .args([
+            "probe",
+            "--subject",
+            "Payment retry workflow",
+            "--scope",
+            "src/payments/**",
+            "--mode",
+            "autonomous",
+            "--depth",
+            "deep",
+            "--personas",
+            "8",
+            "--adversarial",
+            "--saturation-threshold",
+            "3",
+            "--chain",
+            "plan",
+            "--output",
+            output.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"mode\":\"autonomous\""))
+        .stdout(predicate::str::contains("\"depth\":\"deep\""))
+        .stdout(predicate::str::contains("\"rounds\":30"))
+        .stdout(predicate::str::contains("\"personas\":8"))
+        .stdout(predicate::str::contains("\"adversarial\":true"))
+        .stdout(predicate::str::contains("\"saturation_threshold\":3"));
+
+    let report = std::fs::read_to_string(&output).unwrap();
+    let handoff = std::fs::read_to_string(output.parent().unwrap().join("handoff.json")).unwrap();
+
+    assert!(report.contains("## Probe Profile"));
+    assert!(report.contains("- Mode: autonomous"));
+    assert!(report.contains("- Depth: deep"));
+    assert!(report.contains("- Active personas: 8"));
+    assert!(report.contains("- Saturation threshold: 3"));
+    assert!(handoff.contains("\"mode\": \"autonomous\""));
+    assert!(handoff.contains("\"depth\": \"deep\""));
+    assert!(handoff.contains("\"rounds\": 30"));
+    assert!(handoff.contains("\"personas\": 8"));
+    assert!(handoff.contains("\"adversarial\": true"));
+    assert!(handoff.contains("\"saturation_threshold\": 3"));
 }
 
 #[test]

@@ -79,7 +79,7 @@ Each round extracts atomic constraints from answers. When fewer than N net-new c
 ## Output
 
 ```
-autoresearch/probe-250527-1430/
+autoresearch-results/probe/probe-250527-1430/
 ├── constraints.md        # Full registry organized by category
 ├── conflicts.md          # Unresolved contradictions
 └── summary.md            # Includes ready-to-run autoresearch config

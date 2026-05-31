@@ -106,6 +106,7 @@ Use `autoresearch predict --proposal <change> --chain debug` to record the revie
 Use `autoresearch reason --question <decision>` to write an adversarial debate artifact with candidate solutions, blind judge rubric, and convergence criteria.
 Use `autoresearch reason --question <decision> --chain predict,fix` to pass the selected debate context into downstream review or repair.
 Use `autoresearch probe --subject <requirement>` to write eight persona-driven questions, constraint slots, and a saturation rule before implementation.
+Use `autoresearch probe --subject <requirement> --mode autonomous --depth deep --adversarial` to record interrogation profile and saturation metadata.
 Use `autoresearch probe --subject <requirement> --chain plan` to pass discovered constraints into planning through handoff metadata.
 Use `autoresearch learn --mode <init|update|check|summarize> --scope <glob>` to write documentation summary, validation, TSV, and handoff artifacts.
 Use `autoresearch api --format json` to inspect the stable command/flag manifest and semver policy used by wrappers and agents.

@@ -797,6 +797,21 @@ enum Commands {
         /// Relevant implementation scope. Repeatable.
         #[arg(long)]
         scope: Vec<String>,
+        /// Answer mode: interactive or autonomous
+        #[arg(long, default_value = "interactive")]
+        mode: String,
+        /// Probe depth: shallow, standard, or deep
+        #[arg(long, default_value = "standard")]
+        depth: String,
+        /// Number of active personas, 3-8
+        #[arg(long)]
+        personas: Option<u8>,
+        /// Put hostile personas first
+        #[arg(long)]
+        adversarial: bool,
+        /// Net-new constraint threshold for saturation
+        #[arg(long)]
+        saturation_threshold: Option<u8>,
         /// Comma-separated downstream command targets to record in handoff.json
         #[arg(long)]
         chain: Option<String>,
@@ -1552,12 +1567,30 @@ fn main() -> Result<()> {
         Commands::Probe {
             subject,
             scope,
+            mode,
+            depth,
+            personas,
+            adversarial,
+            saturation_threshold,
             chain,
             evals,
             evals_interval,
             output,
             cwd,
-        } => cmd_probe(&subject, scope, chain, evals, evals_interval, output, cwd),
+        } => cmd_probe(
+            &subject,
+            scope,
+            mode,
+            depth,
+            personas,
+            adversarial,
+            saturation_threshold,
+            chain,
+            evals,
+            evals_interval,
+            output,
+            cwd,
+        ),
 
         Commands::Learn {
             mode,
@@ -4104,7 +4137,61 @@ fn probe_persona_question(persona: ProbePersona, subject: &str) -> String {
     }
 }
 
-fn render_probe_markdown(subject: &str, scope: &[String]) -> String {
+#[derive(Debug, Clone)]
+struct ProbeProfile {
+    mode: String,
+    depth: String,
+    rounds: u8,
+    personas: u8,
+    adversarial: bool,
+    saturation_threshold: u8,
+}
+
+fn parse_probe_mode(value: &str) -> Result<&'static str> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "interactive" | "ask" => Ok("interactive"),
+        "autonomous" | "auto" => Ok("autonomous"),
+        other => anyhow::bail!("Invalid probe mode {other:?}; use interactive or autonomous"),
+    }
+}
+
+fn parse_probe_depth(value: &str) -> Result<(&'static str, u8)> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "shallow" | "quick" => Ok(("shallow", 5)),
+        "standard" | "normal" => Ok(("standard", 15)),
+        "deep" | "comprehensive" => Ok(("deep", 30)),
+        other => anyhow::bail!("Invalid probe depth {other:?}; use shallow, standard, or deep"),
+    }
+}
+
+fn resolve_probe_profile(
+    mode: &str,
+    depth: &str,
+    personas: Option<u8>,
+    adversarial: bool,
+    saturation_threshold: Option<u8>,
+) -> Result<ProbeProfile> {
+    let mode = parse_probe_mode(mode)?;
+    let (depth, rounds) = parse_probe_depth(depth)?;
+    let personas = personas.unwrap_or(6);
+    if !(3..=8).contains(&personas) {
+        anyhow::bail!("probe personas must be between 3 and 8");
+    }
+    let saturation_threshold = saturation_threshold.unwrap_or(2);
+    if saturation_threshold == 0 {
+        anyhow::bail!("probe saturation threshold must be greater than zero");
+    }
+    Ok(ProbeProfile {
+        mode: mode.to_string(),
+        depth: depth.to_string(),
+        rounds,
+        personas,
+        adversarial,
+        saturation_threshold,
+    })
+}
+
+fn render_probe_markdown(subject: &str, scope: &[String], profile: &ProbeProfile) -> String {
     let mut out = String::new();
     let scope_items = if scope.is_empty() {
         vec!["DECISION NEEDED: identify implementation scope.".to_string()]
@@ -4122,6 +4209,20 @@ fn render_probe_markdown(subject: &str, scope: &[String]) -> String {
     writeln!(
         out,
         "> Auto-generated requirement interrogation artifact. Answer these before turning the work into an autoresearch loop."
+    )
+    .unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Probe Profile").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "- Mode: {}", profile.mode).unwrap();
+    writeln!(out, "- Depth: {}", profile.depth).unwrap();
+    writeln!(out, "- Rounds: {}", profile.rounds).unwrap();
+    writeln!(out, "- Active personas: {}", profile.personas).unwrap();
+    writeln!(out, "- Adversarial: {}", profile.adversarial).unwrap();
+    writeln!(
+        out,
+        "- Saturation threshold: {}",
+        profile.saturation_threshold
     )
     .unwrap();
     writeln!(out).unwrap();
@@ -4148,7 +4249,8 @@ fn render_probe_markdown(subject: &str, scope: &[String]) -> String {
     writeln!(out).unwrap();
     writeln!(
         out,
-        "- Stop probing after 2 consecutive rounds add zero new constraints."
+        "- Stop probing after {} consecutive rounds add fewer than {} new constraints.",
+        profile.saturation_threshold, profile.saturation_threshold
     )
     .unwrap();
     writeln!(
@@ -4167,6 +4269,11 @@ fn render_probe_markdown(subject: &str, scope: &[String]) -> String {
 fn cmd_probe(
     subject: &str,
     scope: Vec<String>,
+    mode: String,
+    depth: String,
+    personas: Option<u8>,
+    adversarial: bool,
+    saturation_threshold: Option<u8>,
     chain: Option<String>,
     evals: bool,
     evals_interval: Option<u32>,
@@ -4174,6 +4281,8 @@ fn cmd_probe(
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     validate_chain_evals_flags("probe", evals, evals_interval)?;
+    let profile =
+        resolve_probe_profile(&mode, &depth, personas, adversarial, saturation_threshold)?;
     let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
     let workspace = resolve_workspace_root(cwd);
     let output = output.unwrap_or_else(|| {
@@ -4181,7 +4290,7 @@ fn cmd_probe(
     });
     let output = resolve_workspace_path(&workspace, output);
 
-    let markdown = render_probe_markdown(subject, &scope);
+    let markdown = render_probe_markdown(subject, &scope, &profile);
     write_text_file(&output, &markdown)?;
     let handoff_path = if !chain_targets.is_empty() || evals {
         let handoff_path = output
@@ -4201,8 +4310,14 @@ fn cmd_probe(
             "config": {
                 "subject": subject,
                 "scope": scope,
-                "personas": ProbePersona::all().len(),
-                "saturation_rule": "2 consecutive rounds with zero new constraints",
+                "mode": profile.mode.clone(),
+                "depth": profile.depth.clone(),
+                "rounds": profile.rounds,
+                "personas": profile.personas,
+                "adversarial": profile.adversarial,
+                "saturation_threshold": profile.saturation_threshold,
+                "built_in_personas": ProbePersona::all().len(),
+                "saturation_rule": format!("{} consecutive rounds below {} new constraints", profile.saturation_threshold, profile.saturation_threshold),
             },
             "chain": chain_targets,
             "next_target": next_target,
@@ -4222,8 +4337,13 @@ fn cmd_probe(
             "path": output.display().to_string(),
             "handoff_path": handoff_path.as_ref().map(|path| path.display().to_string()),
             "subject": subject,
-            "personas": ProbePersona::all().len(),
-            "saturation_rule": "2 consecutive rounds with zero new constraints",
+            "mode": profile.mode.clone(),
+            "depth": profile.depth.clone(),
+            "rounds": profile.rounds,
+            "personas": profile.personas,
+            "adversarial": profile.adversarial,
+            "saturation_threshold": profile.saturation_threshold,
+            "saturation_rule": format!("{} consecutive rounds below {} new constraints", profile.saturation_threshold, profile.saturation_threshold),
         })
     );
     Ok(())
