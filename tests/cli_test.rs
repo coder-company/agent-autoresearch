@@ -1529,6 +1529,51 @@ fn test_reason_chain_writes_handoff_sidecar() {
 }
 
 #[test]
+fn test_reason_judge_controls_are_recorded() {
+    let dir = TempDir::new().unwrap();
+    let output = dir
+        .path()
+        .join("autoresearch-results/reason/storage-controls.md");
+
+    cmd()
+        .args([
+            "reason",
+            "--question",
+            "Should we replace the storage layer",
+            "--mode",
+            "convergent",
+            "--domain",
+            "software",
+            "--judges",
+            "7",
+            "--convergence",
+            "4",
+            "--judge-personas",
+            "architect,operator",
+            "--temperature",
+            "0.2",
+            "--output",
+            output.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"judges\":7"))
+        .stdout(predicate::str::contains("\"convergence\":4"))
+        .stdout(predicate::str::contains("\"synthesis\":true"))
+        .stdout(predicate::str::contains("\"temperature\":\"0.2\""));
+
+    let report = std::fs::read_to_string(&output).unwrap();
+
+    assert!(report.contains("- Panel size: 7 blind judges"));
+    assert!(report.contains("- Convergence threshold: 4 matching winning rounds"));
+    assert!(report.contains("- Synthesis enabled: true"));
+    assert!(report.contains("- Temperature hint: 0.2"));
+    assert!(report.contains("- Judge personas: architect, operator"));
+}
+
+#[test]
 fn test_probe_writes_requirement_interrogation_artifact() {
     let dir = TempDir::new().unwrap();
     let output = dir.path().join("probe/payment-probe.md");

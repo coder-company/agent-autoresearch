@@ -38,7 +38,7 @@ The idea was simple enough that several people generalized it:
 | Ship output | Manual release | Checklist + ship logs | Protocol guidance | **`autoresearch ship` writes 8-phase checklist bundles with rollback, monitor, and chain metadata** |
 | Scenario output | No | Scenario markdown reports | Protocol guidance | **`autoresearch scenario` writes 12-dimension edge-case artifacts** |
 | Predict output | No | Persona debate reports | Protocol guidance | **`autoresearch predict` writes five-persona review artifacts** |
-| Reason output | No | Adversarial reasoning reports | Protocol guidance | **`autoresearch reason` writes candidate debate artifacts** |
+| Reason output | No | Adversarial reasoning reports | Protocol guidance | **`autoresearch reason` writes candidate debate artifacts with judge controls** |
 | Probe output | No | Requirement interrogation reports | Protocol guidance | **`autoresearch probe` writes eight-persona constraint artifacts** |
 | Learn output | No | Documentation reports | Protocol guidance | **`autoresearch learn` writes summary, validation, TSV, handoff, profile, and chain metadata** |
 | Background runs | No | No | Yes (daemon) | **Yes (`runtime run/start/status/supervise/stop`)** |

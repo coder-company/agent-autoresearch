@@ -217,6 +217,7 @@ Covered in detail in the [guide](guide/):
 - **Predict artifact generation** — `autoresearch predict --proposal ...` writes a five-persona pre-implementation review
 - **Predict review controls** — `autoresearch predict --depth deep --adversarial --fail-on high` records review profile and CI gate metadata
 - **Reason artifact generation** — `autoresearch reason --question ...` writes an adversarial candidate debate with a blind-judge rubric
+- **Reason judge controls** — `autoresearch reason --judges 7 --convergence 4 --temperature 0.2` records panel, convergence, synthesis, and generation hints
 - **Probe artifact generation** — `autoresearch probe --subject ...` writes eight-persona requirement questions and constraint slots
 - **Probe interrogation controls** — `autoresearch probe --mode autonomous --depth deep --adversarial` records depth, persona count, and saturation settings
 - **Learn artifact generation** — `autoresearch learn --mode summarize --scope ... --depth comprehensive --evals` writes summary, validation, TSV, and handoff documentation artifacts with scan and chain metadata

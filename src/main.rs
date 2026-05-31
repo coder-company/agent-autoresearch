@@ -835,6 +835,21 @@ enum Commands {
         /// Relevant implementation scope. Repeatable.
         #[arg(long)]
         scope: Vec<String>,
+        /// Blind judge count
+        #[arg(long)]
+        judges: Option<u8>,
+        /// Stop after the incumbent wins this many consecutive rounds
+        #[arg(long)]
+        convergence: Option<u8>,
+        /// Comma-separated custom judge persona names
+        #[arg(long)]
+        judge_personas: Option<String>,
+        /// Skip synthesis and run pure debate
+        #[arg(long)]
+        no_synthesis: bool,
+        /// Generation temperature hint
+        #[arg(long)]
+        temperature: Option<String>,
         /// Comma-separated downstream command targets to record in handoff.json
         #[arg(long)]
         chain: Option<String>,
@@ -1707,6 +1722,11 @@ fn main() -> Result<()> {
             mode,
             domain,
             scope,
+            judges,
+            convergence,
+            judge_personas,
+            no_synthesis,
+            temperature,
             chain,
             evals,
             evals_interval,
@@ -1717,6 +1737,11 @@ fn main() -> Result<()> {
             &mode,
             &domain,
             scope,
+            judges,
+            convergence,
+            judge_personas,
+            no_synthesis,
+            temperature,
             chain,
             evals,
             evals_interval,
@@ -4522,11 +4547,61 @@ fn reason_candidate_rows(
     }
 }
 
+#[derive(Debug, Clone)]
+struct ReasonProfile {
+    judges: u8,
+    convergence: u8,
+    judge_personas: Vec<String>,
+    synthesis: bool,
+    temperature: Option<String>,
+}
+
+fn parse_reason_judge_personas(value: Option<&str>) -> Vec<String> {
+    value
+        .unwrap_or("")
+        .split(',')
+        .map(str::trim)
+        .filter(|persona| !persona.is_empty())
+        .map(ToString::to_string)
+        .collect()
+}
+
+fn resolve_reason_profile(
+    mode: ReasoningMode,
+    judges: Option<u8>,
+    convergence: Option<u8>,
+    judge_personas: Option<&str>,
+    no_synthesis: bool,
+    temperature: Option<String>,
+) -> Result<ReasonProfile> {
+    let judges = judges.unwrap_or(3);
+    if !(3..=7).contains(&judges) {
+        anyhow::bail!("reason judges must be between 3 and 7");
+    }
+    let convergence = convergence.unwrap_or(3);
+    if convergence == 0 {
+        anyhow::bail!("reason convergence must be greater than zero");
+    }
+    if let Some(value) = temperature.as_deref() {
+        value
+            .parse::<f32>()
+            .with_context(|| format!("invalid reason temperature {value:?}"))?;
+    }
+    Ok(ReasonProfile {
+        judges,
+        convergence,
+        judge_personas: parse_reason_judge_personas(judge_personas),
+        synthesis: !no_synthesis && mode != ReasoningMode::Debate,
+        temperature,
+    })
+}
+
 fn render_reason_markdown(
     question: &str,
     mode: ReasoningMode,
     domain: ReasonDomain,
     scope: &[String],
+    profile: &ReasonProfile,
 ) -> String {
     let mut out = String::new();
     let scope_items = if scope.is_empty() {
@@ -4552,8 +4627,30 @@ fn render_reason_markdown(
     writeln!(out).unwrap();
     writeln!(out, "- Mode: {}", reasoning_mode_label(mode)).unwrap();
     writeln!(out, "- Domain: {}", domain.label()).unwrap();
-    writeln!(out, "- Panel size: 5 blind judges").unwrap();
-    writeln!(out, "- Convergence threshold: 2 matching winning rounds").unwrap();
+    writeln!(out, "- Panel size: {} blind judges", profile.judges).unwrap();
+    writeln!(
+        out,
+        "- Convergence threshold: {} matching winning rounds",
+        profile.convergence
+    )
+    .unwrap();
+    writeln!(out, "- Synthesis enabled: {}", profile.synthesis).unwrap();
+    writeln!(
+        out,
+        "- Temperature hint: {}",
+        profile.temperature.as_deref().unwrap_or("default")
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "- Judge personas: {}",
+        if profile.judge_personas.is_empty() {
+            "default blind panel".to_string()
+        } else {
+            profile.judge_personas.join(", ")
+        }
+    )
+    .unwrap();
     writeln!(out).unwrap();
     writeln!(out, "## Scope").unwrap();
     writeln!(out).unwrap();
@@ -4606,6 +4703,11 @@ fn cmd_reason(
     mode: &str,
     domain: &str,
     scope: Vec<String>,
+    judges: Option<u8>,
+    convergence: Option<u8>,
+    judge_personas: Option<String>,
+    no_synthesis: bool,
+    temperature: Option<String>,
     chain: Option<String>,
     evals: bool,
     evals_interval: Option<u32>,
@@ -4616,13 +4718,21 @@ fn cmd_reason(
     let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
     let mode = parse_reasoning_mode(mode)?;
     let domain = parse_reason_domain(domain)?;
+    let profile = resolve_reason_profile(
+        mode,
+        judges,
+        convergence,
+        judge_personas.as_deref(),
+        no_synthesis,
+        temperature,
+    )?;
     let workspace = resolve_workspace_root(cwd);
     let output = output.unwrap_or_else(|| {
         default_artifact_path("reason", format!("reason-{}.md", slugify(question)))
     });
     let output = resolve_workspace_path(&workspace, output);
 
-    let markdown = render_reason_markdown(question, mode, domain, &scope);
+    let markdown = render_reason_markdown(question, mode, domain, &scope, &profile);
     write_text_file(&output, &markdown)?;
     let handoff_path = if !chain_targets.is_empty() || evals {
         let handoff_path = output
@@ -4644,6 +4754,11 @@ fn cmd_reason(
                 "mode": reasoning_mode_label(mode).to_ascii_lowercase(),
                 "domain": domain.label(),
                 "scope": scope,
+                "judges": profile.judges,
+                "convergence": profile.convergence,
+                "judge_personas": profile.judge_personas.clone(),
+                "synthesis": profile.synthesis,
+                "temperature": profile.temperature.clone(),
                 "candidates": 3,
             },
             "chain": chain_targets,
@@ -4666,6 +4781,11 @@ fn cmd_reason(
             "question": question,
             "mode": reasoning_mode_label(mode).to_ascii_lowercase(),
             "domain": domain.label(),
+            "judges": profile.judges,
+            "convergence": profile.convergence,
+            "judge_personas": profile.judge_personas.clone(),
+            "synthesis": profile.synthesis,
+            "temperature": profile.temperature.clone(),
             "candidates": 3,
         })
     );
