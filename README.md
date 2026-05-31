@@ -199,6 +199,7 @@ Covered in detail in the [guide](guide/):
 - **Man pages** — `autoresearch manpages --output-dir man/man1` writes a local `autoresearch.1` page for packages and offline docs
 - **Project defaults** — `.autoresearch.toml` stores repeatable init settings such as goal, scope, metric, verify, guard, and iteration cap
 - **Native planning** — `autoresearch plan --goal "..." --format json` suggests scope, metric, direction, verify, guard, and iteration count from repo tooling
+- **PRD artifact generation** — `autoresearch prd --title ... --problem ...` writes improve-mode PRDs with decision markers and ready-to-run config blocks
 - **Config template** — `autoresearch config template --output .autoresearch.toml` writes a starter project defaults file
 - **Config validation** — `autoresearch config validate` checks project defaults without running verify or guard
 - **Stable CLI API manifest** — `autoresearch api --format json` emits command, flag, and semver policy metadata for wrappers and agents

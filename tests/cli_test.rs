@@ -204,6 +204,7 @@ fn test_api_manifest_lists_nested_commands_and_flags() {
         .stdout(predicate::str::contains("\"runtime\""))
         .stdout(predicate::str::contains("\"start\""))
         .stdout(predicate::str::contains("\"plan\""))
+        .stdout(predicate::str::contains("\"prd\""))
         .stdout(predicate::str::contains("\"env\""))
         .stdout(predicate::str::contains("\"checkpoint\""))
         .stdout(predicate::str::contains("\"reanchor\""))
@@ -449,6 +450,44 @@ fn test_plan_recommends_rust_test_metric() {
         .stdout(predicate::str::contains("Metric: failing_tests (lower)"))
         .stdout(predicate::str::contains("Verify: cargo test"))
         .stdout(predicate::str::contains("src/**/*.rs"));
+}
+
+#[test]
+fn test_prd_writes_improvement_artifact() {
+    let dir = TempDir::new().unwrap();
+    let output = dir.path().join("docs/prd-onboarding.md");
+
+    cmd()
+        .args([
+            "prd",
+            "--title",
+            "Improve onboarding activation",
+            "--problem",
+            "New users do not reach their first successful run quickly.",
+            "--icp",
+            "Developer tools teams adopting autonomous agents",
+            "--solution",
+            "Add a guided first-run checklist with measurable setup progress.",
+            "--metric",
+            "activation_rate",
+            "--scope",
+            "src/onboarding/**",
+            "--output",
+            output.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\":\"written\""))
+        .stdout(predicate::str::contains("prd-onboarding.md"));
+
+    let prd = std::fs::read_to_string(output).unwrap();
+    assert!(prd.contains("# Improve onboarding activation"));
+    assert!(prd.contains("DECISION NEEDED"));
+    assert!(prd.contains("activation_rate"));
+    assert!(prd.contains("src/onboarding/**"));
+    assert!(prd.contains("Ready-To-Run Autoresearch Config"));
 }
 
 #[test]

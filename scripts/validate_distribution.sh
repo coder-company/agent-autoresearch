@@ -166,6 +166,11 @@ require_grep 'autoresearch plan --goal' docs/GUIDE.md
 require_grep 'autoresearch plan --goal' references/binary-operations.md
 require_grep 'Native plan command' docs/development-roadmap.md
 require_grep 'native `autoresearch plan --goal`' COMPARISON.md
+require_grep 'autoresearch prd --title' README.md
+require_grep 'autoresearch prd --title' docs/GUIDE.md
+require_grep 'autoresearch prd --title' references/binary-operations.md
+require_grep 'Native PRD generator' docs/development-roadmap.md
+require_grep '`autoresearch prd` writes' COMPARISON.md
 require_grep 'autoresearch cost --per-iteration-usd' README.md
 require_grep 'autoresearch cost --per-iteration-usd' docs/GUIDE.md
 require_grep '\[x\] Cost tracking — estimate token/API spend per iteration' docs/development-roadmap.md

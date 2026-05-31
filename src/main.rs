@@ -534,6 +534,34 @@ enum Commands {
         cwd: Option<PathBuf>,
     },
 
+    /// Generate a PRD markdown artifact for a selected improvement
+    Prd {
+        /// Improvement title
+        #[arg(long)]
+        title: String,
+        /// Problem statement tied to the target user or ICP
+        #[arg(long)]
+        problem: String,
+        /// Ideal customer profile or target user
+        #[arg(long)]
+        icp: Option<String>,
+        /// Proposed solution or mechanism
+        #[arg(long)]
+        solution: Option<String>,
+        /// Success metric to optimize
+        #[arg(long)]
+        metric: Option<String>,
+        /// Relevant implementation scope. Repeatable.
+        #[arg(long)]
+        scope: Vec<String>,
+        /// Output path. Relative paths resolve from the workspace root.
+        #[arg(long)]
+        output: Option<PathBuf>,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
     /// Generate shell completions for bash, zsh, fish, elvish, or PowerShell
     Completions {
         /// Shell to generate completions for
@@ -1114,6 +1142,17 @@ fn main() -> Result<()> {
 
         Commands::Plan { goal, format, cwd } => cmd_plan(goal, &format, cwd),
 
+        Commands::Prd {
+            title,
+            problem,
+            icp,
+            solution,
+            metric,
+            scope,
+            output,
+            cwd,
+        } => cmd_prd(&title, &problem, icp, solution, metric, scope, output, cwd),
+
         Commands::Completions { shell } => cmd_completions(shell),
         Commands::Manpages { output_dir } => cmd_manpages(&output_dir),
         Commands::Api { format } => cmd_api(&format),
@@ -1540,6 +1579,154 @@ fn cmd_plan(goal: Option<String>, format: &str, cwd: Option<PathBuf>) -> Result<
         "text" => print!("{}", render_plan_text(&out)),
         other => anyhow::bail!("Invalid plan format {other:?}; use json or text"),
     }
+    Ok(())
+}
+
+fn slugify(value: &str) -> String {
+    let mut slug = String::new();
+    let mut last_dash = false;
+    for ch in value.chars().flat_map(|ch| ch.to_lowercase()) {
+        if ch.is_ascii_alphanumeric() {
+            slug.push(ch);
+            last_dash = false;
+        } else if !last_dash && !slug.is_empty() {
+            slug.push('-');
+            last_dash = true;
+        }
+    }
+    while slug.ends_with('-') {
+        slug.pop();
+    }
+    if slug.is_empty() {
+        "improvement".to_string()
+    } else {
+        slug
+    }
+}
+
+fn render_prd_markdown(
+    title: &str,
+    problem: &str,
+    icp: Option<&str>,
+    solution: Option<&str>,
+    metric: Option<&str>,
+    scope: &[String],
+) -> String {
+    let icp = icp
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("DECISION NEEDED: define the target user or ICP.");
+    let solution = solution
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("DECISION NEEDED: choose the solution mechanism.");
+    let metric = metric
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("DECISION NEEDED: choose a mechanical success metric.");
+    let scope_items = if scope.is_empty() {
+        vec!["DECISION NEEDED: identify implementation scope.".to_string()]
+    } else {
+        scope.to_vec()
+    };
+    let scope_lines = scope_items
+        .iter()
+        .map(|item| format!("- {item}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let scope_config = scope_items.join(", ");
+
+    format!(
+        "# {title}\n\n\
+         > Auto-generated from autoresearch improve inputs. DECISION NEEDED items and low-confidence sections require human judgment.\n\n\
+         ## Problem Statement\n\n{problem}\n\n\
+         ## Target ICP\n\n{icp}\n\n\
+         ## Proposed Solution\n\n{solution}\n\n\
+         ## User Stories\n\n\
+         - As the target ICP, I want this problem reduced so my core workflow is faster or more reliable.\n\
+         - As an evaluator, I want a measurable success signal before this ships.\n\n\
+         ## Requirements\n\n\
+         ### Must Have\n\n\
+         - Address the stated problem for the target ICP.\n\
+         - Preserve existing verified behavior unless explicitly changed.\n\
+         - Expose a mechanical metric for closeout.\n\n\
+         ### Non-Goals\n\n\
+         - Broad redesigns outside the listed scope.\n\
+         - Shipping external actions without explicit approval.\n\n\
+         ## Acceptance Criteria\n\n\
+         - `{metric}` can be measured by a deterministic verify command.\n\
+         - DECISION NEEDED: define the target threshold for `{metric}`.\n\
+         - Guard checks pass after implementation.\n\n\
+         ## Technical Approach\n\n\
+         Scope:\n\n{scope_lines}\n\n\
+         Suggested starting points:\n\n\
+         - Inspect current flows and tests in the listed scope.\n\
+         - Add the smallest behavior or instrumentation needed to move `{metric}`.\n\
+         - Keep the first implementation reversible and verify-driven.\n\n\
+         ## Risks And Mitigations\n\n\
+         - Risk: optimizing the metric without improving the ICP workflow. Mitigation: keep the ICP gate explicit in review.\n\
+         - Risk: hidden regressions. Mitigation: require guard checks and focused tests.\n\
+         - Risk: uncertain tradeoff. Mitigation: mark unresolved decisions before implementation.\n\n\
+         ## Success Metrics\n\n\
+         - Primary: `{metric}`\n\
+         - Secondary: guard pass rate and absence of new blocked iterations\n\n\
+         ## Ready-To-Run Autoresearch Config\n\n\
+         ```text\n\
+         $autoresearch\n\
+         Goal: {title} - {problem}\n\
+         Scope: {scope_config}\n\
+         Metric: {metric}\n\
+         Direction: DECISION NEEDED\n\
+         Verify: DECISION NEEDED\n\
+         Guard: DECISION NEEDED\n\
+         Iterations: 20\n\
+         ```\n\n\
+         ## Open Questions\n\n\
+         - DECISION NEEDED: what exact threshold makes this shippable?\n\
+         - DECISION NEEDED: which guard command best protects adjacent behavior?\n"
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn cmd_prd(
+    title: &str,
+    problem: &str,
+    icp: Option<String>,
+    solution: Option<String>,
+    metric: Option<String>,
+    scope: Vec<String>,
+    output: Option<PathBuf>,
+    cwd: Option<PathBuf>,
+) -> Result<()> {
+    let workspace = resolve_workspace_root(cwd);
+    let output = output
+        .unwrap_or_else(|| PathBuf::from("improve").join(format!("prd-{}.md", slugify(title))));
+    let output = resolve_workspace_path(&workspace, output);
+    if let Some(parent) = output
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create {}", parent.display()))?;
+    }
+    let markdown = render_prd_markdown(
+        title,
+        problem,
+        icp.as_deref(),
+        solution.as_deref(),
+        metric.as_deref(),
+        &scope,
+    );
+    std::fs::write(&output, markdown)
+        .with_context(|| format!("failed to write {}", output.display()))?;
+    println!(
+        "{}",
+        serde_json::json!({
+            "status": "written",
+            "path": output.display().to_string(),
+            "title": title,
+        })
+    );
     Ok(())
 }
 

@@ -30,6 +30,7 @@ The idea was simple enough that several people generalized it:
 | Remembers across runs | No | Yes (lessons.md) | Yes (cross-run learning) | **Yes (lessons.md)** |
 | Health preflight | No | Markdown checklist | Helper scripts | **Native `autoresearch health` for git/artifact/disk/verify/guard/context** |
 | Goal planning | Manual prompt | `/autoresearch:plan` | Wizard guidance | **`/autoresearch:plan` + native `autoresearch plan --goal` suggestions** |
+| PRD output | No | Improve-mode PRDs | No | **`autoresearch prd` writes selected-improvement PRD artifacts** |
 | Background runs | No | No | Yes (daemon) | **Yes (`runtime run/start/status/supervise/stop`)** |
 | Parallel experiments | No | No | Yes | **Worktree workers + verified closeout + `parallel compare` A/B batches** |
 | Structured metrics | No | No | Limited | **`metrics_json`, primary key, acceptance and required-keep gates** |
