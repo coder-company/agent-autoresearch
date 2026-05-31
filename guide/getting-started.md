@@ -9,9 +9,7 @@ Five minutes from install to your first autonomous run.
 **Claude Code:**
 
 ```bash
-git clone https://github.com/coder-company/agent-autoresearch.git
-cd agent-autoresearch
-./install.sh --yes --claude
+curl -fsSL https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh | bash -s -- --yes --claude
 ```
 
 This builds the Rust binary, installs it on your `PATH`, and installs the Claude plugin hooks. If the `autoresearch` binary is already on your `PATH`, you can install only the plugin:
@@ -24,20 +22,30 @@ Restart your session after either install path.
 
 **Codex:**
 
+```bash
+curl -fsSL https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh | bash -s -- --yes --codex
 ```
+
+Start Codex from your project, then invoke:
+
+```text
+$autoresearch
+```
+
+The raw installer builds the binary and installs the Codex skill package. If you only want the skill package without building the binary:
+
+```text
 $skill-installer install https://github.com/coder-company/agent-autoresearch
 ```
 
 **OpenCode:**
 
 ```bash
-git clone https://github.com/coder-company/agent-autoresearch.git
-cd agent-autoresearch
-./install.sh --yes --opencode
+curl -fsSL https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh | bash -s -- --yes --opencode
 ```
 
-Commands are installed with underscore names such as
-`/autoresearch_debug`, `/autoresearch_fix`, and `/autoresearch_security`.
+Start OpenCode from your project, then invoke `/autoresearch`.
+Mode commands use underscore names such as `/autoresearch_debug`, `/autoresearch_fix`, and `/autoresearch_security`.
 
 **From source:**
 
@@ -53,10 +61,17 @@ Run `./install.sh` without flags for the guided installer.
 
 ## Your First Run
 
-Open your project in Claude Code or Codex and type:
+Open your project in your agent and invoke Autoresearch:
+
+```text
+Claude Code: /autoresearch
+Codex:      $autoresearch
+OpenCode:   /autoresearch
+```
+
+Then describe the goal:
 
 ```
-/autoresearch
 Goal: Get rid of all the any types in my TypeScript code
 ```
 

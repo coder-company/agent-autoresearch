@@ -19,22 +19,35 @@ Pick the install flag for the current agent:
 - If you cannot infer the agent, use --all.
 
 Run the installer non-interactively with bash, verify `autoresearch --help`, then tell me the command I should use to start Autoresearch in this agent.
+Start commands are `/autoresearch` for Claude Code, `$autoresearch` for Codex, and `/autoresearch` for OpenCode.
 Use a global install unless I explicitly asked for a project-local install.
 ```
 
 ## Raw GitHub Installer
 
-Use the raw installer when you want the source build plus agent package without cloning first:
+Use the raw installer when you want the source build plus agent package without cloning first. Pick the exact command for your agent:
+
+Claude Code:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh | bash -s -- --yes --claude
 ```
 
-Swap the final component flag for the agent package you want:
+Codex:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh | bash -s -- --yes --codex
+```
+
+OpenCode:
+
+```bash
 curl -fsSL https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh | bash -s -- --yes --opencode
+```
+
+All packages:
+
+```bash
 curl -fsSL https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh | bash -s -- --yes --all
 ```
 
@@ -88,17 +101,39 @@ The `.claude/` package is generated from the same canonical command and referenc
 
 ## Codex
 
-```text
-$skill-installer install https://github.com/coder-company/agent-autoresearch
+```bash
+curl -fsSL https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh | bash -s -- --yes --codex
 ```
 
-Then invoke:
+This builds `autoresearch`, installs it on your `PATH`, and installs the Codex skill package.
+
+Then start Codex from your project and invoke:
 
 ```text
 $autoresearch
 ```
 
-For a local clone:
+For the smoothest foreground and background runs, start Codex with full workspace access:
+
+```bash
+codex --dangerously-bypass-approvals-and-sandbox
+```
+
+If you only want the Codex skill package and not the source-built binary:
+
+```text
+$skill-installer install https://github.com/coder-company/agent-autoresearch
+```
+
+For a project-local Codex skill install, run the raw installer from the target project:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh | bash -s -- --yes --codex --local
+```
+
+That installs to `./.codex/skills/autoresearch` in the current project. Use `--global` for the default user-wide target, or `--codex-dir` for an explicit destination.
+
+From a local clone:
 
 ```bash
 git clone https://github.com/coder-company/agent-autoresearch.git
@@ -108,13 +143,11 @@ cd agent-autoresearch
 
 The installer copies `.agents/skills/autoresearch/` and validates the target path before replacing the installed skill directory.
 
-For a project-local Codex skill install, run the installer from your target project while pointing at this clone:
+Project-local install from a local clone:
 
 ```bash
 /path/to/agent-autoresearch/install.sh --yes --codex --local
 ```
-
-That installs to `./.codex/skills/autoresearch` in the current project. Use `--global` for the default user-wide target, or `--codex-dir` for an explicit destination.
 
 To install the local Codex plugin package through the installer:
 
@@ -139,16 +172,32 @@ The marketplace entry points at `plugins/autoresearch/`, which packages the same
 curl -fsSL https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh | bash -s -- --yes --opencode
 ```
 
-OpenCode commands install as `/autoresearch`, `/autoresearch_debug`, `/autoresearch_fix`, and the other underscore-mode names.
+This builds `autoresearch`, installs it on your `PATH`, and installs the OpenCode command and skill package.
+
+Start OpenCode from your project and invoke:
+
+```text
+/autoresearch
+```
+
+OpenCode mode commands use underscore names such as `/autoresearch_debug`, `/autoresearch_fix`, and `/autoresearch_security`.
 The package also installs the hidden `docs-manager` helper agent for focused documentation updates.
 
-For a project-local OpenCode install, run:
+For a project-local OpenCode install, run the raw installer from the target project:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh | bash -s -- --yes --opencode --local
+```
+
+That installs to `./.opencode` in the current project. Use `--global` for the default user-wide target, or `--opencode-dir` for an explicit OpenCode config root.
+
+Project-local install from a local clone:
 
 ```bash
 /path/to/agent-autoresearch/install.sh --yes --opencode --local
 ```
 
-That installs to `./.opencode` in the current project. Use `--global` for the default user-wide target, or `--opencode-dir` for an explicit OpenCode config root. The installer refuses empty, home, and parent config paths before replacing `skills/autoresearch`.
+The installer refuses empty, home, and parent config paths before replacing `skills/autoresearch`.
 
 ## VS Code
 

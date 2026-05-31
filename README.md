@@ -52,19 +52,39 @@ Pick the install flag for the current agent:
 - If you cannot infer the agent, use --all.
 
 Run the installer non-interactively with bash, verify `autoresearch --help`, then tell me the command I should use to start Autoresearch in this agent.
+Start commands are `/autoresearch` for Claude Code, `$autoresearch` for Codex, and `/autoresearch` for OpenCode.
 Use a global install unless I explicitly asked for a project-local install.
 ```
 
-Manual one-liner:
+Manual install commands:
+
+**Claude Code**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh | bash -s -- --yes --claude
 ```
 
-That downloads the current source archive, builds the Rust binary, installs it on your `PATH`, and installs the Claude plugin hooks. If you already have the `autoresearch` binary installed, `claude plugin add coder-company/agent-autoresearch` also works.
-For local/manual Claude installs, copy the generated `.claude/commands` and `.claude/skills/autoresearch` package from this repo into your target project.
+Start with `/autoresearch`. If you already have the `autoresearch` binary installed, `claude plugin add coder-company/agent-autoresearch` also works.
 
-Open your project and go:
+**Codex**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh | bash -s -- --yes --codex
+```
+
+Start with `$autoresearch`. This installs the binary plus the Codex skill package. Use `$skill-installer install https://github.com/coder-company/agent-autoresearch` only when you want the skill without the source-built binary.
+
+**OpenCode**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh | bash -s -- --yes --opencode
+```
+
+Start with `/autoresearch`. Mode commands use underscores, such as `/autoresearch_debug`, `/autoresearch_fix`, and `/autoresearch_security`.
+
+Each command downloads the current source archive, builds the Rust binary, installs it on your `PATH`, and installs the selected agent package. For local/manual Claude installs, copy the generated `.claude/commands` and `.claude/skills/autoresearch` package from this repo into your target project.
+
+Open your project and go. The example below uses the Claude Code/OpenCode command; Codex users type `$autoresearch` instead.
 
 ```
 You:   /autoresearch
@@ -84,11 +104,7 @@ Agent: Baseline: 47. Iterating.
 
 Each improvement stacks. Each failure reverts. Everything is logged.
 
-> **Codex users:** start Codex with `codex --dangerously-bypass-approvals-and-sandbox` for the smoothest runtime experience, then run the same one-liner with `--codex` instead of `--claude` and invoke `$autoresearch`. `$skill-installer install https://github.com/coder-company/agent-autoresearch` remains available when you only want the Codex skill package. Local plugin package users can also add `.agents/plugins/marketplace.json` and install `autoresearch` from that marketplace.
->
-> **OpenCode users:** run the same one-liner with `--opencode` instead of `--claude`. Add `--local` when running the installer from a target project to install into `./.opencode`. Commands install as `/autoresearch` and `/autoresearch_debug`, `/autoresearch_fix`, etc., with a hidden `docs-manager` helper agent for documentation updates.
->
-> **From source:** `git clone` + `./install.sh --yes --all`, or run `./install.sh` for the guided installer. Add `--vscode` to install the editor extension from `integrations/vscode`. See [Getting Started](guide/getting-started.md).
+For Codex, start Codex with `codex --dangerously-bypass-approvals-and-sandbox` for the smoothest foreground and background runs. For project-local Codex or OpenCode installs, run the raw installer from the target project with `--local`. From a clone, use `./install.sh --yes --all`, or run `./install.sh` for the guided installer. Add `--vscode` to install the editor extension from `integrations/vscode`. See [Getting Started](guide/getting-started.md).
 
 ## How It Works
 
@@ -306,6 +322,7 @@ No. Every change is committed before verification. If it makes things worse, it 
 | [Chains & Combinations](guide/chains-and-combinations.md) | Piping commands together |
 | [Hooks](guide/hooks.md) | Safety system reference |
 | [Codex](guide/autoresearch-codex.md) | Skill install, local plugin package, foreground/background runtime |
+| [OpenCode](guide/autoresearch-opencode.md) | Slash commands, underscore modes, global and project-local installs |
 | [Full Guide Index](guide/) | Per-command deep dives |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
 

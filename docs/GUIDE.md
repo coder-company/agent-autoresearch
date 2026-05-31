@@ -206,6 +206,7 @@ Do not commit `autoresearch-results/` or `.codex-autoresearch/`.
 - [Project Changelog](project-changelog.md)
 - [Core Loop](../guide/autoresearch.md)
 - [Codex](../guide/autoresearch-codex.md)
+- [OpenCode](../guide/autoresearch-opencode.md)
 - [Examples by Domain](../guide/examples-by-domain.md)
 - [Chains & Combinations](../guide/chains-and-combinations.md)
 - [Advanced Patterns](../guide/advanced-patterns.md)

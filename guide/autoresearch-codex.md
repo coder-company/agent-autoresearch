@@ -27,10 +27,24 @@ Mode names are passed as keywords:
 
 ## Install
 
-Recommended skill install:
+Recommended full install:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh | bash -s -- --yes --codex
+```
+
+This builds the `autoresearch` binary and installs the Codex skill package. Start Codex from your project, then invoke `$autoresearch`.
+
+Skill-only install:
 
 ```text
 $skill-installer install https://github.com/coder-company/agent-autoresearch
+```
+
+Project-local skill install from the target project:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh | bash -s -- --yes --codex --local
 ```
 
 Local plugin package:

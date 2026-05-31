@@ -6,6 +6,7 @@ Practical documentation for every command and pattern.
 
 - [Getting Started](getting-started.md) — Install, first run, what to expect
 - [Codex](autoresearch-codex.md) — `$autoresearch` syntax, background runtime, monitoring
+- [OpenCode](autoresearch-opencode.md) — `/autoresearch` syntax, underscore mode commands, local installs
 
 ## Command Guides
 

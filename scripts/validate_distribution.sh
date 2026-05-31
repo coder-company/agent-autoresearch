@@ -90,6 +90,7 @@ required_paths=(
     integrations/vscode/README.md
     guide/README.md
     guide/autoresearch-codex.md
+    guide/autoresearch-opencode.md
     references/core-principles.md
     references/runtime-protocol.md
     references/results-logging.md
@@ -428,8 +429,18 @@ require_grep '\.claude/commands' docs/INSTALL.md
 require_grep '\.claude/skills/autoresearch' docs/INSTALL.md
 require_grep 'Install Autoresearch in this environment\.' README.md
 require_grep 'Agent-Driven Install' docs/INSTALL.md
+require_grep 'Start commands are `/autoresearch` for Claude Code, `\$autoresearch` for Codex, and `/autoresearch` for OpenCode\.' README.md
+require_grep 'curl -fsSL https://raw\.githubusercontent\.com/coder-company/agent-autoresearch/main/install\.sh \| bash -s -- --yes --codex' README.md
+require_grep 'curl -fsSL https://raw\.githubusercontent\.com/coder-company/agent-autoresearch/main/install\.sh \| bash -s -- --yes --opencode' README.md
 require_grep 'raw\.githubusercontent\.com/coder-company/agent-autoresearch/main/install\.sh' README.md
 require_grep 'raw\.githubusercontent\.com/coder-company/agent-autoresearch/main/install\.sh' docs/INSTALL.md
+require_grep 'Start commands are `/autoresearch` for Claude Code, `\$autoresearch` for Codex, and `/autoresearch` for OpenCode\.' docs/INSTALL.md
+require_grep 'curl -fsSL https://raw\.githubusercontent\.com/coder-company/agent-autoresearch/main/install\.sh \| bash -s -- --yes --codex --local' docs/INSTALL.md
+require_grep 'curl -fsSL https://raw\.githubusercontent\.com/coder-company/agent-autoresearch/main/install\.sh \| bash -s -- --yes --opencode --local' docs/INSTALL.md
+require_grep 'guide/autoresearch-opencode\.md' README.md
+require_grep 'autoresearch-opencode\.md' guide/README.md
+require_grep '\.\./guide/autoresearch-opencode\.md' docs/GUIDE.md
+require_grep '/autoresearch_security' guide/autoresearch-opencode.md
 require_grep 'bootstrap_source_tree' install.sh
 require_grep 'AUTORESEARCH_INSTALL_ARCHIVE_URL' install.sh
 require_grep '\-\-codex-plugin' docs/INSTALL.md
