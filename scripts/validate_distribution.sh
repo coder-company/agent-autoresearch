@@ -143,6 +143,9 @@ require_grep 'autoresearch completions' README.md
 require_grep 'autoresearch completions' docs/GUIDE.md
 require_grep 'autoresearch completions zsh' docs/INSTALL.md
 require_grep 'Shell completions \(bash, zsh, fish, elvish, PowerShell\)' docs/development-roadmap.md
+require_grep '\.autoresearch\.toml' README.md
+require_grep '\.autoresearch\.toml' docs/GUIDE.md
+require_grep 'Configuration file \(`\.autoresearch\.toml`\) for project-level defaults' docs/development-roadmap.md
 require_grep '\$autoresearch exec' guide/autoresearch-codex.md
 require_grep 'Claude Code, Codex, and OpenCode' README.md
 require_grep '13 command protocols · 11 native hooks · background runtime · parallel verified closeout' README.md

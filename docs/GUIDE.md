@@ -36,6 +36,28 @@ autoresearch completions zsh > ~/.zfunc/_autoresearch
 Use `autoresearch runtime run` for supervised background Codex sessions and `autoresearch runtime status` / `autoresearch runtime stop` for control.
 Use `autoresearch completions <bash|zsh|fish|elvish|powershell>` to generate shell completions.
 
+## Project Defaults
+
+`autoresearch init` reads `.autoresearch.toml` from the workspace root when present.
+CLI flags override file values.
+
+```toml
+goal = "Reduce failing tests"
+scope = ["src/**/*.rs", "tests/**/*.rs"]
+metric = "failing test count"
+direction = "lower"
+verify = "cargo test 2>&1 | tail -1"
+guard = "cargo fmt -- --check"
+iterations = 25
+run_tag = "nightly"
+```
+
+Run with defaults:
+
+```bash
+autoresearch init
+```
+
 ## Run Artifacts
 
 All run state lives under `autoresearch-results/`:

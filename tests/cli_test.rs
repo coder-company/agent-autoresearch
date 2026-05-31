@@ -2965,6 +2965,77 @@ fn test_init_persists_runtime_config() {
 }
 
 #[test]
+fn test_init_loads_project_config_defaults() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+    std::fs::write(
+        dir.path().join(".autoresearch.toml"),
+        r#"
+goal = "Reduce metric from project config"
+scope = ["metric.txt"]
+metric = "marker count"
+direction = "lower"
+verify = "cat metric.txt"
+guard = "test -f metric.txt"
+iterations = 3
+run_tag = "project-defaults"
+stop_condition = "marker count <= 10"
+environment_summary = "test fixture"
+required_keep_label = ["config"]
+rollback = "revert"
+"#,
+    )
+    .unwrap();
+    std::process::Command::new("git")
+        .args(["add", ".autoresearch.toml"])
+        .current_dir(dir.path())
+        .output()
+        .unwrap();
+    std::process::Command::new("git")
+        .args(["commit", "-m", "add autoresearch config"])
+        .current_dir(dir.path())
+        .output()
+        .unwrap();
+
+    cmd()
+        .args(["init", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"direction\": \"lower\""))
+        .stdout(predicate::str::contains("\"iterations\": 3"));
+
+    let state: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(state["config"]["goal"], "Reduce metric from project config");
+    assert_eq!(state["config"]["scope"][0], "metric.txt");
+    assert_eq!(state["config"]["verify"], "cat metric.txt");
+    assert_eq!(state["config"]["required_keep_labels"][0], "config");
+    assert_eq!(state["config"]["run_tag"], "project-defaults");
+
+    let results =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/results.tsv")).unwrap();
+    assert!(results.contains("# environment: test fixture"));
+}
+
+#[test]
+fn test_init_requires_verify_without_project_config() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args(["init", "--cwd", root])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "init requires --verify or verify in .autoresearch.toml",
+        ));
+}
+
+#[test]
 fn test_init_rejects_zero_iterations() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

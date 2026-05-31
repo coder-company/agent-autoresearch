@@ -41,6 +41,31 @@ struct Cli {
     command: Commands,
 }
 
+#[derive(Debug, Default, serde::Deserialize)]
+struct ProjectConfig {
+    goal: Option<String>,
+    scope: Option<Vec<String>>,
+    metric: Option<String>,
+    direction: Option<String>,
+    verify: Option<String>,
+    guard: Option<String>,
+    iterations: Option<u32>,
+    run_tag: Option<String>,
+    stop_condition: Option<String>,
+    environment_summary: Option<String>,
+    run_mode: Option<String>,
+    format: Option<String>,
+    verify_format: Option<String>,
+    key: Option<String>,
+    primary_metric_key: Option<String>,
+    acceptance_criteria: Option<String>,
+    required_keep_criteria: Option<String>,
+    required_keep_label: Option<Vec<String>>,
+    required_stop_label: Option<Vec<String>>,
+    companion_repo_scope: Option<Vec<String>>,
+    rollback: Option<String>,
+}
+
 #[derive(Subcommand)]
 #[allow(clippy::large_enum_variant)]
 enum Commands {
@@ -48,16 +73,19 @@ enum Commands {
     Init {
         /// Verify command to establish baseline
         #[arg(long)]
-        verify: String,
+        verify: Option<String>,
         /// Metric direction: higher or lower
-        #[arg(long, default_value = "higher")]
-        direction: String,
+        #[arg(long)]
+        direction: Option<String>,
         /// Verify output format: scalar or metrics_json
-        #[arg(long, default_value = "scalar")]
-        format: String,
+        #[arg(long)]
+        format: Option<String>,
         /// Primary metric key (for metrics_json)
         #[arg(long)]
         key: Option<String>,
+        /// Project defaults file (default: .autoresearch.toml when present)
+        #[arg(long)]
+        config: Option<PathBuf>,
         /// Goal description
         #[arg(long)]
         goal: Option<String>,
@@ -107,8 +135,8 @@ enum Commands {
         #[arg(long)]
         companion_repo_scope: Vec<String>,
         /// Rollback strategy: revert or hard-reset
-        #[arg(long, default_value = "revert")]
-        rollback: String,
+        #[arg(long)]
+        rollback: Option<String>,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -488,6 +516,7 @@ fn main() -> Result<()> {
             direction,
             format,
             key,
+            config,
             goal,
             scope,
             metric,
@@ -507,14 +536,15 @@ fn main() -> Result<()> {
             rollback,
             cwd,
         } => cmd_init(
-            &verify_cmd,
-            &direction,
-            &format,
-            key.as_deref(),
-            goal.as_deref(),
+            verify_cmd,
+            direction,
+            format,
+            key,
+            config,
+            goal,
             scope,
-            metric.as_deref(),
-            guard.as_deref(),
+            metric,
+            guard,
             acceptance_criteria,
             required_keep_criteria,
             required_keep_label,
@@ -527,7 +557,7 @@ fn main() -> Result<()> {
             workspace_root,
             primary_repo,
             companion_repo_scope,
-            &rollback,
+            rollback,
             cwd,
         ),
 
@@ -650,14 +680,15 @@ fn cmd_completions(shell: clap_complete::Shell) -> Result<()> {
 
 #[allow(clippy::too_many_arguments)]
 fn cmd_init(
-    verify_cmd: &str,
-    direction_str: &str,
-    format_str: &str,
-    key: Option<&str>,
-    goal: Option<&str>,
+    verify_cmd: Option<String>,
+    direction_str: Option<String>,
+    format_str: Option<String>,
+    key: Option<String>,
+    config_path: Option<PathBuf>,
+    goal: Option<String>,
     scope: Option<Vec<String>>,
-    metric_desc: Option<&str>,
-    guard: Option<&str>,
+    metric_desc: Option<String>,
+    guard: Option<String>,
     acceptance_criteria_raw: Option<String>,
     required_keep_criteria_raw: Option<String>,
     required_keep_label: Vec<String>,
@@ -670,18 +701,72 @@ fn cmd_init(
     workspace_root: Option<PathBuf>,
     primary_repo: Option<PathBuf>,
     companion_repo_scope: Vec<String>,
-    rollback: &str,
+    rollback: Option<String>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let workspace = resolve_workspace_root(cwd);
-    let direction = parse_direction(direction_str)?;
-    let fmt = parse_format(format_str)?;
+    let project_config = load_project_config(&workspace, config_path)?;
+    let verify_cmd = verify_cmd
+        .or(project_config.verify.clone())
+        .context("init requires --verify or verify in .autoresearch.toml")?;
+    let direction_str = direction_str
+        .or(project_config.direction.clone())
+        .unwrap_or_else(|| "higher".to_string());
+    let format_str = format_str
+        .or(project_config.format.clone())
+        .or(project_config.verify_format.clone())
+        .unwrap_or_else(|| "scalar".to_string());
+    let key = key
+        .or(project_config.key.clone())
+        .or(project_config.primary_metric_key.clone());
+    let goal = goal.or(project_config.goal.clone());
+    let scope = scope.or(project_config.scope.clone());
+    let metric_desc = metric_desc.or(project_config.metric.clone());
+    let guard = guard.or(project_config.guard.clone());
+    let acceptance_criteria_raw =
+        acceptance_criteria_raw.or(project_config.acceptance_criteria.clone());
+    let required_keep_criteria_raw =
+        required_keep_criteria_raw.or(project_config.required_keep_criteria.clone());
+    let required_keep_label = if required_keep_label.is_empty() {
+        project_config
+            .required_keep_label
+            .clone()
+            .unwrap_or_default()
+    } else {
+        required_keep_label
+    };
+    let required_stop_label = if required_stop_label.is_empty() {
+        project_config
+            .required_stop_label
+            .clone()
+            .unwrap_or_default()
+    } else {
+        required_stop_label
+    };
+    let iterations = iterations.or(project_config.iterations);
+    let run_tag = run_tag.or(project_config.run_tag.clone());
+    let stop_condition = stop_condition.or(project_config.stop_condition.clone());
+    let environment_summary = environment_summary.or(project_config.environment_summary.clone());
+    let run_mode = run_mode.or(project_config.run_mode.clone());
+    let companion_repo_scope = if companion_repo_scope.is_empty() {
+        project_config
+            .companion_repo_scope
+            .clone()
+            .unwrap_or_default()
+    } else {
+        companion_repo_scope
+    };
+    let rollback = rollback
+        .or(project_config.rollback.clone())
+        .unwrap_or_else(|| "revert".to_string());
+    let direction = parse_direction(&direction_str)?;
+    let fmt = parse_format(&format_str)?;
     let run_mode = run_mode
         .as_deref()
         .map(parse_run_mode)
         .transpose()
         .context("Invalid run mode")?;
-    let rollback_strategy = parse_rollback_strategy(rollback)?;
+    let rollback_strategy = parse_rollback_strategy(&rollback)?;
     let acceptance_criteria =
         criteria::parse_criteria_json(acceptance_criteria_raw.as_deref(), "acceptance_criteria")?;
     let required_keep_criteria = criteria::parse_criteria_json(
@@ -696,8 +781,8 @@ fn cmd_init(
     }
 
     // Safety screen
-    verify::screen_command(verify_cmd)?;
-    if let Some(guard_cmd) = guard {
+    verify::screen_command(&verify_cmd)?;
+    if let Some(guard_cmd) = guard.as_deref() {
         verify::screen_command(guard_cmd)?;
     }
 
@@ -748,7 +833,7 @@ fn cmd_init(
     let head = git.head_short()?;
 
     // Measure baseline
-    let result = verify::run_verify(verify_cmd, fmt, key, &workspace)
+    let result = verify::run_verify(&verify_cmd, fmt, key.as_deref(), &workspace)
         .context("Baseline verification failed")?;
     if fmt == VerifyFormat::MetricsJson {
         let metrics = result
@@ -756,6 +841,7 @@ fn cmd_init(
             .as_ref()
             .context("verify_format=metrics_json requires structured baseline metrics")?;
         let primary_metric_key = key
+            .as_deref()
             .filter(|value| !value.trim().is_empty())
             .unwrap_or("metric");
         ensure_metrics_json_keys(
@@ -765,7 +851,8 @@ fn cmd_init(
             &required_keep_criteria,
         )?;
     }
-    let baseline_guard = run_baseline_guard(guard, &workspace).context("Baseline guard failed")?;
+    let baseline_guard =
+        run_baseline_guard(guard.as_deref(), &workspace).context("Baseline guard failed")?;
 
     // Create results directory + protect from git staging
     let results_dir = ensure_results_dir_protected(&workspace)?;
@@ -790,17 +877,17 @@ fn cmd_init(
 
     // Build run config from init parameters
     let run_config = RunConfig {
-        goal: goal.unwrap_or("").to_string(),
+        goal: goal.unwrap_or_default(),
         scope: scope.unwrap_or_default(),
-        metric: metric_desc.unwrap_or("").to_string(),
+        metric: metric_desc.unwrap_or_default(),
         direction,
-        verify: verify_cmd.to_string(),
-        guard: guard.map(|g| g.to_string()),
+        verify: verify_cmd,
+        guard,
         iterations,
         run_tag,
         stop_condition,
         verify_format: fmt,
-        primary_metric_key: key.map(|k| k.to_string()),
+        primary_metric_key: key,
         acceptance_criteria,
         required_keep_criteria,
         required_keep_labels,
@@ -849,6 +936,24 @@ fn cmd_init(
     });
     println!("{}", serde_json::to_string_pretty(&out)?);
     Ok(())
+}
+
+fn load_project_config(workspace: &Path, config_path: Option<PathBuf>) -> Result<ProjectConfig> {
+    let (path, required) = match config_path {
+        Some(path) => (resolve_workspace_path(workspace, path), true),
+        None => (workspace.join(".autoresearch.toml"), false),
+    };
+
+    if !path.exists() {
+        if required {
+            anyhow::bail!("config file not found: {}", path.display());
+        }
+        return Ok(ProjectConfig::default());
+    }
+
+    let content = std::fs::read_to_string(&path)
+        .with_context(|| format!("failed to read {}", path.display()))?;
+    toml::from_str(&content).with_context(|| format!("failed to parse {}", path.display()))
 }
 
 fn existing_core_run_artifacts(workspace: &Path) -> Vec<String> {
