@@ -102,6 +102,7 @@ Use `autoresearch predict --proposal <change>` to write a five-persona review co
 Use `autoresearch predict --proposal <change> --chain debug` to record the review as handoff context for downstream investigation.
 Use `autoresearch reason --question <decision>` to write an adversarial debate artifact with candidate solutions, blind judge rubric, and convergence criteria.
 Use `autoresearch probe --subject <requirement>` to write eight persona-driven questions, constraint slots, and a saturation rule before implementation.
+Use `autoresearch probe --subject <requirement> --chain plan` to pass discovered constraints into planning through handoff metadata.
 Use `autoresearch learn --mode <init|update|check|summarize> --scope <glob>` to write documentation summary, validation, TSV, and handoff artifacts.
 Use `autoresearch api --format json` to inspect the stable command/flag manifest and semver policy used by wrappers and agents.
 Use `autoresearch mcp serve` as a stdio MCP server exposing read-only `autoresearch_status` and `autoresearch_watch_snapshot` tools.

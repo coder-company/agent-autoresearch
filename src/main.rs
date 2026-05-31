@@ -758,6 +758,15 @@ enum Commands {
         /// Relevant implementation scope. Repeatable.
         #[arg(long)]
         scope: Vec<String>,
+        /// Comma-separated downstream command targets to record in handoff.json
+        #[arg(long)]
+        chain: Option<String>,
+        /// Propagate eval checkpoints to downstream chain targets
+        #[arg(long)]
+        evals: bool,
+        /// Propagated eval checkpoint interval
+        #[arg(long)]
+        evals_interval: Option<u32>,
         /// Output path. Relative paths resolve from the workspace root.
         #[arg(long)]
         output: Option<PathBuf>,
@@ -1466,9 +1475,12 @@ fn main() -> Result<()> {
         Commands::Probe {
             subject,
             scope,
+            chain,
+            evals,
+            evals_interval,
             output,
             cwd,
-        } => cmd_probe(&subject, scope, output, cwd),
+        } => cmd_probe(&subject, scope, chain, evals, evals_interval, output, cwd),
 
         Commands::Learn {
             mode,
@@ -3731,9 +3743,14 @@ fn render_probe_markdown(subject: &str, scope: &[String]) -> String {
 fn cmd_probe(
     subject: &str,
     scope: Vec<String>,
+    chain: Option<String>,
+    evals: bool,
+    evals_interval: Option<u32>,
     output: Option<PathBuf>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
+    validate_chain_evals_flags("probe", evals, evals_interval)?;
+    let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
     let workspace = resolve_workspace_root(cwd);
     let output = output.unwrap_or_else(|| {
         default_artifact_path("probe", format!("probe-{}.md", slugify(subject)))
@@ -3742,11 +3759,44 @@ fn cmd_probe(
 
     let markdown = render_probe_markdown(subject, &scope);
     write_text_file(&output, &markdown)?;
+    let handoff_path = if !chain_targets.is_empty() || evals {
+        let handoff_path = output
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .join("handoff.json");
+        let next_target = next_chain_target_value(&chain_targets);
+        let handoff = serde_json::json!({
+            "version": "2.1.0",
+            "source": "probe",
+            "source_command": "probe",
+            "timestamp": chrono::Utc::now().to_rfc3339(),
+            "status": "SATURATED",
+            "report": output.display().to_string(),
+            "handoff_path": handoff_path.display().to_string(),
+            "findings": [],
+            "config": {
+                "subject": subject,
+                "scope": scope,
+                "personas": ProbePersona::all().len(),
+                "saturation_rule": "2 consecutive rounds with zero new constraints",
+            },
+            "chain": chain_targets,
+            "next_target": next_target,
+            "chain_continue": should_continue_handoff_chain("SATURATED"),
+            "propagate_evals": evals,
+            "evals_interval": evals_interval,
+        });
+        write_json_file(&handoff_path, &handoff)?;
+        Some(handoff_path)
+    } else {
+        None
+    };
     println!(
         "{}",
         serde_json::json!({
             "status": "written",
             "path": output.display().to_string(),
+            "handoff_path": handoff_path.as_ref().map(|path| path.display().to_string()),
             "subject": subject,
             "personas": ProbePersona::all().len(),
             "saturation_rule": "2 consecutive rounds with zero new constraints",

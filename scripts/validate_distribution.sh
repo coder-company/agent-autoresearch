@@ -222,6 +222,7 @@ require_grep '`autoresearch reason` writes' COMPARISON.md
 require_grep 'autoresearch probe --subject' README.md
 require_grep 'autoresearch probe --subject' docs/GUIDE.md
 require_grep 'autoresearch probe --subject' references/binary-operations.md
+require_grep 'probe --chain' references/binary-operations.md
 require_grep 'Native probe generator' docs/development-roadmap.md
 require_grep '`autoresearch probe` writes' COMPARISON.md
 require_grep 'autoresearch learn --mode' README.md

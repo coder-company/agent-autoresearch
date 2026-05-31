@@ -1092,6 +1092,45 @@ fn test_probe_writes_requirement_interrogation_artifact() {
 }
 
 #[test]
+fn test_probe_chain_writes_handoff_sidecar() {
+    let dir = TempDir::new().unwrap();
+    let output = dir
+        .path()
+        .join("autoresearch-results/probe/payment-probe.md");
+
+    cmd()
+        .args([
+            "probe",
+            "--subject",
+            "Payment retry workflow",
+            "--scope",
+            "src/payments/**",
+            "--chain",
+            "plan",
+            "--evals",
+            "--evals-interval",
+            "4",
+            "--output",
+            output.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("handoff.json"));
+
+    let handoff = std::fs::read_to_string(output.parent().unwrap().join("handoff.json")).unwrap();
+    assert!(handoff.contains("\"source_command\": \"probe\""));
+    assert!(handoff.contains("\"status\": \"SATURATED\""));
+    assert!(handoff.contains("\"chain\": ["));
+    assert!(handoff.contains("\"plan\""));
+    assert!(handoff.contains("\"next_target\": \"plan\""));
+    assert!(handoff.contains("\"chain_continue\": true"));
+    assert!(handoff.contains("\"propagate_evals\": true"));
+    assert!(handoff.contains("\"evals_interval\": 4"));
+}
+
+#[test]
 fn test_learn_writes_documentation_summary_artifacts() {
     let dir = TempDir::new().unwrap();
     std::fs::create_dir_all(dir.path().join("src")).unwrap();
