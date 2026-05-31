@@ -1897,6 +1897,67 @@ fn test_lessons_add_appends_entry() {
 }
 
 #[test]
+fn test_lessons_workspace_context_is_shared_from_companion_repo() {
+    let workspace = TempDir::new().unwrap();
+    init_git_fixture(&workspace);
+    let workspace_root = workspace.path().to_str().unwrap();
+
+    let companion = TempDir::new().unwrap();
+    init_git_fixture(&companion);
+    let companion_root = companion.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--workspace-root",
+            workspace_root,
+            "--primary-repo",
+            workspace_root,
+            "--companion-repo-scope",
+            &format!("{companion_root}=src/**/*.rs"),
+            "--cwd",
+            workspace_root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "lessons",
+            "--add",
+            "Prefer shared workspace lessons",
+            "--context",
+            "multi repo run",
+            "--cwd",
+            workspace_root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "lessons",
+            "--search",
+            "shared workspace",
+            "--workspace-context",
+            "--cwd",
+            companion_root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"lessons\""))
+        .stdout(predicate::str::contains("Prefer shared workspace lessons"))
+        .stdout(predicate::str::contains("\"repo_targets\""))
+        .stdout(predicate::str::contains(companion_root));
+
+    assert!(!companion.path().join("autoresearch-results").exists());
+}
+
+#[test]
 fn test_lessons_add_rejects_invalid_category() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

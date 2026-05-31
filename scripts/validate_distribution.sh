@@ -189,6 +189,9 @@ require_grep 'Workspace-aware scope expansion \(monorepo package boundaries\)' d
 require_grep 'autoresearch guard-presets --format json' README.md
 require_grep 'autoresearch guard-presets --format json' docs/GUIDE.md
 require_grep 'Cross-repo guard command presets' docs/development-roadmap.md
+require_grep 'autoresearch lessons --workspace-context --last 5' README.md
+require_grep 'autoresearch lessons --workspace-context --last 5' docs/GUIDE.md
+require_grep 'Shared lessons across repos in a workspace' docs/development-roadmap.md
 require_grep '\.autoresearch\.toml' README.md
 require_grep '\.autoresearch\.toml' docs/GUIDE.md
 require_grep 'autoresearch config template' README.md

@@ -126,6 +126,7 @@ Optional:
 | `autoresearch progress` | Formatted progress summary |
 | `autoresearch watch --lines 20 --format jsonl` | Tail the active results.tsv for live monitoring |
 | `autoresearch lessons --add "..." --context "..."` | Append reusable strategy lessons |
+| `autoresearch lessons --workspace-context --last 5` | Read shared workspace lessons with repo-target metadata |
 | `autoresearch search --from-state --log` | Build a run-aware search query, cache provider results, and log a search row; `decide` auto-runs this on Web Search escalation when `AUTORESEARCH_SEARCH_CMD` is configured |
 | `autoresearch resume` | Detect resumable prior run |
 | `autoresearch runtime run` | Launch Codex exec turns, supervise after each exit, and relaunch until stop or needs_human |

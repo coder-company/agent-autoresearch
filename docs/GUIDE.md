@@ -37,6 +37,7 @@ autoresearch evals --format json
 autoresearch api --format json
 autoresearch scope expand --format json
 autoresearch guard-presets --format json
+autoresearch lessons --workspace-context --last 5
 autoresearch completions zsh > ~/.zfunc/_autoresearch
 ```
 
@@ -54,6 +55,7 @@ Use `autoresearch config validate` to parse defaults, validate options, and scre
 Use `autoresearch api --format json` to inspect the stable command/flag manifest and semver policy used by wrappers and agents.
 Use `autoresearch scope expand --format json` to resolve active primary and companion repo scopes, with package roots inferred from `Cargo.toml`, `package.json`, `pyproject.toml`, and `go.mod`.
 Use `autoresearch guard-presets --format json` to suggest per-repo guard commands for primary and companion repositories.
+Use `autoresearch lessons --workspace-context --last 5` from any managed repo to show the shared workspace lessons path and repo targets.
 
 ## Project Defaults
 

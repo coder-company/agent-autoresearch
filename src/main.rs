@@ -351,6 +351,9 @@ enum Commands {
         /// Return last N lessons
         #[arg(long)]
         last: Option<usize>,
+        /// Include workspace root and repo target metadata in lesson query output
+        #[arg(long)]
+        workspace_context: bool,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -776,6 +779,7 @@ fn main() -> Result<()> {
             context,
             search,
             last,
+            workspace_context,
             cwd,
         } => cmd_lessons(
             add.as_deref(),
@@ -784,6 +788,7 @@ fn main() -> Result<()> {
             &context,
             search.as_deref(),
             last,
+            workspace_context,
             cwd,
         ),
 
@@ -4508,6 +4513,7 @@ fn cmd_lessons(
     context: &str,
     search: Option<&str>,
     last: Option<usize>,
+    workspace_context: bool,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let workspace = resolve_results_workspace(cwd);
@@ -4548,7 +4554,17 @@ fn cmd_lessons(
         .rev()
         .collect();
 
-    let out = serde_json::to_string_pretty(&tail)?;
+    let out = if workspace_context {
+        let context = load_run_context(&workspace).ok();
+        serde_json::to_string_pretty(&serde_json::json!({
+            "workspace_root": workspace.display().to_string(),
+            "path": log.path(),
+            "repo_targets": context.map(|context| context.repo_targets).unwrap_or_default(),
+            "lessons": tail,
+        }))?
+    } else {
+        serde_json::to_string_pretty(&tail)?
+    };
     println!("{out}");
     Ok(())
 }

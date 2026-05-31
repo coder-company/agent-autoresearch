@@ -48,6 +48,7 @@ The `autoresearch` binary handles mechanical operations:
 - `autoresearch scope expand --format json` — resolve primary and companion repo scopes with package-root annotations
 - `autoresearch guard-presets --format json` — suggest cross-repo guard commands for primary and companion repositories
 - `autoresearch lessons --add "..." --context "..."` — append reusable strategy lessons
+- `autoresearch lessons --workspace-context --last 5` — read shared workspace lessons with repo-target metadata
 - `autoresearch search --from-state --log` — build a run-aware search query, cache provider results, and log a search row; `decide` auto-runs this on Web Search escalation when `AUTORESEARCH_SEARCH_CMD` is configured
 - `autoresearch hook <name>` — execute lifecycle hooks
 
