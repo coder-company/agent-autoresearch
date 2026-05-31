@@ -1,5 +1,6 @@
 # Build artifacts
 target/
+book/
 
 # Binary is built per-platform — ship via GitHub Releases or install.sh.
 # Keep the portable hook wrapper tracked; ignore other generated bin artifacts.

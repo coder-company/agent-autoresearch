@@ -11,3 +11,5 @@ Start here when browsing the repository documentation directly.
 | [Project Changelog](project-changelog.md) | Release history entrypoint and current development track |
 | [Detailed Changelog](changelog.md) | Versioned release notes |
 | [Development Roadmap](development-roadmap.md) | Current and planned runtime, search, MCP, workspace, and release work |
+
+The documentation set also builds as an mdBook site from `book.toml` and `docs/SUMMARY.md`.

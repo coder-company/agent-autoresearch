@@ -54,3 +54,19 @@ fn readme_links_required_docs_entrypoints() {
         );
     }
 }
+
+#[test]
+fn docs_site_summary_links_required_docs() {
+    let root = repo_root();
+    let book = fs::read_to_string(root.join("book.toml")).unwrap();
+    let summary = fs::read_to_string(root.join("docs/SUMMARY.md")).unwrap();
+
+    assert!(book.contains("src = \"docs\""));
+    assert!(book.contains("build-dir = \"book\""));
+    assert!(summary.contains("[Installation](INSTALL.md)"));
+    assert!(summary.contains("[Guide](GUIDE.md)"));
+    assert!(summary.contains("[Examples](EXAMPLES.md)"));
+    assert!(summary.contains("[System Architecture](system-architecture.md)"));
+    assert!(summary.contains("[Development Roadmap](development-roadmap.md)"));
+    assert!(summary.contains("[中文](i18n/README_ZH.md)"));
+}

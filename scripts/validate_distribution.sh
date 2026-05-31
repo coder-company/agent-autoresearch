@@ -74,7 +74,10 @@ required_paths=(
     packaging/homebrew/autoresearch.rb.template
     tests/test-hooks.sh
     .github/workflows/ci.yml
+    .github/workflows/docs.yml
     .github/workflows/release.yml
+    book.toml
+    docs/SUMMARY.md
     docs/README.md
     docs/INSTALL.md
     docs/GUIDE.md
@@ -306,6 +309,11 @@ require_grep 'Homebrew formula and cargo-binstall support' docs/development-road
 require_grep 'Pre-built binaries for Linux \(x86_64, aarch64\), macOS \(x86_64, aarch64\), Windows' docs/development-roadmap.md
 require_grep 'Tagged releases publish `\.tar\.gz` archives' docs/INSTALL.md
 require_grep 'cargo binstall autoresearch' docs/INSTALL.md
+require_grep 'src = "docs"' book.toml
+require_grep '\[Installation\]\(INSTALL\.md\)' docs/SUMMARY.md
+require_grep 'actions/deploy-pages@v4' .github/workflows/docs.yml
+require_grep 'Comprehensive documentation site' docs/development-roadmap.md
+require_grep '^book/$' .gitignore
 if grep -q 'sed -i' "$ROOT/scripts/release.sh"; then
     fail "release script still uses non-portable sed -i"
 fi

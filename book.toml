@@ -1,0 +1,13 @@
+[book]
+title = "Autoresearch"
+authors = ["Coder Company"]
+description = "Autonomous goal-directed iteration for coding agents"
+src = "docs"
+language = "en"
+
+[build]
+build-dir = "book"
+
+[output.html]
+git-repository-url = "https://github.com/coder-company/agent-autoresearch"
+edit-url-template = "https://github.com/coder-company/agent-autoresearch/edit/main/docs/{path}"

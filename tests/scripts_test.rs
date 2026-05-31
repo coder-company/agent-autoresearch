@@ -279,6 +279,23 @@ fn ci_workflow_runs_full_contributor_gate_with_operational_guards() {
 }
 
 #[test]
+fn docs_workflow_builds_and_deploys_mdbook_site() {
+    let root = repo_root();
+    let workflow = std::fs::read_to_string(root.join(".github/workflows/docs.yml")).unwrap();
+
+    assert!(workflow.contains("workflow_dispatch:"));
+    assert!(workflow.contains("book.toml"));
+    assert!(workflow.contains("docs/**"));
+    assert!(workflow.contains("pages: write"));
+    assert!(workflow.contains("id-token: write"));
+    assert!(workflow.contains("cargo install mdbook --locked"));
+    assert!(workflow.contains("mdbook build"));
+    assert!(workflow.contains("actions/upload-pages-artifact@v3"));
+    assert!(workflow.contains("actions/deploy-pages@v4"));
+    assert!(workflow.contains("github-pages"));
+}
+
+#[test]
 fn release_workflow_builds_prebuilt_binary_matrix() {
     let root = repo_root();
     let workflow = std::fs::read_to_string(root.join(".github/workflows/release.yml")).unwrap();
