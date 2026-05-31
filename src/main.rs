@@ -845,7 +845,7 @@ enum Commands {
     /// Generate an adversarial reasoning debate artifact
     Reason {
         /// Question, decision, or problem to debate
-        #[arg(long)]
+        #[arg(long, visible_alias = "task")]
         question: String,
         /// Reasoning mode: convergent, creative, or debate
         #[arg(long, default_value = "debate")]

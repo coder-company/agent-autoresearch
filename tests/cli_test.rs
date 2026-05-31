@@ -1679,6 +1679,27 @@ fn test_reason_chain_writes_handoff_sidecar() {
 }
 
 #[test]
+fn test_reason_accepts_protocol_task_alias() {
+    let dir = TempDir::new().unwrap();
+
+    cmd()
+        .args([
+            "reason",
+            "--task",
+            "Should we replace the storage layer",
+            "--mode",
+            "debate",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "\"question\":\"Should we replace the storage layer\"",
+        ));
+}
+
+#[test]
 fn test_reason_judge_controls_are_recorded() {
     let dir = TempDir::new().unwrap();
     let output = dir
