@@ -449,6 +449,12 @@ enum Commands {
         command: ConfigCommands,
     },
 
+    /// Load and validate local mode plugin manifests
+    Plugin {
+        #[command(subcommand)]
+        command: PluginCommands,
+    },
+
     /// Inspect workspace-aware run scopes
     Scope {
         #[command(subcommand)]
@@ -628,6 +634,28 @@ enum ScopeCommands {
         /// Output format: json or text
         #[arg(long, default_value = "json")]
         format: String,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+}
+
+#[derive(Subcommand)]
+enum PluginCommands {
+    /// List plugin manifests from .autoresearch/plugins or a custom directory
+    List {
+        /// Plugin directory. Relative paths resolve from the workspace root.
+        #[arg(long)]
+        dir: Option<PathBuf>,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+    /// Validate one plugin manifest
+    Validate {
+        /// Plugin manifest TOML path
+        #[arg(long)]
+        path: PathBuf,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -838,6 +866,10 @@ fn main() -> Result<()> {
         Commands::Config { command } => match command {
             ConfigCommands::Template { output, force } => cmd_config_template(output, force),
             ConfigCommands::Validate { path, cwd } => cmd_config_validate(path, cwd),
+        },
+        Commands::Plugin { command } => match command {
+            PluginCommands::List { dir, cwd } => cmd_plugin_list(dir, cwd),
+            PluginCommands::Validate { path, cwd } => cmd_plugin_validate(path, cwd),
         },
         Commands::Scope { command } => match command {
             ScopeCommands::Expand {
@@ -1115,6 +1147,103 @@ fn validate_project_config(config: &ProjectConfig) -> Result<()> {
     if let Some(guard_cmd) = &config.guard {
         verify::screen_command(guard_cmd).context("unsafe guard in .autoresearch.toml")?;
     }
+    Ok(())
+}
+
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+struct ModePluginManifest {
+    name: String,
+    version: String,
+    mode: String,
+    command: String,
+    #[serde(default)]
+    description: Option<String>,
+    #[serde(default)]
+    scopes: Vec<String>,
+}
+
+fn cmd_plugin_list(dir: Option<PathBuf>, cwd: Option<PathBuf>) -> Result<()> {
+    let workspace = resolve_workspace_root(cwd);
+    let plugin_dir = dir
+        .map(|path| resolve_workspace_path(&workspace, path))
+        .unwrap_or_else(|| workspace.join(".autoresearch/plugins"));
+    let mut plugins = Vec::new();
+    if plugin_dir.exists() {
+        for entry in std::fs::read_dir(&plugin_dir)
+            .with_context(|| format!("failed to read {}", plugin_dir.display()))?
+        {
+            let path = entry?.path();
+            if path.extension().and_then(|ext| ext.to_str()) != Some("toml") {
+                continue;
+            }
+            let manifest = load_plugin_manifest(&path)?;
+            plugins.push(serde_json::json!({
+                "path": path.display().to_string(),
+                "manifest": manifest,
+            }));
+        }
+    }
+    plugins.sort_by_key(|plugin| {
+        plugin["manifest"]["name"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string()
+    });
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&serde_json::json!({
+            "plugin_dir": plugin_dir.display().to_string(),
+            "plugins": plugins,
+        }))?
+    );
+    Ok(())
+}
+
+fn cmd_plugin_validate(path: PathBuf, cwd: Option<PathBuf>) -> Result<()> {
+    let workspace = resolve_workspace_root(cwd);
+    let path = resolve_workspace_path(&workspace, path);
+    let manifest = load_plugin_manifest(&path)?;
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&serde_json::json!({
+            "valid": true,
+            "path": path.display().to_string(),
+            "manifest": manifest,
+        }))?
+    );
+    Ok(())
+}
+
+fn load_plugin_manifest(path: &Path) -> Result<ModePluginManifest> {
+    let manifest: ModePluginManifest = toml::from_str(
+        &std::fs::read_to_string(path)
+            .with_context(|| format!("failed to read {}", path.display()))?,
+    )
+    .with_context(|| format!("failed to parse {}", path.display()))?;
+    validate_plugin_manifest(&manifest)
+        .with_context(|| format!("invalid plugin manifest {}", path.display()))?;
+    Ok(manifest)
+}
+
+fn validate_plugin_manifest(manifest: &ModePluginManifest) -> Result<()> {
+    for (field, value) in [
+        ("name", manifest.name.as_str()),
+        ("version", manifest.version.as_str()),
+        ("mode", manifest.mode.as_str()),
+        ("command", manifest.command.as_str()),
+    ] {
+        if value.trim().is_empty() {
+            anyhow::bail!("plugin {field} must not be empty");
+        }
+    }
+    if !manifest
+        .name
+        .chars()
+        .all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '-' || ch == '_')
+    {
+        anyhow::bail!("plugin name must contain only lowercase ASCII letters, digits, '-' or '_'");
+    }
+    verify::screen_command(&manifest.command).context("unsafe plugin command")?;
     Ok(())
 }
 

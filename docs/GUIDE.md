@@ -38,6 +38,8 @@ autoresearch api --format json
 autoresearch scope expand --format json
 autoresearch guard-presets --format json
 autoresearch lessons --workspace-context --last 5
+autoresearch plugin list
+autoresearch plugin validate --path .autoresearch/plugins/example.toml
 autoresearch completions zsh > ~/.zfunc/_autoresearch
 ```
 
@@ -56,6 +58,7 @@ Use `autoresearch api --format json` to inspect the stable command/flag manifest
 Use `autoresearch scope expand --format json` to resolve active primary and companion repo scopes, with package roots inferred from `Cargo.toml`, `package.json`, `pyproject.toml`, and `go.mod`.
 Use `autoresearch guard-presets --format json` to suggest per-repo guard commands for primary and companion repositories.
 Use `autoresearch lessons --workspace-context --last 5` from any managed repo to show the shared workspace lessons path and repo targets.
+Use `autoresearch plugin list` and `autoresearch plugin validate --path <file>` to load local TOML mode plugin manifests with command safety screening.
 
 ## Project Defaults
 

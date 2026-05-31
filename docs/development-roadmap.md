@@ -52,7 +52,7 @@
 ## v1.0.0 — Stable API + Ecosystem
 
 - [x] Stable CLI API — semver guarantees on commands, flags, and output formats
-- [ ] Plugin system — loadable mode definitions (TOML or YAML)
+- [x] Plugin system — loadable mode definitions (TOML or YAML)
 - [ ] Plugin marketplace — community-contributed modes
 - [x] Configuration file (`.autoresearch.toml`) for project-level defaults
 - [x] Shell completions (bash, zsh, fish, elvish, PowerShell)

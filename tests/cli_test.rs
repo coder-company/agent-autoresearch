@@ -317,6 +317,81 @@ fn test_guard_presets_include_primary_and_companion_repos() {
         .stdout(predicate::str::contains("node_lint"));
 }
 
+#[test]
+fn test_plugin_list_and_validate_mode_manifest() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let plugins = dir.path().join(".autoresearch/plugins");
+    std::fs::create_dir_all(&plugins).unwrap();
+    let manifest = plugins.join("coverage.toml");
+    std::fs::write(
+        &manifest,
+        r#"
+name = "coverage_boost"
+version = "0.1.0"
+mode = "improve"
+command = "cargo test -- --coverage"
+description = "Increase coverage"
+scopes = ["src/**/*.rs"]
+"#,
+    )
+    .unwrap();
+
+    cmd()
+        .args(["plugin", "list", "--cwd", dir.path().to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"name\": \"coverage_boost\""))
+        .stdout(predicate::str::contains("\"mode\": \"improve\""))
+        .stdout(predicate::str::contains("coverage.toml"));
+
+    cmd()
+        .args([
+            "plugin",
+            "validate",
+            "--path",
+            ".autoresearch/plugins/coverage.toml",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"valid\": true"))
+        .stdout(predicate::str::contains(
+            "\"command\": \"cargo test -- --coverage\"",
+        ));
+}
+
+#[test]
+fn test_plugin_validate_screens_unsafe_command() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let manifest = dir.path().join("bad-plugin.toml");
+    std::fs::write(
+        &manifest,
+        r#"
+name = "bad"
+version = "0.1.0"
+mode = "fix"
+command = "rm -rf /"
+"#,
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "plugin",
+            "validate",
+            "--path",
+            manifest.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("unsafe plugin command"));
+}
+
 // ── Screen Command ───────────────────────────────────────────────────
 
 #[test]

@@ -50,6 +50,7 @@ The `autoresearch` binary handles mechanical operations:
 - `autoresearch lessons --add "..." --context "..."` — append reusable strategy lessons
 - `autoresearch lessons --workspace-context --last 5` — read shared workspace lessons with repo-target metadata
 - `autoresearch search --from-state --log` — build a run-aware search query, cache provider results, and log a search row; `decide` auto-runs this on Web Search escalation when `AUTORESEARCH_SEARCH_CMD` is configured
+- `autoresearch plugin list` / `plugin validate --path <file>` — load and validate local TOML mode plugin manifests
 - `autoresearch hook <name>` — execute lifecycle hooks
 
 ## Core Protocol (Each Turn)
