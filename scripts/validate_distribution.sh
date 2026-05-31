@@ -129,14 +129,19 @@ require_grep 'autoresearch watch' guide/advanced-patterns.md
 require_grep 'autoresearch parallel prepare' SKILL.md
 require_grep 'autoresearch parallel run' SKILL.md
 require_grep 'timeout-seconds' SKILL.md
+require_grep 'merge-strategy' SKILL.md
 require_grep 'autoresearch parallel cleanup' SKILL.md
 require_grep 'autoresearch parallel prepare' .agents/skills/autoresearch/SKILL.md
 require_grep 'autoresearch parallel run' .agents/skills/autoresearch/SKILL.md
 require_grep 'timeout-seconds' .agents/skills/autoresearch/SKILL.md
+require_grep 'merge-strategy' .agents/skills/autoresearch/SKILL.md
 require_grep 'autoresearch parallel cleanup' .agents/skills/autoresearch/SKILL.md
 require_grep 'autoresearch parallel prepare' docs/GUIDE.md
+require_grep 'merge-strategy' docs/GUIDE.md
 require_grep 'timeout-seconds' docs/GUIDE.md
 require_grep 'autoresearch parallel run' guide/advanced-patterns.md
+require_grep 'merge-strategy' guide/advanced-patterns.md
+require_grep 'merge-strategy' references/parallel-experiments-protocol.md
 require_grep 'timeout-seconds' references/parallel-experiments-protocol.md
 require_grep 'autoresearch parallel cleanup' references/parallel-experiments-protocol.md
 require_grep 'autoresearch completions' README.md

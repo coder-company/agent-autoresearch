@@ -6317,6 +6317,124 @@ fn test_parallel_closeout_selects_best_worker() {
 }
 
 #[test]
+fn test_parallel_closeout_supports_fast_forward_strategy() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+    write_metric_and_commit(&dir, "41\n");
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "lower",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let commit_a = create_branch_commit(&dir, "ff-worker-a", "metric.txt", "37\n", "worker a ff");
+    let batch_path = dir.path().join("autoresearch-results/parallel-batch.json");
+    std::fs::write(
+        &batch_path,
+        format!(
+            r#"[
+  {{"worker_id":"a","metric":"37","guard":"pass","commit":"{commit_a}","description":"fast forward worker","diff_size":1}}
+]"#
+        ),
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "parallel",
+            "closeout",
+            "--batch-file",
+            batch_path.to_str().unwrap(),
+            "--merge-strategy",
+            "fast-forward",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"selected_worker\": \"a\""))
+        .stdout(predicate::str::contains(
+            "\"merge_strategy\": \"fast-forward\"",
+        ));
+
+    assert_eq!(git_head_short(&dir), commit_a);
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("metric.txt")).unwrap(),
+        "37\n"
+    );
+}
+
+#[test]
+fn test_parallel_closeout_supports_squash_strategy() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+    write_metric_and_commit(&dir, "41\n");
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "lower",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let commit_a = create_branch_commit(
+        &dir,
+        "squash-worker-a",
+        "metric.txt",
+        "36\n",
+        "worker a squash",
+    );
+    let batch_path = dir.path().join("autoresearch-results/parallel-batch.json");
+    std::fs::write(
+        &batch_path,
+        format!(
+            r#"[
+  {{"worker_id":"a","metric":"36","guard":"pass","commit":"{commit_a}","description":"squashed worker","diff_size":1}}
+]"#
+        ),
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "parallel",
+            "closeout",
+            "--batch-file",
+            batch_path.to_str().unwrap(),
+            "--merge-strategy",
+            "squash",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"selected_worker\": \"a\""))
+        .stdout(predicate::str::contains("\"merge_strategy\": \"squash\""));
+
+    assert_ne!(git_head_short(&dir), commit_a);
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("metric.txt")).unwrap(),
+        "36\n"
+    );
+}
+
+#[test]
 fn test_parallel_closeout_falls_back_when_best_worker_conflicts() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

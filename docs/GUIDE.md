@@ -27,13 +27,14 @@ autoresearch watch --lines 20
 autoresearch parallel prepare --workers 3
 autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json --timeout-seconds 1200
 autoresearch parallel template --workers 3 --output autoresearch-results/parallel-workers.json
-autoresearch parallel closeout --batch-file autoresearch-results/parallel-workers.json
+autoresearch parallel closeout --batch-file autoresearch-results/parallel-workers.json --merge-strategy cherry-pick
 autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.json
 autoresearch evals --format json
 autoresearch completions zsh > ~/.zfunc/_autoresearch
 ```
 
 Use `autoresearch runtime run` for supervised background Codex sessions and `autoresearch runtime status` / `autoresearch runtime stop` for control.
+Use `autoresearch parallel closeout --merge-strategy <cherry-pick|fast-forward|squash>` to select how the retained worker commit is merged.
 Use `autoresearch completions <bash|zsh|fish|elvish|powershell>` to generate shell completions.
 Use `autoresearch manpages --output-dir man/man1` to generate a local `autoresearch.1` manual page.
 Use `autoresearch config template --output .autoresearch.toml` to write a starter project defaults file.

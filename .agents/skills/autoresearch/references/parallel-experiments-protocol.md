@@ -214,10 +214,10 @@ Selection rules:
 performs the merge and verification step:
 
 1. Rank keepable workers by metric, guard, diff size, and worker ID.
-2. Cherry-pick the best worker commit into the main worktree.
+2. Merge the best worker commit into the main worktree. The default is `--merge-strategy cherry-pick`; `fast-forward` and `squash` are also supported.
 3. Run the configured verify command in the merged main worktree.
 4. Run the configured guard command when present.
-5. If cherry-pick, verify, guard, required keep criteria, or required labels fail, reset back to the pre-merge HEAD, mark that worker row as `discard` with `[MERGE failed] ...`, and try the next-best worker.
+5. If merge, verify, guard, required keep criteria, or required labels fail, reset back to the pre-merge HEAD, mark that worker row as `discard` with `[MERGE failed] ...`, and try the next-best worker.
 6. If a worker verifies successfully after merge, record the authoritative main row with the retained main-worktree commit, not the source worker commit.
 7. If no worker can be merged and verified, count the whole batch as one discard for pivot tracking.
 
@@ -247,7 +247,7 @@ iteration	commit	metric	delta	guard	status	description
 - Prepare isolated worker worktrees with `autoresearch parallel prepare --workers 3 --cwd <workspace_root>`.
 - Launch prepared workers with `autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json --timeout-seconds 1200 --cwd <workspace_root>`.
 - Generate the editable worker JSON schema with `autoresearch parallel template --workers 3 --output autoresearch-results/parallel-workers.json --cwd <workspace_root>`.
-- Close out completed batches through `autoresearch parallel closeout --batch-file <workers.json> --cwd <workspace_root>`. Do not write worker/main rows by hand.
+- Close out completed batches through `autoresearch parallel closeout --batch-file <workers.json> --cwd <workspace_root>`. Use `--merge-strategy cherry-pick`, `fast-forward`, or `squash` when the default should be changed. Do not write worker/main rows by hand.
 - Clean up worktrees and branches with `autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.json --cwd <workspace_root>`.
 - Closeout runs health and worktree preflight first. It accepts clean worktrees and autoresearch-owned artifact changes, but blocks unexpected dirty files before appending any rows.
 

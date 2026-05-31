@@ -78,7 +78,7 @@ If fails → revert regardless of improvement.
 
 ### Phase 7: Decide
 - Prefer `autoresearch decide --decision auto --metric <value> --metrics-json '<json>' --commit <sha>`.
-- For parallel worker batches, use `autoresearch parallel prepare` to create worktrees and prompts, `autoresearch parallel run --timeout-seconds <seconds>` to launch workers and record crashes/timeouts, `autoresearch parallel closeout --batch-file <workers.json>` to cherry-pick, verify, and retain one result, and `autoresearch parallel cleanup` after closeout. Use `autoresearch parallel template` only when worker branches already exist.
+- For parallel worker batches, use `autoresearch parallel prepare` to create worktrees and prompts, `autoresearch parallel run --timeout-seconds <seconds>` to launch workers and record crashes/timeouts, `autoresearch parallel closeout --batch-file <workers.json>` to merge, verify, and retain one result with `--merge-strategy cherry-pick|fast-forward|squash`, and `autoresearch parallel cleanup` after closeout. Use `autoresearch parallel template` only when worker branches already exist.
 - **keep** — improved + guard passed + required keep criteria passed → commit stays
 - **discard** — flat/regressed OR guard/criteria failed → binary reverts the experiment commit
 - **crash** — command errored → binary reverts the experiment commit

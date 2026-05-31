@@ -514,6 +514,9 @@ enum ParallelCommands {
         /// JSON array of worker results
         #[arg(long)]
         batch_file: PathBuf,
+        /// Merge strategy: cherry-pick, fast-forward, or squash
+        #[arg(long, default_value = "cherry-pick")]
+        merge_strategy: String,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -2357,6 +2360,23 @@ struct ParallelWorkerRecord {
     diff_size: u64,
 }
 
+#[derive(Debug, Clone, Copy)]
+enum ParallelMergeStrategy {
+    CherryPick,
+    FastForward,
+    Squash,
+}
+
+impl ParallelMergeStrategy {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::CherryPick => "cherry-pick",
+            Self::FastForward => "fast-forward",
+            Self::Squash => "squash",
+        }
+    }
+}
+
 #[derive(Debug, serde::Deserialize)]
 struct ParallelPrepareManifest {
     #[serde(default)]
@@ -2458,9 +2478,14 @@ fn cmd_parallel(command: ParallelCommands) -> Result<()> {
                 println!("{content}");
             }
         }
-        ParallelCommands::Closeout { batch_file, cwd } => {
+        ParallelCommands::Closeout {
+            batch_file,
+            merge_strategy,
+            cwd,
+        } => {
             let workspace = resolve_results_workspace(cwd);
-            let out = cmd_parallel_closeout(&workspace, &batch_file)?;
+            let merge_strategy = parse_parallel_merge_strategy(&merge_strategy)?;
+            let out = cmd_parallel_closeout(&workspace, &batch_file, merge_strategy)?;
             println!("{}", serde_json::to_string_pretty(&out)?);
         }
     }
@@ -2834,6 +2859,7 @@ fn parallel_batch_template(workers: u8) -> serde_json::Value {
 fn cmd_parallel_closeout(
     workspace: &std::path::Path,
     batch_file: &std::path::Path,
+    merge_strategy: ParallelMergeStrategy,
 ) -> Result<serde_json::Value> {
     let results_dir = workspace.join("autoresearch-results");
     let state_path = results_dir.join("state.json");
@@ -2987,7 +3013,7 @@ fn cmd_parallel_closeout(
     let mut merge_failures = BTreeMap::new();
     let mut merged_winner = None;
     for candidate in ordered_candidates {
-        match merge_and_verify_parallel_candidate(workspace, &state, &candidate) {
+        match merge_and_verify_parallel_candidate(workspace, &state, &candidate, merge_strategy) {
             Ok((verified_candidate, retained_commit)) => {
                 merged_winner = Some((verified_candidate, retained_commit));
                 break;
@@ -3171,6 +3197,7 @@ fn cmd_parallel_closeout(
         "selected_worker": selected_worker,
         "decision": main_status.as_str(),
         "main_status": main_status.as_str(),
+        "merge_strategy": merge_strategy.as_str(),
         "retained_metric": state.current_metric.to_string(),
         "trial_metric": state.last_trial_metric.map(|metric| metric.to_string()),
         "batch_file": batch_file.display().to_string(),
@@ -3196,6 +3223,17 @@ fn parse_guard_result(value: Option<&str>) -> Result<GuardResult> {
         "fail" => Ok(GuardResult::Fail),
         "-" | "skip" => Ok(GuardResult::Skip),
         other => anyhow::bail!("unknown guard result {other:?}; use pass, fail, or skip"),
+    }
+}
+
+fn parse_parallel_merge_strategy(value: &str) -> Result<ParallelMergeStrategy> {
+    match value.trim() {
+        "cherry-pick" => Ok(ParallelMergeStrategy::CherryPick),
+        "fast-forward" | "ff-only" => Ok(ParallelMergeStrategy::FastForward),
+        "squash" => Ok(ParallelMergeStrategy::Squash),
+        other => anyhow::bail!(
+            "Unknown parallel merge strategy: {other}. Use cherry-pick, fast-forward, or squash."
+        ),
     }
 }
 
@@ -4280,16 +4318,111 @@ fn cherry_pick_parallel_commit(workspace: &Path, commit: &str) -> Result<String>
     GitRepo::open(workspace)?.head_short()
 }
 
+fn fast_forward_parallel_commit(workspace: &Path, commit: &str) -> Result<String> {
+    let before = GitRepo::open(workspace)?.head_full()?;
+    let Some(resolved) = git_resolve_commit(workspace, commit)? else {
+        anyhow::bail!("selected worker commit does not exist: {commit}");
+    };
+    if before == resolved {
+        return GitRepo::open(workspace)?.head_short();
+    }
+
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(workspace)
+        .args(["merge", "--ff-only", &resolved])
+        .output()
+        .context("failed to run git merge --ff-only")?;
+    if !output.status.success() {
+        anyhow::bail!(
+            "git merge --ff-only {commit} failed: {}{}",
+            String::from_utf8_lossy(&output.stderr),
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+
+    GitRepo::open(workspace)?.head_short()
+}
+
+fn squash_parallel_commit(workspace: &Path, commit: &str) -> Result<String> {
+    let before = GitRepo::open(workspace)?.head_full()?;
+    let Some(resolved) = git_resolve_commit(workspace, commit)? else {
+        anyhow::bail!("selected worker commit does not exist: {commit}");
+    };
+    if before == resolved {
+        return GitRepo::open(workspace)?.head_short();
+    }
+
+    let merge = Command::new("git")
+        .arg("-C")
+        .arg(workspace)
+        .args(["merge", "--squash", &resolved])
+        .output()
+        .context("failed to run git merge --squash")?;
+    if !merge.status.success() {
+        let _ = Command::new("git")
+            .arg("-C")
+            .arg(workspace)
+            .args(["merge", "--abort"])
+            .output();
+        anyhow::bail!(
+            "git merge --squash {commit} failed: {}{}",
+            String::from_utf8_lossy(&merge.stderr),
+            String::from_utf8_lossy(&merge.stdout)
+        );
+    }
+
+    let diff = Command::new("git")
+        .arg("-C")
+        .arg(workspace)
+        .args(["diff", "--cached", "--quiet"])
+        .output()
+        .context("failed to inspect squashed changes")?;
+    if diff.status.success() {
+        return GitRepo::open(workspace)?.head_short();
+    }
+
+    let message = format!("autoresearch parallel squash {}", short_commit(&resolved));
+    let commit_output = Command::new("git")
+        .arg("-C")
+        .arg(workspace)
+        .args(["commit", "-m", &message])
+        .output()
+        .context("failed to commit squashed parallel result")?;
+    if !commit_output.status.success() {
+        anyhow::bail!(
+            "git commit after squash {commit} failed: {}{}",
+            String::from_utf8_lossy(&commit_output.stderr),
+            String::from_utf8_lossy(&commit_output.stdout)
+        );
+    }
+
+    GitRepo::open(workspace)?.head_short()
+}
+
+fn merge_parallel_commit(
+    workspace: &Path,
+    commit: &str,
+    strategy: ParallelMergeStrategy,
+) -> Result<String> {
+    match strategy {
+        ParallelMergeStrategy::CherryPick => cherry_pick_parallel_commit(workspace, commit),
+        ParallelMergeStrategy::FastForward => fast_forward_parallel_commit(workspace, commit),
+        ParallelMergeStrategy::Squash => squash_parallel_commit(workspace, commit),
+    }
+}
+
 fn merge_and_verify_parallel_candidate(
     workspace: &Path,
     state: &RunState,
     candidate: &ParallelWorkerRecord,
+    merge_strategy: ParallelMergeStrategy,
 ) -> Result<(ParallelWorkerRecord, String)> {
     let Some(commit) = candidate.commit.as_deref() else {
         anyhow::bail!("missing commit");
     };
     let before = GitRepo::open(workspace)?.head_full()?;
-    let retained_commit = match cherry_pick_parallel_commit(workspace, commit) {
+    let retained_commit = match merge_parallel_commit(workspace, commit, merge_strategy) {
         Ok(commit) => commit,
         Err(err) => {
             reset_to_commit(workspace, &before)?;
@@ -4428,6 +4561,10 @@ fn git_resolve_commit(workspace: &Path, commit: &str) -> Result<Option<String>> 
             String::from_utf8_lossy(&output.stdout)
         ),
     }
+}
+
+fn short_commit(commit: &str) -> &str {
+    commit.get(..7).unwrap_or(commit)
 }
 
 fn summarize_error(message: &str) -> String {
