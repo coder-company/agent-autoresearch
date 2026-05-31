@@ -45,7 +45,7 @@
 - [x] Companion repo registration through `--companion-repo-scope PATH=SCOPE`
 - [x] Companion repo preflight, health, and runtime dirty-worktree safeguards
 - [ ] Cross-repo change execution and rollback across companion repos
-- [ ] Workspace-aware scope expansion (monorepo package boundaries)
+- [x] Workspace-aware scope expansion (monorepo package boundaries)
 - [ ] Cross-repo guard command presets
 - [ ] Shared lessons across repos in a workspace
 

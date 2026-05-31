@@ -435,6 +435,12 @@ enum Commands {
         #[command(subcommand)]
         command: ConfigCommands,
     },
+
+    /// Inspect workspace-aware run scopes
+    Scope {
+        #[command(subcommand)]
+        command: ScopeCommands,
+    },
 }
 
 #[derive(Subcommand)]
@@ -593,6 +599,22 @@ enum ConfigCommands {
         /// Config path (default: .autoresearch.toml in the workspace root)
         #[arg(long)]
         path: Option<PathBuf>,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+}
+
+#[derive(Subcommand)]
+enum ScopeCommands {
+    /// Expand active primary and companion repo scope globs
+    Expand {
+        /// Package boundary filename. Repeat to override the defaults.
+        #[arg(long = "package-boundary")]
+        package_boundary: Vec<String>,
+        /// Output format: json or text
+        #[arg(long, default_value = "json")]
+        format: String,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -799,6 +821,13 @@ fn main() -> Result<()> {
         Commands::Config { command } => match command {
             ConfigCommands::Template { output, force } => cmd_config_template(output, force),
             ConfigCommands::Validate { path, cwd } => cmd_config_validate(path, cwd),
+        },
+        Commands::Scope { command } => match command {
+            ScopeCommands::Expand {
+                package_boundary,
+                format,
+                cwd,
+            } => cmd_scope_expand(package_boundary, &format, cwd),
         },
     }
 }
@@ -1070,6 +1099,157 @@ fn validate_project_config(config: &ProjectConfig) -> Result<()> {
         verify::screen_command(guard_cmd).context("unsafe guard in .autoresearch.toml")?;
     }
     Ok(())
+}
+
+fn cmd_scope_expand(
+    package_boundary: Vec<String>,
+    format: &str,
+    cwd: Option<PathBuf>,
+) -> Result<()> {
+    let workspace = resolve_results_workspace(cwd);
+    let results_dir = workspace.join("autoresearch-results");
+    let context_path = results_dir.join("context.json");
+    let run_context: context::RunContext = serde_json::from_str(
+        &std::fs::read_to_string(&context_path)
+            .with_context(|| format!("failed to read {}", context_path.display()))?,
+    )
+    .with_context(|| format!("failed to parse {}", context_path.display()))?;
+    let boundaries = normalized_package_boundaries(package_boundary);
+    let mut targets = Vec::new();
+
+    for target in &run_context.repo_targets {
+        let repo = PathBuf::from(&target.path);
+        let mut files = Vec::new();
+        for pattern in split_scope_patterns(&target.scope) {
+            files.extend(expand_scope_pattern(&repo, pattern)?);
+        }
+        files.sort();
+        files.dedup();
+        let file_entries = files
+            .iter()
+            .map(|path| {
+                serde_json::json!({
+                    "path": display_repo_relative(&repo, path),
+                    "package_root": package_root_for_file(&repo, path, &boundaries),
+                })
+            })
+            .collect::<Vec<_>>();
+        targets.push(serde_json::json!({
+            "role": target.role,
+            "path": target.path,
+            "scope": target.scope,
+            "file_count": file_entries.len(),
+            "files": file_entries,
+        }));
+    }
+
+    let out = serde_json::json!({
+        "workspace_root": run_context.workspace_root,
+        "package_boundaries": boundaries,
+        "repo_targets": targets,
+    });
+
+    match format {
+        "json" => println!("{}", serde_json::to_string_pretty(&out)?),
+        "text" => print!("{}", render_scope_expand_text(&out)),
+        other => anyhow::bail!("Invalid scope expand format {other:?}; use json or text"),
+    }
+    Ok(())
+}
+
+fn normalized_package_boundaries(package_boundary: Vec<String>) -> Vec<String> {
+    let boundaries = if package_boundary.is_empty() {
+        vec![
+            "Cargo.toml".to_string(),
+            "package.json".to_string(),
+            "pyproject.toml".to_string(),
+            "go.mod".to_string(),
+        ]
+    } else {
+        package_boundary
+    };
+    boundaries
+        .into_iter()
+        .map(|boundary| boundary.trim().to_string())
+        .filter(|boundary| !boundary.is_empty())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
+}
+
+fn split_scope_patterns(scope: &str) -> Vec<&str> {
+    scope
+        .split(',')
+        .map(str::trim)
+        .filter(|pattern| !pattern.is_empty())
+        .collect()
+}
+
+fn expand_scope_pattern(repo: &Path, pattern: &str) -> Result<Vec<PathBuf>> {
+    let pattern_path = if Path::new(pattern).is_absolute() {
+        PathBuf::from(pattern)
+    } else {
+        repo.join(pattern)
+    };
+    let pattern = pattern_path.to_string_lossy().to_string();
+    let mut files = Vec::new();
+    for entry in glob::glob(&pattern).with_context(|| format!("invalid scope glob {pattern:?}"))? {
+        let path = entry.with_context(|| format!("failed to read scope glob {pattern:?}"))?;
+        if path.is_file() {
+            files.push(path);
+        }
+    }
+    Ok(files)
+}
+
+fn display_repo_relative(repo: &Path, path: &Path) -> String {
+    path.strip_prefix(repo)
+        .unwrap_or(path)
+        .to_string_lossy()
+        .to_string()
+}
+
+fn package_root_for_file(repo: &Path, path: &Path, boundaries: &[String]) -> String {
+    let mut current = path.parent().unwrap_or(repo);
+    loop {
+        if boundaries
+            .iter()
+            .any(|boundary| current.join(boundary).is_file())
+        {
+            return display_repo_relative(repo, current);
+        }
+        if current == repo {
+            return ".".to_string();
+        }
+        let Some(parent) = current.parent() else {
+            return ".".to_string();
+        };
+        current = parent;
+    }
+}
+
+fn render_scope_expand_text(value: &serde_json::Value) -> String {
+    let mut out = String::new();
+    if let Some(targets) = value["repo_targets"].as_array() {
+        for target in targets {
+            let role = target["role"].as_str().unwrap_or("repo");
+            let path = target["path"].as_str().unwrap_or("");
+            let file_count = target["file_count"].as_u64().unwrap_or(0);
+            writeln!(out, "{role}: {path} ({file_count} files)").unwrap();
+            if let Some(files) = target["files"].as_array() {
+                for file in files {
+                    writeln!(
+                        out,
+                        "  {} [{}]",
+                        file["path"].as_str().unwrap_or(""),
+                        file["package_root"].as_str().unwrap_or(".")
+                    )
+                    .unwrap();
+                }
+            }
+        }
+    }
+    out
 }
 
 // ── Init ──────────────────────────────────────────────────────────────

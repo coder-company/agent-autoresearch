@@ -35,6 +35,7 @@ autoresearch parallel closeout --batch-file autoresearch-results/parallel-worker
 autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.json
 autoresearch evals --format json
 autoresearch api --format json
+autoresearch scope expand --format json
 autoresearch completions zsh > ~/.zfunc/_autoresearch
 ```
 
@@ -50,6 +51,7 @@ Use `autoresearch manpages --output-dir man/man1` to generate a local `autoresea
 Use `autoresearch config template --output .autoresearch.toml` to write a starter project defaults file.
 Use `autoresearch config validate` to parse defaults, validate options, and screen configured commands without running them.
 Use `autoresearch api --format json` to inspect the stable command/flag manifest and semver policy used by wrappers and agents.
+Use `autoresearch scope expand --format json` to resolve active primary and companion repo scopes, with package roots inferred from `Cargo.toml`, `package.json`, `pyproject.toml`, and `go.mod`.
 
 ## Project Defaults
 

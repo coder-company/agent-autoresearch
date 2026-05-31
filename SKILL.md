@@ -136,6 +136,7 @@ Optional:
 | `autoresearch lessons --search "query" --last 5` | Query lessons for strategy |
 | `autoresearch evals [path]` | Analyze results: trends, plateaus |
 | `autoresearch api --format json` | Emit the stable CLI command/flag manifest and semver policy |
+| `autoresearch scope expand --format json` | Resolve primary and companion repo scopes with package-root annotations |
 | `autoresearch handoff --source loop --status GOAL_MET` | Write chain handoff.json |
 | `autoresearch screen --command "..."` | Safety screen for dangerous patterns |
 | `autoresearch hook <name>` | Plugin hook dispatch (<5ms) |

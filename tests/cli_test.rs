@@ -184,6 +184,81 @@ fn test_config_validate_rejects_invalid_direction() {
         ));
 }
 
+#[test]
+fn test_scope_expand_uses_workspace_context_and_package_boundaries() {
+    let workspace = TempDir::new().unwrap();
+    init_git_fixture(&workspace);
+    commit_file(
+        &workspace,
+        "crates/app/Cargo.toml",
+        "[package]\nname = \"app\"\nversion = \"0.1.0\"\n",
+        "add app manifest",
+    );
+    commit_file(
+        &workspace,
+        "crates/app/src/lib.rs",
+        "pub fn app() {}\n",
+        "add app lib",
+    );
+    commit_file(
+        &workspace,
+        "crates/shared/src/lib.rs",
+        "pub fn shared() {}\n",
+        "add shared lib",
+    );
+    let workspace_root = workspace.path().to_str().unwrap();
+
+    let companion = TempDir::new().unwrap();
+    init_git_fixture(&companion);
+    commit_file(
+        &companion,
+        "packages/ui/package.json",
+        "{\"name\":\"ui\"}\n",
+        "add ui manifest",
+    );
+    commit_file(
+        &companion,
+        "packages/ui/src/index.ts",
+        "export const ui = true;\n",
+        "add ui source",
+    );
+    let companion_root = companion.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--scope",
+            "crates/**/*.rs",
+            "--workspace-root",
+            workspace_root,
+            "--primary-repo",
+            workspace_root,
+            "--companion-repo-scope",
+            &format!("{companion_root}=packages/**/*.ts"),
+            "--cwd",
+            workspace_root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["scope", "expand", "--cwd", companion_root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"role\": \"primary\""))
+        .stdout(predicate::str::contains("crates/app/src/lib.rs"))
+        .stdout(predicate::str::contains("\"package_root\": \"crates/app\""))
+        .stdout(predicate::str::contains("\"role\": \"companion\""))
+        .stdout(predicate::str::contains("packages/ui/src/index.ts"))
+        .stdout(predicate::str::contains(
+            "\"package_root\": \"packages/ui\"",
+        ));
+}
+
 // ── Screen Command ───────────────────────────────────────────────────
 
 #[test]

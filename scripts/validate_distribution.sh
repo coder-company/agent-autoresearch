@@ -183,6 +183,9 @@ require_grep 'Man pages generation' docs/development-roadmap.md
 require_grep 'autoresearch api --format json' README.md
 require_grep 'autoresearch api --format json' docs/GUIDE.md
 require_grep 'Stable CLI API — semver guarantees' docs/development-roadmap.md
+require_grep 'autoresearch scope expand --format json' README.md
+require_grep 'autoresearch scope expand --format json' docs/GUIDE.md
+require_grep 'Workspace-aware scope expansion \(monorepo package boundaries\)' docs/development-roadmap.md
 require_grep '\.autoresearch\.toml' README.md
 require_grep '\.autoresearch\.toml' docs/GUIDE.md
 require_grep 'autoresearch config template' README.md
