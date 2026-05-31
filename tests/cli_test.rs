@@ -1733,6 +1733,35 @@ fn test_predict_chain_writes_handoff_sidecar() {
 }
 
 #[test]
+fn test_predict_debug_flag_records_debug_handoff() {
+    let dir = TempDir::new().unwrap();
+    let output = dir
+        .path()
+        .join("autoresearch-results/predict/cache-review.md");
+
+    cmd()
+        .args([
+            "predict",
+            "--proposal",
+            "Add cache warming to search results",
+            "--debug",
+            "--output",
+            output.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("handoff.json"));
+
+    let handoff = std::fs::read_to_string(output.parent().unwrap().join("handoff.json")).unwrap();
+    assert!(handoff.contains("\"source_command\": \"predict\""));
+    assert!(handoff.contains("\"chain\": ["));
+    assert!(handoff.contains("\"debug\""));
+    assert!(handoff.contains("\"next_target\": \"debug\""));
+}
+
+#[test]
 fn test_predict_accepts_protocol_goal_alias() {
     let dir = TempDir::new().unwrap();
 

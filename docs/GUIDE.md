@@ -110,7 +110,7 @@ Use `autoresearch scenario --target <feature> --domain <general|web|mobile|api|c
 Use `autoresearch scenario --target <feature> --domain web --depth deep --iterations 16 --evals --debug` to override the exploration budget and record domain, checkpoint metadata, and downstream debug handoff.
 Use `autoresearch predict --proposal <change>` to write a five-persona review covering architecture, security, performance, UX, and adversarial risks.
 Use `autoresearch predict --proposal <change> --depth deep --adversarial --fail-on high` to record review profile and CI gate metadata.
-Use `autoresearch predict --proposal <change> --chain debug` to record the review as handoff context for downstream investigation.
+Use `autoresearch predict --proposal <change> --debug` to record the review as handoff context for downstream investigation.
 Use `autoresearch reason --question <decision>` to write an adversarial debate artifact with candidate solutions, blind judge rubric, and convergence criteria.
 Use `autoresearch reason --question <decision> --chain predict,fix` to pass the selected debate context into downstream review or repair.
 Use `autoresearch reason --question <decision> --iterations 11 --judges 7 --convergence 4 --temperature 0.2` to record debate budget, judge panel, convergence, synthesis, and generation hints.

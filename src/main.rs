@@ -846,6 +846,9 @@ enum Commands {
         /// Only analyze changed files
         #[arg(long)]
         incremental: bool,
+        /// Chain into debug mode after writing the prediction review
+        #[arg(long)]
+        debug: bool,
         /// Comma-separated downstream command targets to record in handoff.json
         #[arg(long)]
         chain: Option<String>,
@@ -1780,6 +1783,7 @@ fn main() -> Result<()> {
             budget,
             fail_on,
             incremental,
+            debug,
             chain,
             evals,
             evals_interval,
@@ -1795,6 +1799,7 @@ fn main() -> Result<()> {
             budget,
             fail_on,
             incremental,
+            debug,
             chain,
             evals,
             evals_interval,
@@ -4669,6 +4674,7 @@ fn cmd_predict(
     budget: Option<u32>,
     fail_on: Option<String>,
     incremental: bool,
+    debug: bool,
     chain: Option<String>,
     evals: bool,
     evals_interval: Option<u32>,
@@ -4685,7 +4691,8 @@ fn cmd_predict(
         fail_on,
         incremental,
     )?;
-    let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
+    let forced_targets = if debug { &["debug"][..] } else { &[][..] };
+    let chain_targets = chain_targets_with_forced(chain.as_deref(), forced_targets)?;
     let workspace = resolve_workspace_root(cwd);
     let output = output.unwrap_or_else(|| {
         default_artifact_path("predict", format!("predict-{}.md", slugify(proposal)))

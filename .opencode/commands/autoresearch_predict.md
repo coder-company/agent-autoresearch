@@ -1,7 +1,7 @@
 ---
 name: autoresearch_predict
 description: "5 expert personas debate proposed changes before implementation"
-argument-hint: "[Scope: <glob>] [Goal: <text>] [--depth shallow|standard|deep] [--adversarial] [--chain <targets>]"
+argument-hint: "[Scope: <glob>] [Goal: <text>] [--depth shallow|standard|deep] [--adversarial] [--debug] [--chain <targets>]"
 ---
 
 EXECUTE IMMEDIATELY.
@@ -18,6 +18,7 @@ Extract from $ARGUMENTS:
 - `--budget N` — max findings across all personas (default 40)
 - `--fail-on <severity>` — CI gate: exit non-zero if findings at/above threshold
 - `--incremental` — reuse existing knowledge files, update only changed files
+- `--debug` — shorthand for `--chain debug`
 - `--chain`, `--<subcommand>`
 
 Remaining text not matching flags = goal description.
