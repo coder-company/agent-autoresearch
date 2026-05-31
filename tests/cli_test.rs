@@ -1988,6 +1988,43 @@ fn test_watch_once_outputs_jsonl() {
 }
 
 #[test]
+fn test_watch_websocket_once_outputs_snapshot_payload() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let results = dir.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    let tsv_path = results.join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: higher").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t50\t0\t-\tbaseline\tinitial state").unwrap();
+    writeln!(file, "1\tbcd2345\t55\t+5\tpass\tkeep\timprovement").unwrap();
+
+    cmd()
+        .args([
+            "watch",
+            "--websocket",
+            "--once",
+            "--lines",
+            "1",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"websocket\": true"))
+        .stdout(predicate::str::contains("\"type\": \"snapshot\""))
+        .stdout(predicate::str::contains("\"iteration\": \"1\""))
+        .stdout(predicate::str::contains("\"description\": \"improvement\""))
+        .stdout(predicate::str::contains("initial state").not());
+}
+
+#[test]
 fn test_watch_rejects_zero_poll_interval() {
     cmd()
         .args(["watch", "--interval-ms", "0", "--once"])

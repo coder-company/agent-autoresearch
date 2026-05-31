@@ -26,6 +26,7 @@ autoresearch status --summary
 autoresearch progress
 autoresearch health --strict
 autoresearch watch --lines 20 --format jsonl
+autoresearch watch --websocket --websocket-addr 127.0.0.1:8765
 autoresearch lessons --add "Prefer fixture-level assertions" --context "reduced flaky tests"
 autoresearch search --from-state --provider-command 'exa "$AUTORESEARCH_SEARCH_QUERY"' --log
 autoresearch parallel prepare --workers 3
@@ -47,6 +48,7 @@ autoresearch completions zsh > ~/.zfunc/_autoresearch
 Use `autoresearch runtime run` for supervised background Codex sessions and `autoresearch runtime status` / `autoresearch runtime stop` for control.
 Use `autoresearch status --summary` for compact monitor-friendly counters.
 Use `autoresearch watch --format <tsv|jsonl>` for human-readable tails or machine-readable JSON Lines.
+Use `autoresearch watch --websocket --websocket-addr <host:port>` to serve snapshot and row update payloads to real-time dashboards. Add `--once` to print the initial WebSocket snapshot envelope without starting a server.
 Use `autoresearch lessons --add <strategy> --context <note>` to append reusable lessons without editing `lessons.md` by hand.
 Use `autoresearch search --from-state` with `--provider-command` or `AUTORESEARCH_SEARCH_CMD` to run cached, run-aware web searches. Add `--log` to append a `search` meta-iteration. When `decide` escalates to Web Search, it automatically runs the same cached helper with `AUTORESEARCH_SEARCH_CMD` and logs the result when timing/cooldown limits allow it.
 Use `autoresearch parallel closeout --merge-strategy <cherry-pick|fast-forward|squash|rebase>` to select how the retained worker commit is merged.

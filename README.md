@@ -184,6 +184,7 @@ Covered in detail in the [guide](guide/):
 - **Session resume** — interrupted runs pick up from the last consistent state
 - **Background runtime control** — `autoresearch runtime run` preflights each Codex turn, manages `launch.json`, `runtime.json`, `runtime.log`, and relaunches until stop or needs-human; `start/status/supervise/stop` remain available for manual control
 - **Live results tailing** — `autoresearch watch --lines 20 --format jsonl` follows `autoresearch-results/results.tsv` from the workspace root or any repo subdirectory
+- **Progress WebSocket** — `autoresearch watch --websocket` streams snapshot and row update payloads to real-time dashboards
 - **Compact run status** — `autoresearch status --summary` prints monitor-friendly counters without full config payloads
 - **Parallel worker execution** — `autoresearch parallel prepare/run/closeout/cleanup` creates isolated worker worktrees, launches prompts, merges and verifies the best result, logs `5a`/`5b` audit rows, and cleans up branches
 - **Shell completions** — `autoresearch completions bash|zsh|fish|elvish|powershell` prints native completion scripts for local installs

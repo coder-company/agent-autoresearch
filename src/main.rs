@@ -326,6 +326,12 @@ enum Commands {
         /// Poll interval while following
         #[arg(long, default_value_t = 1000, value_parser = clap::value_parser!(u64).range(1..))]
         interval_ms: u64,
+        /// Serve watch events over a WebSocket instead of writing rows to stdout
+        #[arg(long)]
+        websocket: bool,
+        /// WebSocket bind address
+        #[arg(long, default_value = "127.0.0.1:8765")]
+        websocket_addr: String,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -806,8 +812,18 @@ fn main() -> Result<()> {
             format,
             once,
             interval_ms,
+            websocket,
+            websocket_addr,
             cwd,
-        } => cmd_watch(cwd, lines, &format, once, interval_ms),
+        } => cmd_watch(
+            cwd,
+            lines,
+            &format,
+            once,
+            interval_ms,
+            websocket,
+            &websocket_addr,
+        ),
 
         Commands::Lessons {
             add,
@@ -4624,11 +4640,22 @@ fn cmd_watch(
     format: &str,
     once: bool,
     interval_ms: u64,
+    websocket: bool,
+    websocket_addr: &str,
 ) -> Result<()> {
-    let format = parse_watch_format(format)?;
+    let format = if websocket {
+        None
+    } else {
+        Some(parse_watch_format(format)?)
+    };
     let cwd = resolve_cwd(cwd);
     let tsv_path = default_results_tsv(&cwd)
         .context("No results.tsv found. Provide --cwd inside a run workspace.")?;
+    if websocket {
+        return cmd_watch_websocket(tsv_path, lines, once, interval_ms, websocket_addr);
+    }
+
+    let format = format.expect("watch format is parsed when websocket mode is disabled");
     let mut printed_lines = 0usize;
 
     loop {
@@ -4686,6 +4713,159 @@ fn cmd_watch(
     }
 
     Ok(())
+}
+
+fn cmd_watch_websocket(
+    tsv_path: PathBuf,
+    lines: usize,
+    once: bool,
+    interval_ms: u64,
+    addr: &str,
+) -> Result<()> {
+    if once {
+        let (payloads, _) = watch_websocket_payloads(&tsv_path, lines, 0)?;
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&serde_json::json!({
+                "websocket": true,
+                "mode": "snapshot",
+                "url": format!("ws://{addr}"),
+                "payloads": payloads,
+            }))?
+        );
+        return Ok(());
+    }
+
+    let runtime = tokio::runtime::Runtime::new().context("failed to start websocket runtime")?;
+    runtime.block_on(run_watch_websocket_server(
+        tsv_path,
+        lines,
+        interval_ms,
+        addr.to_string(),
+    ))
+}
+
+async fn run_watch_websocket_server(
+    tsv_path: PathBuf,
+    lines: usize,
+    interval_ms: u64,
+    addr: String,
+) -> Result<()> {
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .with_context(|| format!("failed to bind watch websocket on {addr}"))?;
+    let local_addr = listener
+        .local_addr()
+        .context("failed to read websocket addr")?;
+    write_stdout_line(
+        &serde_json::json!({
+            "websocket": true,
+            "listening": local_addr.to_string(),
+            "url": format!("ws://{local_addr}"),
+        })
+        .to_string(),
+    )?;
+
+    loop {
+        let (stream, _) = listener.accept().await?;
+        let client_tsv_path = tsv_path.clone();
+        tokio::spawn(async move {
+            if let Err(err) =
+                serve_watch_websocket_client(stream, client_tsv_path, lines, interval_ms).await
+            {
+                eprintln!("watch websocket client error: {err:#}");
+            }
+        });
+    }
+}
+
+async fn serve_watch_websocket_client(
+    stream: tokio::net::TcpStream,
+    tsv_path: PathBuf,
+    lines: usize,
+    interval_ms: u64,
+) -> Result<()> {
+    use futures_util::SinkExt;
+    use tokio_tungstenite::tungstenite::Message;
+
+    let mut socket = tokio_tungstenite::accept_async(stream)
+        .await
+        .context("failed to accept watch websocket client")?;
+    let mut printed_lines = 0usize;
+
+    loop {
+        let (payloads, next_printed_lines) =
+            watch_websocket_payloads(&tsv_path, lines, printed_lines)?;
+        printed_lines = next_printed_lines;
+
+        for payload in payloads {
+            socket
+                .send(Message::Text(payload.to_string().into()))
+                .await
+                .context("failed to send watch websocket payload")?;
+        }
+
+        tokio::time::sleep(Duration::from_millis(interval_ms)).await;
+    }
+}
+
+fn watch_websocket_payloads(
+    tsv_path: &Path,
+    lines: usize,
+    printed_lines: usize,
+) -> Result<(Vec<serde_json::Value>, usize)> {
+    let content = std::fs::read_to_string(tsv_path)
+        .with_context(|| format!("Cannot read {}", tsv_path.display()))?;
+    let visible_lines: Vec<&str> = content
+        .lines()
+        .filter(|line| !line.starts_with('#') && !line.is_empty())
+        .collect();
+    let printed_lines = if visible_lines.len() < printed_lines {
+        0
+    } else {
+        printed_lines
+    };
+    let header = visible_lines
+        .iter()
+        .find(|line| line.starts_with("iteration\t"))
+        .copied()
+        .context("results.tsv is missing the data header")?;
+    let header_columns = watch_header_columns(header);
+    let data_rows: Vec<&str> = visible_lines
+        .iter()
+        .copied()
+        .filter(|line| !line.starts_with("iteration\t"))
+        .collect();
+
+    if printed_lines == 0 {
+        let start = data_rows.len().saturating_sub(lines);
+        let rows = data_rows[start..]
+            .iter()
+            .map(|row| watch_row_json(row, &header_columns))
+            .collect::<Vec<_>>();
+        return Ok((
+            vec![serde_json::json!({
+                "type": "snapshot",
+                "rows": rows,
+            })],
+            visible_lines.len(),
+        ));
+    }
+
+    if visible_lines.len() <= printed_lines {
+        return Ok((Vec::new(), printed_lines));
+    }
+
+    let payloads = visible_lines[printed_lines..]
+        .iter()
+        .map(|row| {
+            serde_json::json!({
+                "type": "row",
+                "row": watch_row_json(row, &header_columns),
+            })
+        })
+        .collect::<Vec<_>>();
+    Ok((payloads, visible_lines.len()))
 }
 
 fn watch_header_columns(header: &str) -> Vec<&str> {
