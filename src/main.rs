@@ -169,6 +169,16 @@ enum Commands {
         cwd: Option<PathBuf>,
     },
 
+    /// Suggest guard command presets for primary and companion repos
+    GuardPresets {
+        /// Output format: json or text
+        #[arg(long, default_value = "json")]
+        format: String,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
     /// Record an iteration: append TSV row + update state.json
     Log {
         /// Iteration number
@@ -684,6 +694,8 @@ fn main() -> Result<()> {
 
         Commands::Guard { command, cwd } => cmd_guard(&command, cwd),
 
+        Commands::GuardPresets { format, cwd } => cmd_guard_presets(&format, cwd),
+
         Commands::Log {
             iteration,
             commit,
@@ -1107,13 +1119,7 @@ fn cmd_scope_expand(
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let workspace = resolve_results_workspace(cwd);
-    let results_dir = workspace.join("autoresearch-results");
-    let context_path = results_dir.join("context.json");
-    let run_context: context::RunContext = serde_json::from_str(
-        &std::fs::read_to_string(&context_path)
-            .with_context(|| format!("failed to read {}", context_path.display()))?,
-    )
-    .with_context(|| format!("failed to parse {}", context_path.display()))?;
+    let run_context = load_run_context(&workspace)?;
     let boundaries = normalized_package_boundaries(package_boundary);
     let mut targets = Vec::new();
 
@@ -1250,6 +1256,15 @@ fn render_scope_expand_text(value: &serde_json::Value) -> String {
         }
     }
     out
+}
+
+fn load_run_context(workspace: &Path) -> Result<context::RunContext> {
+    let context_path = workspace.join("autoresearch-results/context.json");
+    serde_json::from_str(
+        &std::fs::read_to_string(&context_path)
+            .with_context(|| format!("failed to read {}", context_path.display()))?,
+    )
+    .with_context(|| format!("failed to parse {}", context_path.display()))
 }
 
 // ── Init ──────────────────────────────────────────────────────────────
@@ -1646,6 +1661,137 @@ fn cmd_guard(command: &str, cwd: Option<PathBuf>) -> Result<()> {
     });
     println!("{}", serde_json::to_string(&out)?);
     Ok(())
+}
+
+fn cmd_guard_presets(format: &str, cwd: Option<PathBuf>) -> Result<()> {
+    let workspace = resolve_results_workspace(cwd);
+    let run_context = load_run_context(&workspace)?;
+    let repo_targets = run_context
+        .repo_targets
+        .iter()
+        .map(|target| {
+            let repo = PathBuf::from(&target.path);
+            serde_json::json!({
+                "role": target.role,
+                "path": target.path,
+                "scope": target.scope,
+                "presets": guard_presets_for_repo(&repo),
+            })
+        })
+        .collect::<Vec<_>>();
+    let out = serde_json::json!({
+        "workspace_root": run_context.workspace_root,
+        "repo_targets": repo_targets,
+    });
+
+    match format {
+        "json" => println!("{}", serde_json::to_string_pretty(&out)?),
+        "text" => print!("{}", render_guard_presets_text(&out)),
+        other => anyhow::bail!("Invalid guard-presets format {other:?}; use json or text"),
+    }
+    Ok(())
+}
+
+fn guard_presets_for_repo(repo: &Path) -> Vec<serde_json::Value> {
+    let mut presets = Vec::new();
+    let cwd = repo.to_string_lossy().to_string();
+    let cd = shell_cd(repo);
+    if repo.join("Cargo.toml").is_file() {
+        presets.push(guard_preset(
+            "rust_tests",
+            &cwd,
+            &format!("{cd} cargo test"),
+            "Cargo.toml detected",
+        ));
+        presets.push(guard_preset(
+            "rust_format",
+            &cwd,
+            &format!("{cd} cargo fmt -- --check"),
+            "Cargo.toml detected",
+        ));
+    }
+    if repo.join("package.json").is_file() {
+        presets.push(guard_preset(
+            "node_tests",
+            &cwd,
+            &format!("{cd} npm test -- --runInBand"),
+            "package.json detected",
+        ));
+        presets.push(guard_preset(
+            "node_lint",
+            &cwd,
+            &format!("{cd} npm run lint --if-present"),
+            "package.json detected",
+        ));
+    }
+    if repo.join("pyproject.toml").is_file() || repo.join("setup.py").is_file() {
+        presets.push(guard_preset(
+            "python_tests",
+            &cwd,
+            &format!("{cd} pytest"),
+            "Python project metadata detected",
+        ));
+    }
+    if repo.join("go.mod").is_file() {
+        presets.push(guard_preset(
+            "go_tests",
+            &cwd,
+            &format!("{cd} go test ./..."),
+            "go.mod detected",
+        ));
+    }
+    if repo.join("Makefile").is_file() {
+        presets.push(guard_preset(
+            "make_test",
+            &cwd,
+            &format!("{cd} make test"),
+            "Makefile detected",
+        ));
+    }
+    presets
+}
+
+fn guard_preset(name: &str, cwd: &str, command: &str, reason: &str) -> serde_json::Value {
+    serde_json::json!({
+        "name": name,
+        "cwd": cwd,
+        "command": command,
+        "reason": reason,
+    })
+}
+
+fn shell_cd(path: &Path) -> String {
+    format!("cd {} &&", shell_quote(&path.to_string_lossy()))
+}
+
+fn shell_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
+fn render_guard_presets_text(value: &serde_json::Value) -> String {
+    let mut out = String::new();
+    if let Some(targets) = value["repo_targets"].as_array() {
+        for target in targets {
+            let role = target["role"].as_str().unwrap_or("repo");
+            let path = target["path"].as_str().unwrap_or("");
+            writeln!(out, "{role}: {path}").unwrap();
+            if let Some(presets) = target["presets"].as_array() {
+                if presets.is_empty() {
+                    writeln!(out, "  - no presets detected").unwrap();
+                }
+                for preset in presets {
+                    writeln!(
+                        out,
+                        "  - {}: {}",
+                        preset["name"].as_str().unwrap_or("preset"),
+                        preset["command"].as_str().unwrap_or("")
+                    )
+                    .unwrap();
+                }
+            }
+        }
+    }
+    out
 }
 
 // ── Log ───────────────────────────────────────────────────────────────

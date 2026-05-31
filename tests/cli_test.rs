@@ -259,6 +259,64 @@ fn test_scope_expand_uses_workspace_context_and_package_boundaries() {
         ));
 }
 
+#[test]
+fn test_guard_presets_include_primary_and_companion_repos() {
+    let workspace = TempDir::new().unwrap();
+    init_git_fixture(&workspace);
+    commit_file(
+        &workspace,
+        "Cargo.toml",
+        "[package]\nname = \"primary\"\nversion = \"0.1.0\"\n",
+        "add rust manifest",
+    );
+    let workspace_root = workspace.path().to_str().unwrap();
+
+    let companion = TempDir::new().unwrap();
+    init_git_fixture(&companion);
+    commit_file(
+        &companion,
+        "package.json",
+        "{\"scripts\":{\"test\":\"node --test\"}}\n",
+        "add package manifest",
+    );
+    let companion_root = companion.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--workspace-root",
+            workspace_root,
+            "--primary-repo",
+            workspace_root,
+            "--companion-repo-scope",
+            &format!("{companion_root}=src/**/*.ts"),
+            "--cwd",
+            workspace_root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["guard-presets", "--cwd", companion_root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"name\": \"rust_tests\""))
+        .stdout(predicate::str::contains("cargo test"))
+        .stdout(predicate::str::contains("\"name\": \"node_tests\""))
+        .stdout(predicate::str::contains("npm test"));
+
+    cmd()
+        .args(["guard-presets", "--format", "text", "--cwd", workspace_root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("rust_format"))
+        .stdout(predicate::str::contains("node_lint"));
+}
+
 // ── Screen Command ───────────────────────────────────────────────────
 
 #[test]

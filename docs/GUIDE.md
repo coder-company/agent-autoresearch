@@ -36,6 +36,7 @@ autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.
 autoresearch evals --format json
 autoresearch api --format json
 autoresearch scope expand --format json
+autoresearch guard-presets --format json
 autoresearch completions zsh > ~/.zfunc/_autoresearch
 ```
 
@@ -52,6 +53,7 @@ Use `autoresearch config template --output .autoresearch.toml` to write a starte
 Use `autoresearch config validate` to parse defaults, validate options, and screen configured commands without running them.
 Use `autoresearch api --format json` to inspect the stable command/flag manifest and semver policy used by wrappers and agents.
 Use `autoresearch scope expand --format json` to resolve active primary and companion repo scopes, with package roots inferred from `Cargo.toml`, `package.json`, `pyproject.toml`, and `go.mod`.
+Use `autoresearch guard-presets --format json` to suggest per-repo guard commands for primary and companion repositories.
 
 ## Project Defaults
 

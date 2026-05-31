@@ -46,7 +46,7 @@
 - [x] Companion repo preflight, health, and runtime dirty-worktree safeguards
 - [ ] Cross-repo change execution and rollback across companion repos
 - [x] Workspace-aware scope expansion (monorepo package boundaries)
-- [ ] Cross-repo guard command presets
+- [x] Cross-repo guard command presets
 - [ ] Shared lessons across repos in a workspace
 
 ## v1.0.0 — Stable API + Ecosystem

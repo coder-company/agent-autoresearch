@@ -47,6 +47,7 @@ This skill uses Claude Code's `/goal` command as the native continuation engine.
 - Read `autoresearch-results/context.json` when present
 - Use `autoresearch api --format json` when an integration needs the stable command/flag manifest
 - Use `autoresearch scope expand --format json` when a monorepo or companion repo scope needs concrete file/package context
+- Use `autoresearch guard-presets --format json` when primary or companion repos need a guard command suggestion
 - Run `git log --oneline -10` — see what worked/failed
 - If last iteration was "keep" → run `git diff HEAD~1`
 - Consult `autoresearch-results/lessons.md` for strategy insights
