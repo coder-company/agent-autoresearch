@@ -13,7 +13,7 @@ autoresearch debug --symptom "API returns 500" --scope "src/**/*.rs" --depth dee
 autoresearch fix --target "npx tsc --noEmit" --scope "src/**/*.ts" --category type --chain learn --evals
 autoresearch improve --goal "Improve onboarding activation" --icp "Developer tools teams" --depth deep --seeds 5 --evals
 autoresearch prd --title "Improve onboarding" --problem "New users stall before first run"
-autoresearch security --scope "src/**/*.rs" --focus auth --depth deep --diff --evals
+autoresearch security --scope "src/**/*.rs" --focus auth --depth deep --iterations 18 --diff --evals
 autoresearch ship --target "Release v1.2.0" --type code-release --dry-run --monitor 15
 autoresearch scenario --target "Checkout flow" --domain web --format threat-scenarios --scope "src/checkout/**" --chain debug
 autoresearch predict --proposal "Add cache warming to search results" --scope "src/search/**"
@@ -42,7 +42,7 @@ Native artifact generators default to ignored `autoresearch-results/<mode>/` pat
 `prd` writes a focused improve-mode markdown artifact with DECISION NEEDED markers, acceptance criteria, risks, success metrics, and a ready-to-run autoresearch config block.
 `security` writes a STRIDE + OWASP audit artifact bundle: overview, threat model, attack surface map, coverage, findings, recommendations, results TSV, and handoff JSON.
 `security --fail-on <severity> --fix` records the CI gate threshold, confirmed finding count, and downstream fix target metadata.
-`security --depth <level> --diff --chain <targets> --evals` records audit budget, delta mode, explicit chain targets, and checkpoint propagation metadata.
+`security --depth <level> --iterations <n> --diff --chain <targets> --evals` records audit budget, delta mode, explicit chain targets, and checkpoint propagation metadata.
 `ship` writes an 8-phase checklist, summary, ship log TSV, and handoff JSON without performing external ship actions.
 `ship --auto --force --rollback --monitor <minutes> --chain <targets>` records approval posture, rollback intent, monitoring window, and downstream handoff metadata without external side effects.
 `scenario` writes a markdown artifact covering all 12 scenario dimensions for the requested target, domain, format, focus, and implementation scope.

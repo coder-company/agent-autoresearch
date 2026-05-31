@@ -920,6 +920,39 @@ fn test_security_profile_chain_and_evals_are_recorded() {
 }
 
 #[test]
+fn test_security_iterations_override_depth_budget() {
+    let dir = TempDir::new().unwrap();
+    let output_dir = dir
+        .path()
+        .join("autoresearch-results/security/custom-budget");
+
+    cmd()
+        .args([
+            "security",
+            "--focus",
+            "auth",
+            "--depth",
+            "deep",
+            "--iterations",
+            "18",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"iteration_budget\":18"));
+
+    let overview = std::fs::read_to_string(output_dir.join("overview.md")).unwrap();
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+
+    assert!(overview.contains("- Depth: deep"));
+    assert!(overview.contains("- Iteration budget: 18"));
+    assert!(handoff.contains("\"iteration_budget\": 18"));
+}
+
+#[test]
 fn test_ship_writes_checklist_artifact_bundle() {
     let dir = TempDir::new().unwrap();
     let output_dir = dir.path().join("ship/release");

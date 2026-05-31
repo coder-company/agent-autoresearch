@@ -625,6 +625,9 @@ enum Commands {
         /// Audit depth: quick, standard, or deep
         #[arg(long, default_value = "standard")]
         depth: String,
+        /// Override the depth-derived audit iteration budget
+        #[arg(long)]
+        iterations: Option<u32>,
         /// Delta mode: record that only files changed since the last audit should be audited
         #[arg(long)]
         diff: bool,
@@ -1602,6 +1605,7 @@ fn main() -> Result<()> {
             scope,
             focus,
             depth,
+            iterations,
             diff,
             fix,
             fail_on,
@@ -1614,6 +1618,7 @@ fn main() -> Result<()> {
             scope,
             focus,
             &depth,
+            iterations,
             diff,
             fix,
             fail_on,
@@ -2933,15 +2938,19 @@ fn parse_security_depth(value: &str) -> Result<(&'static str, u32)> {
 
 fn resolve_security_profile(
     depth: &str,
+    iterations: Option<u32>,
     diff: bool,
     evals: bool,
     evals_interval: Option<u32>,
 ) -> Result<SecurityProfile> {
     validate_chain_evals_flags("security", evals, evals_interval)?;
     let (depth, iteration_budget) = parse_security_depth(depth)?;
+    if iterations == Some(0) {
+        anyhow::bail!("security iterations must be greater than zero");
+    }
     Ok(SecurityProfile {
         depth: depth.to_string(),
-        iteration_budget,
+        iteration_budget: iterations.unwrap_or(iteration_budget),
         diff,
         evals,
         evals_interval,
@@ -3175,6 +3184,7 @@ fn cmd_security(
     scope: Vec<String>,
     focus: Option<String>,
     depth: &str,
+    iterations: Option<u32>,
     diff: bool,
     fix: bool,
     fail_on: Option<String>,
@@ -3185,7 +3195,7 @@ fn cmd_security(
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let fail_on = parse_security_severity(fail_on.as_deref(), "--fail-on")?;
-    let profile = resolve_security_profile(depth, diff, evals, evals_interval)?;
+    let profile = resolve_security_profile(depth, iterations, diff, evals, evals_interval)?;
     let forced_targets = if fix { &["fix"][..] } else { &[][..] };
     let chain_targets = chain_targets_with_forced(chain.as_deref(), forced_targets)?;
     let next_target = next_chain_target_value(&chain_targets);
