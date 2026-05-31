@@ -215,6 +215,8 @@ require_grep '`autoresearch scenario` writes' COMPARISON.md
 require_grep 'autoresearch predict --proposal' README.md
 require_grep 'autoresearch predict --proposal' docs/GUIDE.md
 require_grep 'autoresearch predict --proposal' references/binary-operations.md
+require_grep 'predict --depth' README.md
+require_grep 'predict --depth' references/binary-operations.md
 require_grep 'predict --chain' references/binary-operations.md
 require_grep 'Native predict generator' docs/development-roadmap.md
 require_grep '`autoresearch predict` writes' COMPARISON.md

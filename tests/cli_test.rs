@@ -1120,6 +1120,65 @@ fn test_predict_chain_writes_handoff_sidecar() {
 }
 
 #[test]
+fn test_predict_review_options_are_recorded() {
+    let dir = TempDir::new().unwrap();
+    let output = dir
+        .path()
+        .join("autoresearch-results/predict/adversarial-cache-review.md");
+
+    cmd()
+        .args([
+            "predict",
+            "--proposal",
+            "Add cache warming to search results",
+            "--scope",
+            "src/search/**",
+            "--depth",
+            "deep",
+            "--adversarial",
+            "--personas",
+            "8",
+            "--rounds",
+            "3",
+            "--budget",
+            "60",
+            "--fail-on",
+            "high",
+            "--incremental",
+            "--chain",
+            "debug",
+            "--output",
+            output.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"depth\":\"deep\""))
+        .stdout(predicate::str::contains("\"adversarial\":true"))
+        .stdout(predicate::str::contains("\"personas\":8"))
+        .stdout(predicate::str::contains("\"rounds\":3"))
+        .stdout(predicate::str::contains("\"budget\":60"))
+        .stdout(predicate::str::contains("\"fail_on\":\"HIGH\""))
+        .stdout(predicate::str::contains("\"incremental\":true"));
+
+    let report = std::fs::read_to_string(&output).unwrap();
+    let handoff = std::fs::read_to_string(output.parent().unwrap().join("handoff.json")).unwrap();
+
+    assert!(report.contains("## Review Profile"));
+    assert!(report.contains("- Depth: deep"));
+    assert!(report.contains("- Requested personas: 8"));
+    assert!(report.contains("- Adversarial: true"));
+    assert!(handoff.contains("\"depth\": \"deep\""));
+    assert!(handoff.contains("\"adversarial\": true"));
+    assert!(handoff.contains("\"personas\": 8"));
+    assert!(handoff.contains("\"rounds\": 3"));
+    assert!(handoff.contains("\"budget\": 60"));
+    assert!(handoff.contains("\"fail_on\": \"HIGH\""));
+    assert!(handoff.contains("\"incremental\": true"));
+}
+
+#[test]
 fn test_reason_writes_adversarial_debate_artifact() {
     let dir = TempDir::new().unwrap();
     let output = dir.path().join("reason/storage-decision.md");

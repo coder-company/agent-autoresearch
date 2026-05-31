@@ -92,7 +92,7 @@ If all personas agree on everything, the synthesizer MUST find at least one coun
 ## Output
 
 ```
-autoresearch/predict-250527-1430/
+autoresearch-results/predict/predict-250527-1430/
 ├── summary.md    # Top findings, consensus view, risk assessment
 └── debate.md     # Full persona analysis + debate transcript
 ```

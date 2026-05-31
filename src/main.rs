@@ -720,6 +720,27 @@ enum Commands {
         /// Relevant implementation scope. Repeatable.
         #[arg(long)]
         scope: Vec<String>,
+        /// Review depth: shallow, standard, or deep
+        #[arg(long, default_value = "standard")]
+        depth: String,
+        /// Use an adversarial review profile
+        #[arg(long)]
+        adversarial: bool,
+        /// Override requested persona count, 3-8
+        #[arg(long)]
+        personas: Option<u8>,
+        /// Override debate rounds, 1-3
+        #[arg(long)]
+        rounds: Option<u8>,
+        /// Maximum findings budget
+        #[arg(long)]
+        budget: Option<u32>,
+        /// CI gate threshold: critical, high, medium, low, or info
+        #[arg(long)]
+        fail_on: Option<String>,
+        /// Only analyze changed files
+        #[arg(long)]
+        incremental: bool,
         /// Comma-separated downstream command targets to record in handoff.json
         #[arg(long)]
         chain: Option<String>,
@@ -1477,12 +1498,34 @@ fn main() -> Result<()> {
         Commands::Predict {
             proposal,
             scope,
+            depth,
+            adversarial,
+            personas,
+            rounds,
+            budget,
+            fail_on,
+            incremental,
             chain,
             evals,
             evals_interval,
             output,
             cwd,
-        } => cmd_predict(&proposal, scope, chain, evals, evals_interval, output, cwd),
+        } => cmd_predict(
+            &proposal,
+            scope,
+            depth,
+            adversarial,
+            personas,
+            rounds,
+            budget,
+            fail_on,
+            incremental,
+            chain,
+            evals,
+            evals_interval,
+            output,
+            cwd,
+        ),
 
         Commands::Reason {
             question,
@@ -3529,7 +3572,81 @@ fn predict_persona_risk(persona: Persona) -> &'static str {
     }
 }
 
-fn render_predict_markdown(proposal: &str, scope: &[String]) -> String {
+#[derive(Debug, Clone)]
+struct PredictReviewProfile {
+    depth: String,
+    adversarial: bool,
+    personas: u8,
+    rounds: u8,
+    budget: u32,
+    fail_on: Option<Severity>,
+    incremental: bool,
+    confirmed_findings: usize,
+    gate_failed: bool,
+}
+
+impl PredictReviewProfile {
+    fn risk_level(&self) -> &'static str {
+        if self.adversarial {
+            "high"
+        } else {
+            "medium"
+        }
+    }
+}
+
+fn parse_predict_depth(value: &str) -> Result<(&'static str, u8, u8)> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "shallow" | "quick" => Ok(("shallow", 3, 1)),
+        "standard" | "normal" => Ok(("standard", 5, 2)),
+        "deep" | "comprehensive" => Ok(("deep", 8, 3)),
+        other => anyhow::bail!("Invalid predict depth {other:?}; use shallow, standard, or deep"),
+    }
+}
+
+fn resolve_predict_profile(
+    depth: &str,
+    adversarial: bool,
+    personas: Option<u8>,
+    rounds: Option<u8>,
+    budget: Option<u32>,
+    fail_on: Option<String>,
+    incremental: bool,
+) -> Result<PredictReviewProfile> {
+    let (depth, default_personas, default_rounds) = parse_predict_depth(depth)?;
+    let personas = personas.unwrap_or(default_personas);
+    if !(3..=8).contains(&personas) {
+        anyhow::bail!("predict personas must be between 3 and 8");
+    }
+    let rounds = rounds.unwrap_or(default_rounds);
+    if !(1..=3).contains(&rounds) {
+        anyhow::bail!("predict rounds must be between 1 and 3");
+    }
+    let budget = budget.unwrap_or(40);
+    if budget == 0 {
+        anyhow::bail!("predict budget must be greater than zero");
+    }
+    let fail_on = parse_security_severity(fail_on.as_deref(), "--fail-on")?;
+    let confirmed_findings = 0usize;
+    let gate_failed = fail_on.is_some() && confirmed_findings > 0;
+    Ok(PredictReviewProfile {
+        depth: depth.to_string(),
+        adversarial,
+        personas,
+        rounds,
+        budget,
+        fail_on,
+        incremental,
+        confirmed_findings,
+        gate_failed,
+    })
+}
+
+fn render_predict_markdown(
+    proposal: &str,
+    scope: &[String],
+    profile: &PredictReviewProfile,
+) -> String {
     let mut out = String::new();
     let scope_items = if scope.is_empty() {
         vec!["DECISION NEEDED: identify implementation scope.".to_string()]
@@ -3546,9 +3663,28 @@ fn render_predict_markdown(proposal: &str, scope: &[String]) -> String {
     writeln!(out).unwrap();
     writeln!(
         out,
-        "> Auto-generated five-persona review. Treat this as pre-implementation risk shaping, not final approval."
+        "> Auto-generated multi-persona review. Treat this as pre-implementation risk shaping, not final approval."
     )
     .unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Review Profile").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "- Depth: {}", profile.depth).unwrap();
+    writeln!(out, "- Requested personas: {}", profile.personas).unwrap();
+    writeln!(out, "- Debate rounds: {}", profile.rounds).unwrap();
+    writeln!(out, "- Findings budget: {}", profile.budget).unwrap();
+    writeln!(out, "- Adversarial: {}", profile.adversarial).unwrap();
+    writeln!(out, "- Incremental: {}", profile.incremental).unwrap();
+    writeln!(
+        out,
+        "- Fail-on: {}",
+        profile
+            .fail_on
+            .map(|severity| severity.label())
+            .unwrap_or("none")
+    )
+    .unwrap();
+    writeln!(out, "- Gate failed: {}", profile.gate_failed).unwrap();
     writeln!(out).unwrap();
     writeln!(out, "## Scope").unwrap();
     writeln!(out).unwrap();
@@ -3599,6 +3735,13 @@ fn render_predict_markdown(proposal: &str, scope: &[String]) -> String {
 fn cmd_predict(
     proposal: &str,
     scope: Vec<String>,
+    depth: String,
+    adversarial: bool,
+    personas: Option<u8>,
+    rounds: Option<u8>,
+    budget: Option<u32>,
+    fail_on: Option<String>,
+    incremental: bool,
     chain: Option<String>,
     evals: bool,
     evals_interval: Option<u32>,
@@ -3606,6 +3749,15 @@ fn cmd_predict(
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     validate_chain_evals_flags("predict", evals, evals_interval)?;
+    let profile = resolve_predict_profile(
+        &depth,
+        adversarial,
+        personas,
+        rounds,
+        budget,
+        fail_on,
+        incremental,
+    )?;
     let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
     let workspace = resolve_workspace_root(cwd);
     let output = output.unwrap_or_else(|| {
@@ -3613,7 +3765,7 @@ fn cmd_predict(
     });
     let output = resolve_workspace_path(&workspace, output);
 
-    let markdown = render_predict_markdown(proposal, &scope);
+    let markdown = render_predict_markdown(proposal, &scope, &profile);
     write_text_file(&output, &markdown)?;
     let handoff_path = if !chain_targets.is_empty() || evals {
         let handoff_path = output
@@ -3633,8 +3785,17 @@ fn cmd_predict(
             "config": {
                 "proposal": proposal,
                 "scope": scope,
-                "personas": Persona::all().len(),
-                "risk_level": "medium",
+                "depth": profile.depth.clone(),
+                "adversarial": profile.adversarial,
+                "personas": profile.personas,
+                "rounds": profile.rounds,
+                "budget": profile.budget,
+                "fail_on": profile.fail_on.map(|severity| severity.label()),
+                "incremental": profile.incremental,
+                "confirmed_findings": profile.confirmed_findings,
+                "gate_failed": profile.gate_failed,
+                "built_in_personas": Persona::all().len(),
+                "risk_level": profile.risk_level(),
             },
             "chain": chain_targets,
             "next_target": next_target,
@@ -3654,8 +3815,15 @@ fn cmd_predict(
             "path": output.display().to_string(),
             "handoff_path": handoff_path.as_ref().map(|path| path.display().to_string()),
             "proposal": proposal,
-            "personas": Persona::all().len(),
-            "risk_level": "medium",
+            "depth": profile.depth.clone(),
+            "adversarial": profile.adversarial,
+            "personas": profile.personas,
+            "rounds": profile.rounds,
+            "budget": profile.budget,
+            "fail_on": profile.fail_on.map(|severity| severity.label()),
+            "incremental": profile.incremental,
+            "gate_failed": profile.gate_failed,
+            "risk_level": profile.risk_level(),
         })
     );
     Ok(())
