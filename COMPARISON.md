@@ -31,6 +31,7 @@ The idea was simple enough that several people generalized it:
 | Health preflight | No | Markdown checklist | Helper scripts | **Native `autoresearch health` for git/artifact/disk/verify/guard/context** |
 | Goal planning | Manual prompt | `/autoresearch:plan` | Wizard guidance | **`/autoresearch:plan` + native `autoresearch plan --goal` suggestions** |
 | Debug output | Manual notes | Hypothesis investigation reports | Protocol guidance | **`autoresearch debug` writes investigation bundles with TSV and handoff** |
+| Fix output | Manual repair loop | Error-crushing protocol | Protocol guidance | **`autoresearch fix` writes repair-plan bundles under `autoresearch-results/fix`** |
 | Improve research | Manual notes | Research findings + plans | Protocol guidance | **`autoresearch improve` writes findings, plan, TSV, summary, and handoff** |
 | PRD output | No | Improve-mode PRDs | No | **`autoresearch prd` writes selected-improvement PRD artifacts** |
 | Security output | No | STRIDE/OWASP reports | Protocol guidance | **`autoresearch security` writes audit bundles with coverage and handoff** |
@@ -62,7 +63,7 @@ The idea was simple enough that several people generalized it:
 - You want install choices: Claude marketplace/plugin, OpenCode global/local assets, `$skill-installer`, direct `.agents` skill copy, or `plugins/autoresearch` via `.agents/plugins/marketplace.json`
 - You care about **hook speed** — the safety checks fire on every tool call, and they're fast enough to be invisible
 - You want a **single binary** with no Python/Node.js dependency chain
-- You want the full 13-command surface **plus** native runtime control, health preflight, structured metrics, debug/security/ship/scenario/predict/reason/probe/learn artifacts, `parallel compare`, cost estimates, dashboards, CI action packaging, and cross-run learning
+- You want the full 13-command surface **plus** native runtime control, health preflight, structured metrics, debug/fix/security/ship/scenario/predict/reason/probe/learn artifacts, `parallel compare`, cost estimates, dashboards, CI action packaging, and cross-run learning
 
 ---
 

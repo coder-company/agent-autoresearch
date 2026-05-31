@@ -207,6 +207,7 @@ fn test_api_manifest_lists_nested_commands_and_flags() {
         .stdout(predicate::str::contains("\"security\""))
         .stdout(predicate::str::contains("\"ship\""))
         .stdout(predicate::str::contains("\"debug\""))
+        .stdout(predicate::str::contains("\"fix\""))
         .stdout(predicate::str::contains("\"plan\""))
         .stdout(predicate::str::contains("\"prd\""))
         .stdout(predicate::str::contains("\"scenario\""))
@@ -688,6 +689,45 @@ fn test_debug_writes_investigation_artifact_bundle() {
     assert!(eliminated.contains("Eliminated Hypotheses"));
     assert!(tsv.contains("hypothesis\tstatus\ttechnique"));
     assert!(handoff.contains("\"source\": \"debug\""));
+}
+
+#[test]
+fn test_fix_writes_repair_plan_artifact_bundle() {
+    let dir = TempDir::new().unwrap();
+    let output_dir = dir.path().join("autoresearch-results/fix/type-errors");
+
+    cmd()
+        .args([
+            "fix",
+            "--target",
+            "npx tsc --noEmit",
+            "--scope",
+            "src/**/*.ts",
+            "--guard",
+            "npm test",
+            "--category",
+            "type",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\":\"written\""))
+        .stdout(predicate::str::contains("\"category\":\"type error\""));
+
+    let summary = std::fs::read_to_string(output_dir.join("summary.md")).unwrap();
+    let plan = std::fs::read_to_string(output_dir.join("repair-plan.md")).unwrap();
+    let tsv = std::fs::read_to_string(output_dir.join("fix-results.tsv")).unwrap();
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+
+    assert!(summary.contains("# Fix Summary"));
+    assert!(summary.contains("npx tsc --noEmit"));
+    assert!(plan.contains("Priority Order"));
+    assert!(plan.contains("type error (selected)"));
+    assert!(tsv.contains("target\tcategory\terror_count"));
+    assert!(handoff.contains("\"source\": \"fix\""));
 }
 
 #[test]

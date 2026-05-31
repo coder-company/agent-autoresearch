@@ -10,6 +10,7 @@ autoresearch init --environment-summary auto --verify "<cmd>" --direction <highe
 autoresearch init --companion-repo-scope ../frontend='src/**/*.ts' ...
 autoresearch plan --goal "reduce any types" --format json
 autoresearch debug --symptom "API returns 500" --scope "src/**/*.rs"
+autoresearch fix --target "npx tsc --noEmit" --scope "src/**/*.ts" --category type
 autoresearch improve --goal "Improve onboarding activation" --icp "Developer tools teams"
 autoresearch prd --title "Improve onboarding" --problem "New users stall before first run"
 autoresearch security --scope "src/**/*.rs" --focus auth
@@ -28,6 +29,7 @@ autoresearch scope expand --format json
 `init` creates `autoresearch-results/results.tsv`, `state.json`, `context.json`, and repo-local `.codex-autoresearch/pointer.json` files. For multi-repo runs, every companion repo needs a clean worktree and its own `--companion-repo-scope PATH=SCOPE`.
 `plan` scans repo tooling and returns a suggested scope, metric, direction, verify, guard, and iteration count without starting a run.
 `debug` writes a hypothesis-driven investigation bundle with summary, findings, eliminated hypotheses, debug-results TSV, and handoff JSON.
+`fix` writes a repair-plan artifact bundle under `autoresearch-results/fix` with priority order, fix-results TSV, and handoff JSON.
 `improve` writes a product-improvement artifact bundle with research findings, ranked plan, summary, improve-results TSV, and handoff JSON.
 `prd` writes a focused improve-mode markdown artifact with DECISION NEEDED markers, acceptance criteria, risks, success metrics, and a ready-to-run autoresearch config block.
 `security` writes a STRIDE + OWASP audit artifact bundle: overview, threat model, attack surface map, coverage, findings, recommendations, results TSV, and handoff JSON.

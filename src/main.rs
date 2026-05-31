@@ -32,6 +32,7 @@ use autoresearch::escalation::pivot::{EscalationAction, EscalationState};
 use autoresearch::hooks;
 use autoresearch::modes::debug::DebugPhase;
 use autoresearch::modes::evals::{parse_results_tsv, ParsedRow};
+use autoresearch::modes::fix::ErrorCategory;
 use autoresearch::modes::learn::LearnSubMode;
 use autoresearch::modes::plan::{scan_repo_files, suggest_metrics, PATTERN_INDICATORS};
 use autoresearch::modes::predict::Persona;
@@ -639,6 +640,28 @@ enum Commands {
         #[arg(long, default_value = "trace")]
         technique: String,
         /// Output directory. Relative paths resolve from the workspace root.
+        #[arg(long)]
+        output_dir: Option<PathBuf>,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
+    /// Generate an error-repair plan artifact bundle
+    Fix {
+        /// Verify/target command that counts remaining errors
+        #[arg(long)]
+        target: String,
+        /// File globs that may be edited. Repeatable.
+        #[arg(long)]
+        scope: Vec<String>,
+        /// Optional guard command that must remain passing
+        #[arg(long)]
+        guard: Option<String>,
+        /// Error category to prioritize: crash, test, type, lint, warning
+        #[arg(long)]
+        category: Option<String>,
+        /// Output directory. Defaults under autoresearch-results/fix/.
         #[arg(long)]
         output_dir: Option<PathBuf>,
         /// Working directory
@@ -1367,6 +1390,15 @@ fn main() -> Result<()> {
             output_dir,
             cwd,
         } => cmd_debug(&symptom, scope, &technique, output_dir, cwd),
+
+        Commands::Fix {
+            target,
+            scope,
+            guard,
+            category,
+            output_dir,
+            cwd,
+        } => cmd_fix(&target, scope, guard, category, output_dir, cwd),
 
         Commands::Scenario {
             target,
@@ -2816,6 +2848,162 @@ fn cmd_debug(
             "technique": technique,
             "phases": DebugPhase::all().len(),
             "files_scanned": files.len(),
+        })
+    );
+    Ok(())
+}
+
+fn parse_fix_category(value: Option<&str>) -> Result<Option<ErrorCategory>> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    match value.trim().to_ascii_lowercase().as_str() {
+        "crash" | "panic" | "runtime" => Ok(Some(ErrorCategory::Crash)),
+        "test" | "tests" | "test_failure" | "test-failure" => Ok(Some(ErrorCategory::TestFailure)),
+        "type" | "types" | "compile" | "compiler" | "type_error" | "type-error" => {
+            Ok(Some(ErrorCategory::TypeError))
+        }
+        "lint" | "linter" | "lint_error" | "lint-error" => Ok(Some(ErrorCategory::LintError)),
+        "warning" | "warnings" => Ok(Some(ErrorCategory::Warning)),
+        other => {
+            anyhow::bail!("Invalid fix category {other:?}; use crash, test, type, lint, or warning")
+        }
+    }
+}
+
+fn render_fix_summary(
+    target: &str,
+    scope: &[String],
+    guard: Option<&str>,
+    category: Option<ErrorCategory>,
+) -> String {
+    let scope_lines = if scope.is_empty() {
+        "- DECISION NEEDED: identify editable scope.".to_string()
+    } else {
+        scope
+            .iter()
+            .map(|item| format!("- {item}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    let mut out = String::new();
+    writeln!(out, "# Fix Summary").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "- Target: `{target}`").unwrap();
+    writeln!(out, "- Guard: `{}`", guard.unwrap_or("none")).unwrap();
+    writeln!(
+        out,
+        "- Category: {}",
+        category.map(|value| value.label()).unwrap_or("auto")
+    )
+    .unwrap();
+    writeln!(out, "- Strategy: one error per iteration").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Scope").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "{scope_lines}").unwrap();
+    out
+}
+
+fn render_fix_plan(target: &str, category: Option<ErrorCategory>) -> String {
+    let mut out = String::new();
+    writeln!(out, "# Repair Plan").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "Verify target: `{target}`").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Priority Order").unwrap();
+    writeln!(out).unwrap();
+    for item in ErrorCategory::priority_order() {
+        let marker = if Some(*item) == category {
+            "selected"
+        } else {
+            "candidate"
+        };
+        writeln!(out, "- {} ({marker})", item.label()).unwrap();
+    }
+    writeln!(out).unwrap();
+    writeln!(out, "## Iteration Contract").unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "- Fix exactly one error class or one concrete error per trial."
+    )
+    .unwrap();
+    writeln!(out, "- Commit the trial before verification.").unwrap();
+    writeln!(
+        out,
+        "- Keep only if the target error count decreases and guard passes."
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "- Discard or rework when the count is unchanged, worse, or guard fails."
+    )
+    .unwrap();
+    out
+}
+
+fn render_fix_results_tsv(target: &str) -> String {
+    let timestamp = chrono::Utc::now().to_rfc3339();
+    format!(
+        "# metric_direction: lower_is_better\n\
+         iteration\ttimestamp\ttarget\tcategory\terror_count\tdelta\tguard\tstatus\tdescription\n\
+         0\t{timestamp}\t{target}\tbaseline\tDECISION NEEDED\t0\t-\tbaseline\trepair plan created\n"
+    )
+}
+
+fn cmd_fix(
+    target: &str,
+    scope: Vec<String>,
+    guard: Option<String>,
+    category: Option<String>,
+    output_dir: Option<PathBuf>,
+    cwd: Option<PathBuf>,
+) -> Result<()> {
+    let category = parse_fix_category(category.as_deref())?;
+    let workspace = resolve_workspace_root(cwd);
+    let output_dir = output_dir.unwrap_or_else(|| {
+        PathBuf::from("autoresearch-results")
+            .join("fix")
+            .join(format!("fix-{}", slugify(target)))
+    });
+    let output_dir = resolve_workspace_path(&workspace, output_dir);
+    std::fs::create_dir_all(&output_dir)
+        .with_context(|| format!("failed to create {}", output_dir.display()))?;
+    write_text_file(
+        &output_dir.join("summary.md"),
+        &render_fix_summary(target, &scope, guard.as_deref(), category),
+    )?;
+    write_text_file(
+        &output_dir.join("repair-plan.md"),
+        &render_fix_plan(target, category),
+    )?;
+    write_text_file(
+        &output_dir.join("fix-results.tsv"),
+        &render_fix_results_tsv(target),
+    )?;
+    let handoff = serde_json::json!({
+        "version": "2.1.0",
+        "source": "fix",
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "status": "COMPLETE",
+        "results_tsv": output_dir.join("fix-results.tsv").display().to_string(),
+        "findings": [],
+        "config": {
+            "target": target,
+            "scope": scope,
+            "guard": guard,
+            "category": category.map(|value| value.label()),
+        }
+    });
+    write_json_file(&output_dir.join("handoff.json"), &handoff)?;
+    println!(
+        "{}",
+        serde_json::json!({
+            "status": "written",
+            "output_dir": output_dir.display().to_string(),
+            "target": target,
+            "category": category.map(|value| value.label()).unwrap_or("auto"),
         })
     );
     Ok(())

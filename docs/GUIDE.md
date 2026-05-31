@@ -24,6 +24,7 @@ autoresearch verify --command "cat metric.txt"
 autoresearch verify --command "cat metric.txt" --repeat 3 --aggregate median
 autoresearch plan --goal "reduce any types" --format json
 autoresearch debug --symptom "API returns 500" --scope "src/**/*.rs"
+autoresearch fix --target "npx tsc --noEmit" --scope "src/**/*.ts" --category type
 autoresearch improve --goal "Improve onboarding activation" --icp "Developer tools teams"
 autoresearch prd --title "Improve onboarding" --problem "New users stall before first run"
 autoresearch security --scope "src/**/*.rs" --focus auth
@@ -89,6 +90,7 @@ Use `autoresearch config template --output .autoresearch.toml` to write a starte
 Use `autoresearch config validate` to parse defaults, validate options, and screen configured commands without running them.
 Use `autoresearch plan --goal <goal> --format json` to get a launch-ready suggested scope, metric, direction, verify, guard, and iteration count from detected repo tooling.
 Use `autoresearch debug --symptom <failure> --scope <glob>` to write a hypothesis-driven investigation bundle with summary, findings, eliminated hypotheses, TSV, and handoff JSON.
+Use `autoresearch fix --target <verify-command> --scope <glob>` to write a repair-plan bundle under `autoresearch-results/fix` with priority order, results TSV, and handoff JSON.
 Use `autoresearch improve --goal <product-area> --icp <persona>` to write an improve-mode artifact bundle: research findings, ranked plan, summary, TSV, and handoff JSON.
 Use `autoresearch prd --title <title> --problem <problem>` to write a focused improve-mode PRD with DECISION NEEDED markers, acceptance criteria, risks, success metrics, and an autoresearch config block.
 Use `autoresearch security --scope <glob> --focus <area>` to write a STRIDE + OWASP audit bundle with overview, threat model, attack surface, coverage, findings, recommendations, TSV, and handoff JSON.
