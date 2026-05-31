@@ -78,6 +78,76 @@ fn test_manpages_writes_root_page() {
 }
 
 #[test]
+fn test_mcp_server_initialize_and_list_tools() {
+    let input = [
+        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}"#,
+        r#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#,
+        r#"{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}"#,
+    ]
+    .join("\n");
+
+    cmd()
+        .args(["mcp", "serve"])
+        .write_stdin(format!("{input}\n"))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "\"protocolVersion\":\"2025-11-25\"",
+        ))
+        .stdout(predicate::str::contains(
+            "\"tools\":{\"listChanged\":false}",
+        ))
+        .stdout(predicate::str::contains("\"name\":\"autoresearch_status\""))
+        .stdout(predicate::str::contains(
+            "\"name\":\"autoresearch_watch_snapshot\"",
+        ));
+}
+
+#[test]
+fn test_mcp_server_calls_status_tool() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let input = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 7,
+        "method": "tools/call",
+        "params": {
+            "name": "autoresearch_status",
+            "arguments": {
+                "cwd": root
+            }
+        }
+    });
+
+    cmd()
+        .args(["mcp", "serve"])
+        .write_stdin(format!("{input}\n"))
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"id\":7"))
+        .stdout(predicate::str::contains("\"isError\":false"))
+        .stdout(predicate::str::contains(
+            "\"structuredContent\":{\"active\":true",
+        ))
+        .stdout(predicate::str::contains("\"iteration\":0"));
+}
+
+#[test]
 fn test_api_manifest_lists_nested_commands_and_flags() {
     cmd()
         .arg("api")
@@ -87,6 +157,8 @@ fn test_api_manifest_lists_nested_commands_and_flags() {
         .stdout(predicate::str::contains("\"stability\": \"stable\""))
         .stdout(predicate::str::contains("\"runtime\""))
         .stdout(predicate::str::contains("\"start\""))
+        .stdout(predicate::str::contains("\"mcp\""))
+        .stdout(predicate::str::contains("\"serve\""))
         .stdout(predicate::str::contains("\"provider-command\""));
 }
 

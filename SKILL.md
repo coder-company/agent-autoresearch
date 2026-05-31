@@ -128,6 +128,7 @@ Optional:
 | `autoresearch lessons --add "..." --context "..."` | Append reusable strategy lessons |
 | `autoresearch lessons --workspace-context --last 5` | Read shared workspace lessons with repo-target metadata |
 | `autoresearch search --from-state --log` | Build a run-aware search query, cache provider results, and log a search row; `decide` auto-runs this on Web Search escalation when `AUTORESEARCH_SEARCH_CMD` is configured |
+| `autoresearch mcp serve` | Expose read-only status and watch snapshot tools over MCP stdio |
 | `autoresearch plugin list` / `plugin validate --path <file>` / `plugin marketplace` | Load and validate local TOML mode plugins and marketplace indexes |
 | `autoresearch resume` | Detect resumable prior run |
 | `autoresearch runtime run` | Launch Codex exec turns, supervise after each exit, and relaunch until stop or needs_human |

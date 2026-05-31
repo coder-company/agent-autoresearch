@@ -193,6 +193,7 @@ Covered in detail in the [guide](guide/):
 - **Config template** — `autoresearch config template --output .autoresearch.toml` writes a starter project defaults file
 - **Config validation** — `autoresearch config validate` checks project defaults without running verify or guard
 - **Stable CLI API manifest** — `autoresearch api --format json` emits command, flag, and semver policy metadata for wrappers and agents
+- **MCP tool server** — `autoresearch mcp serve` exposes read-only status and watch snapshot tools over stdio JSON-RPC
 - **Pre-built release binaries** — tag builds publish checksummed Linux, macOS, and Windows archives through GitHub Releases
 - **Package-manager metadata** — `cargo-binstall` archive metadata and a Homebrew formula template track the release assets
 - **Documentation site** — `book.toml` and `docs/SUMMARY.md` build the full docs set as an mdBook site for GitHub Pages

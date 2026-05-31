@@ -4,6 +4,7 @@ use rust_decimal::Decimal;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as FmtWrite;
 use std::fs::OpenOptions;
+use std::io::BufRead;
 use std::io::Write as IoWrite;
 use std::path::Path;
 use std::path::PathBuf;
@@ -283,6 +284,12 @@ enum Commands {
     Parallel {
         #[command(subcommand)]
         command: ParallelCommands,
+    },
+
+    /// Serve Autoresearch tools over MCP stdio
+    Mcp {
+        #[command(subcommand)]
+        command: McpCommands,
     },
 
     /// Screen a command for dangerous patterns
@@ -677,6 +684,16 @@ enum PluginCommands {
     },
 }
 
+#[derive(Subcommand)]
+enum McpCommands {
+    /// Start an MCP stdio server exposing read-only Autoresearch tools
+    Serve {
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -798,6 +815,10 @@ fn main() -> Result<()> {
         Commands::Runtime { command } => cmd_runtime(command),
 
         Commands::Parallel { command } => cmd_parallel(command),
+
+        Commands::Mcp { command } => match command {
+            McpCommands::Serve { cwd } => cmd_mcp_serve(cwd),
+        },
 
         Commands::Screen { command } => cmd_screen(&command),
 
@@ -3204,6 +3225,250 @@ fn cmd_status(cwd: Option<PathBuf>, summary: bool) -> Result<()> {
     });
     println!("{}", serde_json::to_string_pretty(&out)?);
     Ok(())
+}
+
+// ── MCP ───────────────────────────────────────────────────────────────
+
+const MCP_PROTOCOL_VERSION: &str = "2025-11-25";
+
+fn cmd_mcp_serve(cwd: Option<PathBuf>) -> Result<()> {
+    let stdin = std::io::stdin();
+    for line in stdin.lock().lines() {
+        let line = line.context("failed to read MCP stdin")?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        let response = match serde_json::from_str::<serde_json::Value>(&line) {
+            Ok(request) => handle_mcp_request(&request, cwd.clone()),
+            Err(err) => Some(serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": serde_json::Value::Null,
+                "error": {
+                    "code": -32700,
+                    "message": format!("Parse error: {err}"),
+                },
+            })),
+        };
+        if let Some(response) = response {
+            write_stdout_line(&serde_json::to_string(&response)?)?;
+        }
+    }
+    Ok(())
+}
+
+fn handle_mcp_request(
+    request: &serde_json::Value,
+    default_cwd: Option<PathBuf>,
+) -> Option<serde_json::Value> {
+    let id = request.get("id").cloned();
+    let method = request.get("method").and_then(|value| value.as_str());
+
+    if id.is_none() {
+        return None;
+    }
+
+    let id = id.unwrap_or(serde_json::Value::Null);
+    match method {
+        Some("initialize") => Some(mcp_response(
+            id,
+            serde_json::json!({
+                "protocolVersion": MCP_PROTOCOL_VERSION,
+                "capabilities": {
+                    "tools": {
+                        "listChanged": false,
+                    },
+                },
+                "serverInfo": {
+                    "name": "autoresearch",
+                    "title": "Autoresearch",
+                    "version": env!("CARGO_PKG_VERSION"),
+                    "description": "Read-only Autoresearch run inspection tools",
+                },
+                "instructions": "Use tools/list to discover read-only Autoresearch inspection tools.",
+            }),
+        )),
+        Some("ping") => Some(mcp_response(id, serde_json::json!({}))),
+        Some("tools/list") => Some(mcp_response(
+            id,
+            serde_json::json!({
+                "tools": mcp_tool_definitions(),
+            }),
+        )),
+        Some("tools/call") => Some(handle_mcp_tool_call(id, request, default_cwd)),
+        Some(other) => Some(mcp_error(id, -32601, format!("Method not found: {other}"))),
+        None => Some(mcp_error(id, -32600, "Invalid Request: missing method")),
+    }
+}
+
+fn mcp_tool_definitions() -> Vec<serde_json::Value> {
+    vec![
+        serde_json::json!({
+            "name": "autoresearch_status",
+            "title": "Autoresearch Status",
+            "description": "Return the active Autoresearch run status for a workspace.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "cwd": {
+                        "type": "string",
+                        "description": "Workspace or repo subdirectory to inspect"
+                    }
+                },
+                "additionalProperties": false
+            }
+        }),
+        serde_json::json!({
+            "name": "autoresearch_watch_snapshot",
+            "title": "Autoresearch Watch Snapshot",
+            "description": "Return the current results.tsv snapshot using the same payload as watch --websocket --once.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "cwd": {
+                        "type": "string",
+                        "description": "Workspace or repo subdirectory to inspect"
+                    },
+                    "lines": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "default": 20,
+                        "description": "Number of recent data rows to include"
+                    }
+                },
+                "additionalProperties": false
+            }
+        }),
+    ]
+}
+
+fn handle_mcp_tool_call(
+    id: serde_json::Value,
+    request: &serde_json::Value,
+    default_cwd: Option<PathBuf>,
+) -> serde_json::Value {
+    let params = request
+        .get("params")
+        .and_then(|value| value.as_object())
+        .cloned()
+        .unwrap_or_default();
+    let Some(name) = params.get("name").and_then(|value| value.as_str()) else {
+        return mcp_error(id, -32602, "tools/call params.name must be a string");
+    };
+    let arguments = params
+        .get("arguments")
+        .and_then(|value| value.as_object())
+        .cloned()
+        .unwrap_or_default();
+
+    let result = match name {
+        "autoresearch_status" => mcp_status_payload(mcp_argument_cwd(&arguments, default_cwd)),
+        "autoresearch_watch_snapshot" => {
+            let lines = arguments
+                .get("lines")
+                .and_then(|value| value.as_u64())
+                .unwrap_or(20) as usize;
+            mcp_watch_snapshot_payload(mcp_argument_cwd(&arguments, default_cwd), lines)
+        }
+        other => return mcp_error(id, -32602, format!("Unknown tool: {other}")),
+    };
+
+    match result {
+        Ok(payload) => mcp_response(id, mcp_tool_result(payload, false)),
+        Err(err) => mcp_response(
+            id,
+            mcp_tool_result(
+                serde_json::json!({
+                    "error": err.to_string(),
+                }),
+                true,
+            ),
+        ),
+    }
+}
+
+fn mcp_argument_cwd(
+    arguments: &serde_json::Map<String, serde_json::Value>,
+    default_cwd: Option<PathBuf>,
+) -> Option<PathBuf> {
+    arguments
+        .get("cwd")
+        .and_then(|value| value.as_str())
+        .map(PathBuf::from)
+        .or(default_cwd)
+}
+
+fn mcp_status_payload(cwd: Option<PathBuf>) -> Result<serde_json::Value> {
+    let workspace = resolve_results_workspace(cwd);
+    let state_path = workspace.join("autoresearch-results/state.json");
+    if !state_path.exists() {
+        return Ok(serde_json::json!({
+            "active": false,
+            "message": "No active autoresearch run.",
+            "workspace": workspace.display().to_string(),
+        }));
+    }
+
+    let state: RunState = serde_json::from_str(
+        &std::fs::read_to_string(&state_path)
+            .with_context(|| format!("failed to read {}", state_path.display()))?,
+    )
+    .with_context(|| format!("failed to parse {}", state_path.display()))?;
+    Ok(serde_json::json!({
+        "active": true,
+        "workspace": workspace.display().to_string(),
+        "iteration": state.iteration,
+        "current_metric": state.current_metric.to_string(),
+        "best_metric": state.best_metric.to_string(),
+        "best_iteration": state.best_iteration,
+        "keeps": state.keeps,
+        "discards": state.discards,
+        "crashes": state.crashes,
+        "last_status": state.last_status.as_str(),
+        "consecutive_discards": state.consecutive_discards,
+    }))
+}
+
+fn mcp_watch_snapshot_payload(cwd: Option<PathBuf>, lines: usize) -> Result<serde_json::Value> {
+    let cwd = resolve_cwd(cwd);
+    let tsv_path = default_results_tsv(&cwd)
+        .context("No results.tsv found. Provide cwd inside a run workspace.")?;
+    let (payloads, _) = watch_websocket_payloads(&tsv_path, lines, 0)?;
+    Ok(serde_json::json!({
+        "results_tsv": tsv_path.display().to_string(),
+        "payloads": payloads,
+    }))
+}
+
+fn mcp_tool_result(payload: serde_json::Value, is_error: bool) -> serde_json::Value {
+    serde_json::json!({
+        "content": [
+            {
+                "type": "text",
+                "text": serde_json::to_string_pretty(&payload).unwrap_or_else(|_| payload.to_string()),
+            }
+        ],
+        "structuredContent": payload,
+        "isError": is_error,
+    })
+}
+
+fn mcp_response(id: serde_json::Value, result: serde_json::Value) -> serde_json::Value {
+    serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": id,
+        "result": result,
+    })
+}
+
+fn mcp_error(id: serde_json::Value, code: i32, message: impl Into<String>) -> serde_json::Value {
+    serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": id,
+        "error": {
+            "code": code,
+            "message": message.into(),
+        },
+    })
 }
 
 // ── Health ────────────────────────────────────────────────────────────
