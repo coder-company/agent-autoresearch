@@ -586,6 +586,59 @@ fn test_improve_depth_and_evals_are_recorded() {
 }
 
 #[test]
+fn test_improve_seed_discovery_and_chain_controls_are_recorded() {
+    let dir = TempDir::new().unwrap();
+    let output_dir = dir.path().join("improve/onboarding-seeds");
+
+    cmd()
+        .args([
+            "improve",
+            "--goal",
+            "Improve onboarding activation",
+            "--icp",
+            "Developer tools teams adopting autonomous agents",
+            "--scope",
+            "src/onboarding/**",
+            "--seeds",
+            "2",
+            "--no-discover",
+            "--chain",
+            "learn",
+            "--evals",
+            "--evals-interval",
+            "3",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"seeds_per_category\":2"))
+        .stdout(predicate::str::contains("\"discover\":false"))
+        .stdout(predicate::str::contains("\"insights\":10"))
+        .stdout(predicate::str::contains("\"next_target\":\"learn\""));
+
+    let findings = std::fs::read_to_string(output_dir.join("research-findings.md")).unwrap();
+    let summary = std::fs::read_to_string(output_dir.join("summary.md")).unwrap();
+    let tsv = std::fs::read_to_string(output_dir.join("improve-results.tsv")).unwrap();
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+
+    assert!(findings.contains("- Seeds per category: 2"));
+    assert!(findings.contains("- Discovery enabled: false"));
+    assert!(findings.contains("Seed insight 2:"));
+    assert!(summary.contains("Seed insights: 10"));
+    assert!(summary.contains("Discovery enabled: false"));
+    assert!(tsv.contains("with lower setup cost"));
+    assert!(handoff.contains("\"seeds_per_category\": 2"));
+    assert!(handoff.contains("\"discover\": false"));
+    assert!(handoff.contains("\"insights_total\": 10"));
+    assert!(handoff.contains("\"next_target\": \"learn\""));
+    assert!(handoff.contains("\"propagate_evals\": true"));
+    assert!(handoff.contains("\"evals_interval\": 3"));
+}
+
+#[test]
 fn test_scenario_writes_twelve_dimension_artifact() {
     let dir = TempDir::new().unwrap();
     let output = dir.path().join("scenario/checkout-scenarios.md");

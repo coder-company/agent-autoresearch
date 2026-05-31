@@ -585,12 +585,24 @@ enum Commands {
         /// Research depth: shallow, standard, or deep
         #[arg(long, default_value = "standard")]
         depth: String,
+        /// Number of seed ideas per research category
+        #[arg(long)]
+        seeds: Option<u8>,
+        /// Enable discovery research metadata
+        #[arg(long)]
+        discover: bool,
+        /// Disable discovery research metadata
+        #[arg(long)]
+        no_discover: bool,
         /// Record eval checkpoint metadata
         #[arg(long)]
         evals: bool,
         /// Eval checkpoint interval
         #[arg(long)]
         evals_interval: Option<u32>,
+        /// Comma-separated downstream command targets to record in handoff.json
+        #[arg(long)]
+        chain: Option<String>,
         /// Output directory. Relative paths resolve from the workspace root.
         #[arg(long)]
         output_dir: Option<PathBuf>,
@@ -1549,8 +1561,12 @@ fn main() -> Result<()> {
             icp,
             scope,
             depth,
+            seeds,
+            discover,
+            no_discover,
             evals,
             evals_interval,
+            chain,
             output_dir,
             cwd,
         } => cmd_improve(
@@ -1558,8 +1574,12 @@ fn main() -> Result<()> {
             icp,
             scope,
             &depth,
+            seeds,
+            discover,
+            no_discover,
             evals,
             evals_interval,
+            chain,
             output_dir,
             cwd,
         ),
@@ -2417,6 +2437,8 @@ struct ImproveProfile {
     depth: String,
     category_limit: usize,
     iteration_budget: u32,
+    seeds_per_category: u8,
+    discover: bool,
     evals: bool,
     evals_interval: Option<u32>,
 }
@@ -2432,15 +2454,27 @@ fn parse_improve_depth(value: &str) -> Result<(&'static str, usize, u32)> {
 
 fn resolve_improve_profile(
     depth: &str,
+    seeds: Option<u8>,
+    discover: bool,
+    no_discover: bool,
     evals: bool,
     evals_interval: Option<u32>,
 ) -> Result<ImproveProfile> {
     validate_chain_evals_flags("improve", evals, evals_interval)?;
+    if discover && no_discover {
+        anyhow::bail!("improve cannot use both --discover and --no-discover");
+    }
+    let seeds_per_category = seeds.unwrap_or(5);
+    if !(1..=20).contains(&seeds_per_category) {
+        anyhow::bail!("improve seeds must be between 1 and 20");
+    }
     let (depth, category_limit, iteration_budget) = parse_improve_depth(depth)?;
     Ok(ImproveProfile {
         depth: depth.to_string(),
         category_limit,
         iteration_budget,
+        seeds_per_category,
+        discover: !no_discover,
         evals,
         evals_interval,
     })
@@ -2458,6 +2492,18 @@ fn improve_seed_title(goal: &str, category: &str) -> String {
         "UX Patterns" => format!("Make the first successful {goal} path measurable"),
         "Revenue Growth" => format!("Tie {goal} to expansion or activation value"),
         _ => format!("Improve {goal}"),
+    }
+}
+
+fn improve_seed_title_at(goal: &str, category: &str, seed_index: u8) -> String {
+    let base = improve_seed_title(goal, category);
+    match seed_index {
+        1 => base,
+        2 => format!("{base} with lower setup cost"),
+        3 => format!("{base} with clearer measurement"),
+        4 => format!("{base} for the highest-intent segment"),
+        5 => format!("{base} with automated follow-up"),
+        _ => format!("{base} variant {seed_index}"),
     }
 }
 
@@ -2506,6 +2552,8 @@ fn render_improve_research_markdown(
     )
     .unwrap();
     writeln!(out, "- Iteration budget: {}", profile.iteration_budget).unwrap();
+    writeln!(out, "- Seeds per category: {}", profile.seeds_per_category).unwrap();
+    writeln!(out, "- Discovery enabled: {}", profile.discover).unwrap();
     writeln!(out, "- Evals enabled: {}", profile.evals).unwrap();
     writeln!(
         out,
@@ -2523,12 +2571,14 @@ fn render_improve_research_markdown(
         writeln!(out, "### {category}").unwrap();
         writeln!(out).unwrap();
         writeln!(out, "- Research focus: {focus}").unwrap();
-        writeln!(
-            out,
-            "- Seed insight: {}",
-            improve_seed_title(goal, category)
-        )
-        .unwrap();
+        for seed_index in 1..=profile.seeds_per_category {
+            writeln!(
+                out,
+                "- Seed insight {seed_index}: {}",
+                improve_seed_title_at(goal, category, seed_index)
+            )
+            .unwrap();
+        }
         writeln!(
             out,
             "- Confidence: LOW until backed by code or web evidence"
@@ -2569,12 +2619,14 @@ fn render_improve_plan_markdown(goal: &str, icp: &str, profile: &ImproveProfile)
             1 | 2 => "Nice-to-have",
             _ => "Moonshot",
         };
-        let title = improve_seed_title(goal, category);
-        writeln!(
-            out,
-            "| {tier} | {title} | Serves the stated ICP and maps to {category}. | LOW | `autoresearch prd --title \"{title}\" --problem \"DECISION NEEDED\"` |"
-        )
-        .unwrap();
+        for seed_index in 1..=profile.seeds_per_category {
+            let title = improve_seed_title_at(goal, category, seed_index);
+            writeln!(
+                out,
+                "| {tier} | {title} | Serves the stated ICP and maps to {category}. | LOW | `autoresearch prd --title \"{title}\" --problem \"DECISION NEEDED\"` |"
+            )
+            .unwrap();
+        }
     }
     writeln!(out).unwrap();
     writeln!(out, "## Selection Rule").unwrap();
@@ -2605,6 +2657,8 @@ fn render_improve_summary_markdown(
          - Categories covered: {}\n\
          - Categories available: {}\n\
          - Seed insights: {}\n\
+         - Seeds per category: {}\n\
+         - Discovery enabled: {}\n\
          - Iteration budget: {}\n\
          - Evals enabled: {}\n\
          - Evals interval: {}\n\
@@ -2614,7 +2668,9 @@ fn render_improve_summary_markdown(
         profile.depth,
         improve_active_categories(profile).len(),
         improve_categories().len(),
-        improve_active_categories(profile).len(),
+        improve_active_categories(profile).len() * usize::from(profile.seeds_per_category),
+        profile.seeds_per_category,
+        profile.discover,
         profile.iteration_budget,
         profile.evals,
         profile
@@ -2634,6 +2690,7 @@ fn render_improve_results_tsv(goal: &str, profile: &ImproveProfile) -> String {
         "iteration\ttimestamp\tcategory\tidea\ticp_pass\ttier\tscore\tdescription"
     )
     .unwrap();
+    let mut row = 1usize;
     for (index, (category, focus)) in improve_active_categories(profile).iter().enumerate() {
         let tier = match index {
             0 | 3 => "must_have",
@@ -2645,18 +2702,21 @@ fn render_improve_results_tsv(goal: &str, profile: &ImproveProfile) -> String {
             "nice_to_have" => 64,
             _ => 45,
         };
-        writeln!(
-            out,
-            "{}\t{}\t{}\t{}\ttrue\t{}\t{}\t{}",
-            index + 1,
-            timestamp,
-            category,
-            improve_seed_title(goal, category),
-            tier,
-            score,
-            focus
-        )
-        .unwrap();
+        for seed_index in 1..=profile.seeds_per_category {
+            writeln!(
+                out,
+                "{}\t{}\t{}\t{}\ttrue\t{}\t{}\t{}",
+                row,
+                timestamp,
+                category,
+                improve_seed_title_at(goal, category, seed_index),
+                tier,
+                score,
+                focus
+            )
+            .unwrap();
+            row += 1;
+        }
     }
     out
 }
@@ -2666,12 +2726,19 @@ fn cmd_improve(
     icp: Option<String>,
     scope: Vec<String>,
     depth: &str,
+    seeds: Option<u8>,
+    discover: bool,
+    no_discover: bool,
     evals: bool,
     evals_interval: Option<u32>,
+    chain: Option<String>,
     output_dir: Option<PathBuf>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
-    let profile = resolve_improve_profile(depth, evals, evals_interval)?;
+    let profile =
+        resolve_improve_profile(depth, seeds, discover, no_discover, evals, evals_interval)?;
+    let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
+    let next_target = next_chain_target_value(&chain_targets);
     let workspace = resolve_workspace_root(cwd);
     let icp = icp
         .as_deref()
@@ -2702,12 +2769,14 @@ fn cmd_improve(
     )?;
     let findings = improve_active_categories(&profile)
         .iter()
-        .map(|(category, _)| {
-            serde_json::json!({
-                "category": category,
-                "title": improve_seed_title(goal, category),
-                "confidence": "LOW",
-                "prd_path": null,
+        .flat_map(|(category, _)| {
+            (1..=profile.seeds_per_category).map(move |seed_index| {
+                serde_json::json!({
+                    "category": category,
+                    "title": improve_seed_title_at(goal, category, seed_index),
+                    "confidence": "LOW",
+                    "prd_path": null,
+                })
             })
         })
         .collect::<Vec<_>>();
@@ -2725,12 +2794,19 @@ fn cmd_improve(
             "depth": profile.depth.as_str(),
             "categories_explored": improve_active_categories(&profile).len(),
             "categories_available": improve_categories().len(),
-            "insights_total": improve_active_categories(&profile).len(),
+            "insights_total": improve_active_categories(&profile).len() * usize::from(profile.seeds_per_category),
+            "seeds_per_category": profile.seeds_per_category,
+            "discover": profile.discover,
             "iteration_budget": profile.iteration_budget,
             "evals": profile.evals,
             "evals_interval": profile.evals_interval,
             "prds_generated": 0,
-        }
+        },
+        "chain": chain_targets,
+        "next_target": next_target.clone(),
+        "chain_continue": should_continue_handoff_chain("COMPLETE"),
+        "propagate_evals": profile.evals,
+        "evals_interval": profile.evals_interval,
     });
     write_json_file(&output_dir.join("handoff.json"), &handoff)?;
     println!(
@@ -2742,10 +2818,13 @@ fn cmd_improve(
             "depth": profile.depth.as_str(),
             "categories": improve_active_categories(&profile).len(),
             "categories_available": improve_categories().len(),
-            "insights": improve_active_categories(&profile).len(),
+            "insights": improve_active_categories(&profile).len() * usize::from(profile.seeds_per_category),
+            "seeds_per_category": profile.seeds_per_category,
+            "discover": profile.discover,
             "iteration_budget": profile.iteration_budget,
             "evals": profile.evals,
             "evals_interval": profile.evals_interval,
+            "next_target": next_target,
             "prds_generated": 0,
         })
     );

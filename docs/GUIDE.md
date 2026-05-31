@@ -98,6 +98,7 @@ Use `autoresearch fix --from-debug` to import the latest debug handoff scope, sy
 Use `autoresearch fix --chain <targets> --evals` to record downstream handoff and checkpoint propagation metadata.
 Use `autoresearch improve --goal <product-area> --icp <persona>` to write an improve-mode artifact bundle: research findings, ranked plan, summary, TSV, and handoff JSON.
 Use `autoresearch improve --goal <product-area> --icp <persona> --depth deep --evals` to record research budget, active category count, and checkpoint metadata.
+Use `autoresearch improve --goal <product-area> --seeds 5 --no-discover --chain learn` to record seed volume, discovery posture, and downstream handoff metadata.
 Use `autoresearch prd --title <title> --problem <problem>` to write a focused improve-mode PRD with DECISION NEEDED markers, acceptance criteria, risks, success metrics, and an autoresearch config block.
 Use `autoresearch security --scope <glob> --focus <area>` to write a STRIDE + OWASP audit bundle with overview, threat model, attack surface, coverage, findings, recommendations, TSV, and handoff JSON.
 Add `--fail-on <severity>` and `--fix` to `autoresearch security` to record CI gate and repair-chain metadata for confirmed findings.

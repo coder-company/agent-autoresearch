@@ -191,6 +191,7 @@ require_grep 'autoresearch improve --goal' README.md
 require_grep 'autoresearch improve --goal' docs/GUIDE.md
 require_grep 'autoresearch improve --goal' references/binary-operations.md
 require_grep 'improve --depth <level> --evals' references/binary-operations.md
+require_grep 'improve --seeds <n> --discover|--no-discover --chain <targets>' references/binary-operations.md
 require_grep 'Native improve artifact bundle' docs/development-roadmap.md
 require_grep '`autoresearch improve` writes' COMPARISON.md
 require_grep 'autoresearch prd --title' README.md
