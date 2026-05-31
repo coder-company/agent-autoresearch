@@ -113,7 +113,7 @@ Use `autoresearch predict --proposal <change> --depth deep --adversarial --fail-
 Use `autoresearch predict --proposal <change> --chain debug` to record the review as handoff context for downstream investigation.
 Use `autoresearch reason --question <decision>` to write an adversarial debate artifact with candidate solutions, blind judge rubric, and convergence criteria.
 Use `autoresearch reason --question <decision> --chain predict,fix` to pass the selected debate context into downstream review or repair.
-Use `autoresearch reason --question <decision> --judges 7 --convergence 4 --temperature 0.2` to record judge panel, convergence, synthesis, and generation hints.
+Use `autoresearch reason --question <decision> --iterations 11 --judges 7 --convergence 4 --temperature 0.2` to record debate budget, judge panel, convergence, synthesis, and generation hints.
 Use `autoresearch probe --subject <requirement>` to write eight persona-driven questions, constraint slots, and a saturation rule before implementation.
 Use `autoresearch probe --subject <requirement> --mode autonomous --depth deep --iterations 9 --adversarial` to override the interrogation round budget and record saturation metadata.
 Use `autoresearch probe --subject <requirement> --chain plan` to pass discovered constraints into planning through handoff metadata.

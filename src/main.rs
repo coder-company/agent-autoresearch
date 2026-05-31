@@ -865,6 +865,9 @@ enum Commands {
         /// Domain: software, product, business, security, research, or content
         #[arg(long, default_value = "software")]
         domain: String,
+        /// Debate/refinement iteration budget
+        #[arg(long)]
+        iterations: Option<u32>,
         /// Relevant implementation scope. Repeatable.
         #[arg(long)]
         scope: Vec<String>,
@@ -1785,6 +1788,7 @@ fn main() -> Result<()> {
             question,
             mode,
             domain,
+            iterations,
             scope,
             judges,
             convergence,
@@ -1800,6 +1804,7 @@ fn main() -> Result<()> {
             &question,
             &mode,
             &domain,
+            iterations,
             scope,
             judges,
             convergence,
@@ -4812,6 +4817,7 @@ fn reason_candidate_rows(
 
 #[derive(Debug, Clone)]
 struct ReasonProfile {
+    iteration_budget: u32,
     judges: u8,
     convergence: u8,
     judge_personas: Vec<String>,
@@ -4831,12 +4837,16 @@ fn parse_reason_judge_personas(value: Option<&str>) -> Vec<String> {
 
 fn resolve_reason_profile(
     mode: ReasoningMode,
+    iterations: Option<u32>,
     judges: Option<u8>,
     convergence: Option<u8>,
     judge_personas: Option<&str>,
     no_synthesis: bool,
     temperature: Option<String>,
 ) -> Result<ReasonProfile> {
+    if iterations == Some(0) {
+        anyhow::bail!("reason iterations must be greater than zero");
+    }
     let judges = judges.unwrap_or(3);
     if !(3..=7).contains(&judges) {
         anyhow::bail!("reason judges must be between 3 and 7");
@@ -4851,6 +4861,7 @@ fn resolve_reason_profile(
             .with_context(|| format!("invalid reason temperature {value:?}"))?;
     }
     Ok(ReasonProfile {
+        iteration_budget: iterations.unwrap_or(8),
         judges,
         convergence,
         judge_personas: parse_reason_judge_personas(judge_personas),
@@ -4890,6 +4901,7 @@ fn render_reason_markdown(
     writeln!(out).unwrap();
     writeln!(out, "- Mode: {}", reasoning_mode_label(mode)).unwrap();
     writeln!(out, "- Domain: {}", domain.label()).unwrap();
+    writeln!(out, "- Iteration budget: {}", profile.iteration_budget).unwrap();
     writeln!(out, "- Panel size: {} blind judges", profile.judges).unwrap();
     writeln!(
         out,
@@ -4965,6 +4977,7 @@ fn cmd_reason(
     question: &str,
     mode: &str,
     domain: &str,
+    iterations: Option<u32>,
     scope: Vec<String>,
     judges: Option<u8>,
     convergence: Option<u8>,
@@ -4983,6 +4996,7 @@ fn cmd_reason(
     let domain = parse_reason_domain(domain)?;
     let profile = resolve_reason_profile(
         mode,
+        iterations,
         judges,
         convergence,
         judge_personas.as_deref(),
@@ -5017,6 +5031,7 @@ fn cmd_reason(
                 "mode": reasoning_mode_label(mode).to_ascii_lowercase(),
                 "domain": domain.label(),
                 "scope": scope,
+                "iteration_budget": profile.iteration_budget,
                 "judges": profile.judges,
                 "convergence": profile.convergence,
                 "judge_personas": profile.judge_personas.clone(),
@@ -5044,6 +5059,7 @@ fn cmd_reason(
             "question": question,
             "mode": reasoning_mode_label(mode).to_ascii_lowercase(),
             "domain": domain.label(),
+            "iteration_budget": profile.iteration_budget,
             "judges": profile.judges,
             "convergence": profile.convergence,
             "judge_personas": profile.judge_personas.clone(),

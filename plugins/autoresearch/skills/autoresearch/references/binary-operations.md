@@ -17,7 +17,7 @@ autoresearch security --scope "src/**/*.rs" --focus auth --depth deep --iteratio
 autoresearch ship --target "Release v1.2.0" --type code-release --dry-run --monitor 15
 autoresearch scenario --target "Checkout flow" --domain web --format threat-scenarios --scope "src/checkout/**" --iterations 16 --chain debug
 autoresearch predict --proposal "Add cache warming to search results" --scope "src/search/**"
-autoresearch reason --question "Should we replace the storage layer" --mode debate --domain software --judges 7 --convergence 4
+autoresearch reason --question "Should we replace the storage layer" --mode debate --domain software --iterations 11 --judges 7 --convergence 4
 autoresearch probe --subject "Payment retry workflow" --scope "src/payments/**" --iterations 9
 autoresearch learn --mode summarize --scope "src/**/*.rs" --depth comprehensive --iterations 14 --evals
 autoresearch health --strict
@@ -52,7 +52,7 @@ Native artifact generators default to ignored `autoresearch-results/<mode>/` pat
 `predict --chain <targets>` writes a sidecar handoff with comma-separated downstream targets and eval propagation metadata when requested.
 `reason` writes an adversarial debate artifact with candidate solutions, blind judge rubric, and convergence criteria.
 `reason --chain <targets>` writes a sidecar handoff with debate context and comma-separated downstream targets.
-`reason --judges <n> --convergence <n> --judge-personas <list> --temperature <value>` records panel size, stopping threshold, synthesis behavior, and generation hints.
+`reason --iterations <n> --judges <n> --convergence <n> --judge-personas <list> --temperature <value>` records debate budget, panel size, stopping threshold, synthesis behavior, and generation hints.
 `probe` writes eight persona-driven requirement questions, constraint slots, and the saturation rule used to decide when enough constraints have been found.
 `probe --mode autonomous --depth <level> --iterations <n> --adversarial` records interrogation profile, persona count, rounds, and saturation threshold metadata.
 `probe --chain <targets>` writes a sidecar handoff with constraint context and comma-separated downstream targets.

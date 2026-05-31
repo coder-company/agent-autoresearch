@@ -1900,6 +1900,38 @@ fn test_reason_judge_controls_are_recorded() {
 }
 
 #[test]
+fn test_reason_iterations_are_recorded() {
+    let dir = TempDir::new().unwrap();
+    let output = dir
+        .path()
+        .join("autoresearch-results/reason/storage-budget.md");
+
+    cmd()
+        .args([
+            "reason",
+            "--question",
+            "Should we replace the storage layer",
+            "--iterations",
+            "11",
+            "--chain",
+            "predict",
+            "--output",
+            output.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"iteration_budget\":11"));
+
+    let report = std::fs::read_to_string(&output).unwrap();
+    let handoff = std::fs::read_to_string(output.parent().unwrap().join("handoff.json")).unwrap();
+
+    assert!(report.contains("- Iteration budget: 11"));
+    assert!(handoff.contains("\"iteration_budget\": 11"));
+}
+
+#[test]
 fn test_probe_writes_requirement_interrogation_artifact() {
     let dir = TempDir::new().unwrap();
     let output = dir.path().join("probe/payment-probe.md");
