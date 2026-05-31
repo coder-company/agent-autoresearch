@@ -370,6 +370,58 @@ fn test_evals_with_sample_tsv() {
 }
 
 #[test]
+fn test_evals_reports_parallel_worker_significance() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: lower").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tbase\t50\t0\t-\tbaseline\tinitial").unwrap();
+    writeln!(file, "1a\twa\t47\t-3\tpass\tkeep\t[PARALLEL worker-a] a").unwrap();
+    writeln!(file, "1b\t-\t48\t-2\tpass\tdiscard\t[PARALLEL worker-b] b").unwrap();
+    writeln!(file, "1c\t-\t49\t-1\tpass\tdiscard\t[PARALLEL worker-c] c").unwrap();
+    writeln!(
+        file,
+        "1\tmain1\t47\t-3\tpass\tkeep\t[PARALLEL batch] selected worker-a"
+    )
+    .unwrap();
+    writeln!(file, "2a\t-\t46\t-1\tpass\tdiscard\t[PARALLEL worker-a] a").unwrap();
+    writeln!(file, "2b\twb\t45\t-2\tpass\tkeep\t[PARALLEL worker-b] b").unwrap();
+    writeln!(file, "2c\t-\t43\t-4\tpass\tdiscard\t[PARALLEL worker-c] c").unwrap();
+    writeln!(
+        file,
+        "2\tmain2\t45\t-2\tpass\tkeep\t[PARALLEL batch] selected worker-b"
+    )
+    .unwrap();
+
+    cmd()
+        .args(["evals", tsv_path.to_str().unwrap(), "--format", "json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"parallel_workers\""))
+        .stdout(predicate::str::contains("\"total\": 6"))
+        .stdout(predicate::str::contains("\"improved\": 6"))
+        .stdout(predicate::str::contains("\"p_value\": \"0.015625\""))
+        .stdout(predicate::str::contains("significant_positive_signal"));
+
+    let summary = std::fs::read_to_string(dir.path().join("evals-summary.json")).unwrap();
+    assert!(summary.contains("\"batches\": 2"));
+    assert!(summary.contains("\"improvement_rate_pct\": 100"));
+
+    cmd()
+        .args(["evals", tsv_path.to_str().unwrap(), "--format", "md"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("### Parallel Worker Significance"))
+        .stdout(predicate::str::contains("p=0.015625"));
+}
+
+#[test]
 fn test_evals_defaults_to_repo_root_results_from_subdir() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

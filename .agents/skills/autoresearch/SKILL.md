@@ -43,7 +43,7 @@ The `autoresearch` binary handles mechanical operations:
 - `autoresearch parallel closeout` — merge with cherry-pick, fast-forward, squash, or rebase; verify and retain one worker; log audit rows and update retained state once
 - `autoresearch parallel cleanup` — remove worker worktrees and branches
 - `autoresearch runtime run` — execute the supervised background loop; `start/status/supervise/stop` remain available for manual control
-- `autoresearch status --summary|resume|progress|watch|lessons|evals` — inspect/resume/monitor/analyze runs
+- `autoresearch status --summary|resume|progress|watch|lessons|evals` — inspect/resume/monitor/analyze runs, including parallel worker sign-test summaries
 - `autoresearch lessons --add "..." --context "..."` — append reusable strategy lessons
 - `autoresearch search --from-state --log` — build a run-aware search query, cache provider results, and log a search row; `decide` auto-runs this on Web Search escalation when `AUTORESEARCH_SEARCH_CMD` is configured
 - `autoresearch hook <name>` — execute lifecycle hooks

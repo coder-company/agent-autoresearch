@@ -38,7 +38,7 @@ This skill uses Claude Code's `/goal` command as the native continuation engine.
 | `/autoresearch_reason` | Adversarial debate with blind judges | `convergence: incumbent wins N rounds` |
 | `/autoresearch_probe` | 8 personas interrogate requirements | `constraint saturation reached` |
 | `/autoresearch_improve` | Research ICP needs and generate product improvement PRDs | `validated improvements identified` |
-| `/autoresearch_evals` | Analyze iteration results | No /goal (analysis tool) |
+| `/autoresearch_evals` | Analyze iteration results and parallel worker significance | No /goal (analysis tool) |
 
 ## Core Protocol (Each Turn)
 

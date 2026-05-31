@@ -45,7 +45,7 @@ Autonomous goal-directed iteration. Modify → Verify → Keep/Discard → Repea
 | `reason` | Refine subjective decisions with blind judging |
 | `probe` | Interrogate requirements until constraints saturate |
 | `improve` | Research ICP needs and generate product improvement PRDs |
-| `evals` | Analyze iteration results and plateaus |
+| `evals` | Analyze iteration results, plateaus, and parallel worker significance |
 | `exec` | Non-interactive CI/CD mode, JSON output |
 
 ## Goal Integration

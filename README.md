@@ -154,7 +154,7 @@ One success resets all counters.
 | `/autoresearch:reason` | Debate a subjective decision with blind judges |
 | `/autoresearch:probe` | Interrogate requirements until nothing's ambiguous |
 | `/autoresearch:improve` | Research ICP needs and generate product improvement PRDs |
-| `/autoresearch:evals` | Analyze past runs: trends, plateaus, recommendations |
+| `/autoresearch:evals` | Analyze past runs: trends, plateaus, parallel worker significance, recommendations |
 
 Just type the command. It asks for what it needs.
 

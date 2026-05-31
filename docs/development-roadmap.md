@@ -28,7 +28,7 @@
 - [x] Branch merge strategy selection (fast-forward, squash, rebase)
 - [x] `autoresearch watch` — tail results in real-time
 - [ ] Progress websocket for real-time monitoring
-- [ ] Improved evals: statistical significance testing on parallel results
+- [x] Improved evals: statistical significance testing on parallel results
 
 ## v0.3.0 — Web Search + MCP Integration
 

@@ -19,7 +19,8 @@ use autoresearch::core::criteria;
 use autoresearch::core::git::{GitRepo, WorktreeStatus};
 use autoresearch::core::health;
 use autoresearch::core::results::{
-    ensure_results_dir_protected, parse_metric_direction_value, GuardResult, ResultRow, ResultsLog,
+    ensure_results_dir_protected, parse_metric_direction_value, worker_iteration_prefix,
+    GuardResult, ResultRow, ResultsLog,
 };
 use autoresearch::core::runtime;
 use autoresearch::core::state::{IterationStatus, RunPhase, RunState};
@@ -1877,6 +1878,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
         })
         .collect();
     top_regressions.sort_by_key(|entry| std::cmp::Reverse(entry.0));
+    let parallel_workers = analyze_parallel_worker_rows(&content, direction)?;
 
     let efficiency = if total_iterations > 0 {
         (keeps as f64 / total_iterations as f64 * 100.0).round() as u32
@@ -1942,6 +1944,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 "trend": trend,
                 "recommendation": recommendation,
                 "unknown_columns": &unknown_columns,
+                "parallel_workers": &parallel_workers,
                 "top_improvements": top_keeps.iter().take(5).map(|(d, desc)| {
                     serde_json::json!({"delta": d.to_string(), "description": desc})
                 }).collect::<Vec<_>>(),
@@ -1975,6 +1978,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 trend,
                 longest_plateau,
                 unknown_columns: &unknown_columns,
+                parallel_workers: &parallel_workers,
                 top_keeps: &top_keeps,
                 top_regressions: &top_regressions,
             });
@@ -2003,6 +2007,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 trend,
                 longest_plateau,
                 unknown_columns: &unknown_columns,
+                parallel_workers: &parallel_workers,
                 top_keeps: &top_keeps,
                 top_regressions: &top_regressions,
             });
@@ -2114,6 +2119,138 @@ struct EvalsReport<'a> {
     unknown_columns: &'a [String],
     top_keeps: &'a [(Decimal, &'a str)],
     top_regressions: &'a [(Decimal, &'a str)],
+    parallel_workers: &'a ParallelWorkerStats,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct ParallelWorkerStats {
+    total: usize,
+    batches: usize,
+    improved: usize,
+    regressed: usize,
+    flat: usize,
+    improvement_rate_pct: u32,
+    sign_test: Option<ParallelSignTest>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct ParallelSignTest {
+    n: usize,
+    improvements: usize,
+    p_value: String,
+    conclusion: &'static str,
+}
+
+fn analyze_parallel_worker_rows(content: &str, direction: &str) -> Result<ParallelWorkerStats> {
+    let mut header: Option<BTreeMap<String, usize>> = None;
+    let mut batches = BTreeSet::new();
+    let mut improved = 0usize;
+    let mut regressed = 0usize;
+    let mut flat = 0usize;
+    let mut total = 0usize;
+
+    for line in content.lines() {
+        if line.starts_with('#') || line.trim().is_empty() {
+            continue;
+        }
+        let columns = line.split('\t').collect::<Vec<_>>();
+        if columns.first() == Some(&"iteration") {
+            header = Some(
+                columns
+                    .iter()
+                    .enumerate()
+                    .map(|(index, column)| ((*column).to_string(), index))
+                    .collect(),
+            );
+            continue;
+        }
+        let iteration_index = header
+            .as_ref()
+            .and_then(|header| header.get("iteration").copied())
+            .unwrap_or(0);
+        let delta_index = header
+            .as_ref()
+            .and_then(|header| header.get("delta").copied())
+            .unwrap_or(3);
+        let Some(iteration_label) = columns.get(iteration_index) else {
+            continue;
+        };
+        let Some(batch_iteration) = worker_iteration_prefix(iteration_label) else {
+            continue;
+        };
+        let Some(delta_raw) = columns.get(delta_index) else {
+            continue;
+        };
+
+        let delta = Decimal::from_str(delta_raw.trim_start_matches('+')).with_context(|| {
+            format!("Invalid parallel worker delta at iteration {iteration_label}")
+        })?;
+        total += 1;
+        batches.insert(batch_iteration);
+        match direction {
+            "lower" if delta < Decimal::ZERO => improved += 1,
+            "lower" if delta > Decimal::ZERO => regressed += 1,
+            "higher" if delta > Decimal::ZERO => improved += 1,
+            "higher" if delta < Decimal::ZERO => regressed += 1,
+            _ => flat += 1,
+        }
+    }
+
+    let improvement_rate_pct = if total > 0 {
+        (improved as f64 / total as f64 * 100.0).round() as u32
+    } else {
+        0
+    };
+    let sign_test_n = improved + regressed;
+    let sign_test = (sign_test_n >= 3).then(|| {
+        let p_value = binomial_upper_tail(improved, sign_test_n);
+        ParallelSignTest {
+            n: sign_test_n,
+            improvements: improved,
+            p_value: format!("{p_value:.6}"),
+            conclusion: sign_test_conclusion(p_value, improved, regressed),
+        }
+    });
+
+    Ok(ParallelWorkerStats {
+        total,
+        batches: batches.len(),
+        improved,
+        regressed,
+        flat,
+        improvement_rate_pct,
+        sign_test,
+    })
+}
+
+fn binomial_upper_tail(successes: usize, n: usize) -> f64 {
+    if n == 0 || successes > n {
+        return 1.0;
+    }
+    let favorable = (successes..=n)
+        .map(|k| binomial_coefficient(n, k))
+        .sum::<f64>();
+    favorable / 2_f64.powi(n as i32)
+}
+
+fn binomial_coefficient(n: usize, k: usize) -> f64 {
+    let k = k.min(n - k);
+    if k == 0 {
+        return 1.0;
+    }
+    (1..=k).fold(1.0, |acc, i| acc * (n - k + i) as f64 / i as f64)
+}
+
+fn sign_test_conclusion(p_value: f64, improved: usize, regressed: usize) -> &'static str {
+    if improved <= regressed {
+        "no_positive_signal"
+    } else if p_value <= 0.05 {
+        "significant_positive_signal"
+    } else if p_value <= 0.10 {
+        "suggestive_positive_signal"
+    } else {
+        "insufficient_evidence"
+    }
 }
 
 fn render_evals_markdown(report: EvalsReport<'_>) -> String {
@@ -2175,6 +2312,32 @@ fn render_evals_markdown(report: EvalsReport<'_>) -> String {
         .unwrap();
     }
     writeln!(out).unwrap();
+
+    if report.parallel_workers.total > 0 {
+        writeln!(out, "### Parallel Worker Significance").unwrap();
+        writeln!(out).unwrap();
+        writeln!(out, "- Batches: {}", report.parallel_workers.batches).unwrap();
+        writeln!(
+            out,
+            "- Workers: {} improved, {} regressed, {} flat ({}% improved)",
+            report.parallel_workers.improved,
+            report.parallel_workers.regressed,
+            report.parallel_workers.flat,
+            report.parallel_workers.improvement_rate_pct
+        )
+        .unwrap();
+        if let Some(sign_test) = &report.parallel_workers.sign_test {
+            writeln!(
+                out,
+                "- Sign test: n={}, improvements={}, p={}, {}",
+                sign_test.n, sign_test.improvements, sign_test.p_value, sign_test.conclusion
+            )
+            .unwrap();
+        } else {
+            writeln!(out, "- Sign test: insufficient non-flat worker results").unwrap();
+        }
+        writeln!(out).unwrap();
+    }
 
     if !report.top_keeps.is_empty() {
         writeln!(out, "### Top Improvements").unwrap();

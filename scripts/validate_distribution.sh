@@ -167,6 +167,9 @@ require_grep 'autoresearch parallel run' guide/advanced-patterns.md
 require_grep 'merge-strategy' guide/advanced-patterns.md
 require_grep 'merge-strategy' references/parallel-experiments-protocol.md
 require_grep '\[x\] Branch merge strategy selection \(fast-forward, squash, rebase\)' docs/development-roadmap.md
+require_grep '\[x\] Improved evals: statistical significance testing on parallel results' docs/development-roadmap.md
+require_grep 'parallel worker significance' README.md
+require_grep 'sign-test summary' docs/GUIDE.md
 require_grep 'timeout-seconds' references/parallel-experiments-protocol.md
 require_grep 'autoresearch parallel cleanup' references/parallel-experiments-protocol.md
 require_grep 'autoresearch completions' README.md
