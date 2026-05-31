@@ -647,9 +647,24 @@ enum Commands {
         /// Run all steps but do not perform external ship actions
         #[arg(long)]
         dry_run: bool,
+        /// Auto-approve only if no blockers are found; recorded as metadata only
+        #[arg(long)]
+        auto: bool,
+        /// Skip non-critical checklist items; blockers remain enforced
+        #[arg(long)]
+        force: bool,
+        /// Record rollback intent instead of normal ship intent
+        #[arg(long)]
+        rollback: bool,
+        /// Post-ship monitoring window in minutes
+        #[arg(long)]
+        monitor: Option<u32>,
         /// Generate only checklist artifacts
         #[arg(long)]
         checklist_only: bool,
+        /// Comma-separated downstream command targets to record in handoff.json
+        #[arg(long)]
+        chain: Option<String>,
         /// Output directory. Relative paths resolve from the workspace root.
         #[arg(long)]
         output_dir: Option<PathBuf>,
@@ -1546,14 +1561,24 @@ fn main() -> Result<()> {
             target,
             ship_type,
             dry_run,
+            auto,
+            force,
+            rollback,
+            monitor,
             checklist_only,
+            chain,
             output_dir,
             cwd,
         } => cmd_ship(
             &target,
             &ship_type,
             dry_run,
+            auto,
+            force,
+            rollback,
+            monitor,
             checklist_only,
+            chain,
             output_dir,
             cwd,
         ),
@@ -3096,11 +3121,47 @@ fn ship_type_checklist(ship_type: &str) -> &'static [&'static str] {
     }
 }
 
+#[derive(Debug, Clone)]
+struct ShipProfile {
+    auto: bool,
+    force: bool,
+    rollback: bool,
+    monitor_minutes: Option<u32>,
+}
+
+fn resolve_ship_profile(
+    auto: bool,
+    force: bool,
+    rollback: bool,
+    monitor_minutes: Option<u32>,
+) -> Result<ShipProfile> {
+    if monitor_minutes == Some(0) {
+        anyhow::bail!("ship monitor minutes must be greater than zero");
+    }
+    Ok(ShipProfile {
+        auto,
+        force,
+        rollback,
+        monitor_minutes,
+    })
+}
+
+fn ship_handoff_status(dry_run: bool, checklist_only: bool, profile: &ShipProfile) -> &'static str {
+    if profile.rollback {
+        "ROLLBACK"
+    } else if dry_run || checklist_only {
+        "DRY_RUN"
+    } else {
+        "COMPLETE"
+    }
+}
+
 fn render_ship_checklist(
     target: &str,
     ship_type: &str,
     dry_run: bool,
     checklist_only: bool,
+    profile: &ShipProfile,
 ) -> String {
     let mut out = String::new();
     writeln!(out, "# Ship Checklist: {target}").unwrap();
@@ -3108,6 +3169,18 @@ fn render_ship_checklist(
     writeln!(out, "- Type: {ship_type}").unwrap();
     writeln!(out, "- Dry run: {dry_run}").unwrap();
     writeln!(out, "- Checklist only: {checklist_only}").unwrap();
+    writeln!(out, "- Auto approval requested: {}", profile.auto).unwrap();
+    writeln!(out, "- Force non-critical items: {}", profile.force).unwrap();
+    writeln!(out, "- Rollback requested: {}", profile.rollback).unwrap();
+    writeln!(
+        out,
+        "- Monitor minutes: {}",
+        profile
+            .monitor_minutes
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "none".to_string())
+    )
+    .unwrap();
     writeln!(out).unwrap();
     writeln!(out, "## 8 Phases").unwrap();
     writeln!(out).unwrap();
@@ -3134,30 +3207,54 @@ fn render_ship_summary(
     ship_type: &str,
     dry_run: bool,
     checklist_only: bool,
+    profile: &ShipProfile,
 ) -> String {
     format!(
         "# Ship Summary: {target}\n\n\
          - Type: {ship_type}\n\
          - Dry run: {dry_run}\n\
          - Checklist only: {checklist_only}\n\
+         - Auto approval requested: {}\n\
+         - Force non-critical items: {}\n\
+         - Rollback requested: {}\n\
+         - Monitor minutes: {}\n\
          - Phase count: {}\n\
-         - Status: DRY_RUN\n\n\
+         - Status: {}\n\n\
          This artifact does not perform external side effects. Run the checklist, capture blockers, and only execute Ship after explicit approval.\n",
-        ShipPhase::all().len()
+        profile.auto,
+        profile.force,
+        profile.rollback,
+        profile
+            .monitor_minutes
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "none".to_string()),
+        ShipPhase::all().len(),
+        ship_handoff_status(dry_run, checklist_only, profile)
     )
 }
 
-fn render_ship_log(target: &str, ship_type: &str, dry_run: bool, checklist_only: bool) -> String {
+fn render_ship_log(
+    target: &str,
+    ship_type: &str,
+    dry_run: bool,
+    checklist_only: bool,
+    profile: &ShipProfile,
+) -> String {
     let mut out = String::new();
     let timestamp = chrono::Utc::now().to_rfc3339();
     writeln!(
         out,
-        "timestamp\ttype\ttarget\tchecklist_score\tdry_run\tshipped\tverified\tduration\tnotes"
+        "timestamp\ttype\ttarget\tchecklist_score\tdry_run\tauto\tforce\trollback\tmonitor_minutes\tshipped\tverified\tduration\tnotes"
     )
     .unwrap();
+    let monitor_minutes = profile
+        .monitor_minutes
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| "-".to_string());
     writeln!(
         out,
-        "{timestamp}\t{ship_type}\t{target}\t0\t{dry_run}\tfalse\tfalse\t0\tchecklist_only={checklist_only}"
+        "{timestamp}\t{ship_type}\t{target}\t0\t{dry_run}\t{}\t{}\t{}\t{monitor_minutes}\tfalse\tfalse\t0\tchecklist_only={checklist_only}",
+        profile.auto, profile.force, profile.rollback
     )
     .unwrap();
     out
@@ -3167,10 +3264,19 @@ fn cmd_ship(
     target: &str,
     ship_type: &str,
     dry_run: bool,
+    auto: bool,
+    force: bool,
+    rollback: bool,
+    monitor_minutes: Option<u32>,
     checklist_only: bool,
+    chain: Option<String>,
     output_dir: Option<PathBuf>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
+    let profile = resolve_ship_profile(auto, force, rollback, monitor_minutes)?;
+    let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
+    let next_target = next_chain_target_value(&chain_targets);
+    let status = ship_handoff_status(dry_run, checklist_only, &profile);
     let workspace = resolve_workspace_root(cwd);
     let output_dir = output_dir
         .unwrap_or_else(|| default_artifact_path("ship", format!("ship-{}", slugify(target))));
@@ -3179,21 +3285,22 @@ fn cmd_ship(
         .with_context(|| format!("failed to create {}", output_dir.display()))?;
     write_text_file(
         &output_dir.join("checklist.md"),
-        &render_ship_checklist(target, ship_type, dry_run, checklist_only),
+        &render_ship_checklist(target, ship_type, dry_run, checklist_only, &profile),
     )?;
     write_text_file(
         &output_dir.join("summary.md"),
-        &render_ship_summary(target, ship_type, dry_run, checklist_only),
+        &render_ship_summary(target, ship_type, dry_run, checklist_only, &profile),
     )?;
     write_text_file(
         &output_dir.join("ship-log.tsv"),
-        &render_ship_log(target, ship_type, dry_run, checklist_only),
+        &render_ship_log(target, ship_type, dry_run, checklist_only, &profile),
     )?;
     let handoff = serde_json::json!({
         "version": "2.1.0",
         "source": "ship",
+        "source_command": "ship",
         "timestamp": chrono::Utc::now().to_rfc3339(),
-        "status": if dry_run || checklist_only { "DRY_RUN" } else { "COMPLETE" },
+        "status": status,
         "results_tsv": output_dir.join("ship-log.tsv").display().to_string(),
         "findings": [],
         "config": {
@@ -3201,8 +3308,15 @@ fn cmd_ship(
             "type": ship_type,
             "dry_run": dry_run,
             "checklist_only": checklist_only,
+            "auto": profile.auto,
+            "force": profile.force,
+            "rollback": profile.rollback,
+            "monitor_minutes": profile.monitor_minutes,
             "phases": ShipPhase::all().len(),
-        }
+        },
+        "chain": chain_targets,
+        "next_target": next_target.clone(),
+        "chain_continue": should_continue_handoff_chain(status),
     });
     write_json_file(&output_dir.join("handoff.json"), &handoff)?;
     println!(
@@ -3215,6 +3329,12 @@ fn cmd_ship(
             "phases": ShipPhase::all().len(),
             "dry_run": dry_run,
             "checklist_only": checklist_only,
+            "auto": profile.auto,
+            "force": profile.force,
+            "rollback": profile.rollback,
+            "monitor_minutes": profile.monitor_minutes,
+            "handoff_status": status,
+            "next_target": next_target,
         })
     );
     Ok(())

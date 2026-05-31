@@ -828,6 +828,56 @@ fn test_ship_writes_checklist_artifact_bundle() {
 }
 
 #[test]
+fn test_ship_controls_are_recorded_in_handoff() {
+    let dir = TempDir::new().unwrap();
+    let output_dir = dir.path().join("ship/deploy");
+
+    cmd()
+        .args([
+            "ship",
+            "--target",
+            "Deploy api",
+            "--type",
+            "deployment",
+            "--auto",
+            "--force",
+            "--rollback",
+            "--monitor",
+            "15",
+            "--chain",
+            "learn",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"auto\":true"))
+        .stdout(predicate::str::contains("\"force\":true"))
+        .stdout(predicate::str::contains("\"rollback\":true"))
+        .stdout(predicate::str::contains("\"handoff_status\":\"ROLLBACK\""))
+        .stdout(predicate::str::contains("\"next_target\":\"learn\""));
+
+    let checklist = std::fs::read_to_string(output_dir.join("checklist.md")).unwrap();
+    let summary = std::fs::read_to_string(output_dir.join("summary.md")).unwrap();
+    let log = std::fs::read_to_string(output_dir.join("ship-log.tsv")).unwrap();
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+
+    assert!(checklist.contains("- Auto approval requested: true"));
+    assert!(checklist.contains("- Force non-critical items: true"));
+    assert!(checklist.contains("- Rollback requested: true"));
+    assert!(checklist.contains("- Monitor minutes: 15"));
+    assert!(summary.contains("- Status: ROLLBACK"));
+    assert!(log.contains("auto\tforce\trollback\tmonitor_minutes"));
+    assert!(handoff.contains("\"source_command\": \"ship\""));
+    assert!(handoff.contains("\"status\": \"ROLLBACK\""));
+    assert!(handoff.contains("\"monitor_minutes\": 15"));
+    assert!(handoff.contains("\"next_target\": \"learn\""));
+    assert!(handoff.contains("\"chain_continue\": false"));
+}
+
+#[test]
 fn test_debug_writes_investigation_artifact_bundle() {
     let dir = TempDir::new().unwrap();
     std::fs::create_dir_all(dir.path().join("src/api")).unwrap();
