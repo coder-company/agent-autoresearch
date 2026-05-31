@@ -764,6 +764,9 @@ enum Commands {
         /// Feature, workflow, or system to explore
         #[arg(long)]
         target: String,
+        /// Domain: general, web, mobile, API, CLI, data-pipeline, or infrastructure
+        #[arg(long, default_value = "general")]
+        domain: String,
         /// Scenario format: use-cases, user-stories, test-scenarios, or threat-scenarios
         #[arg(long, default_value = "test-scenarios")]
         format: String,
@@ -1696,6 +1699,7 @@ fn main() -> Result<()> {
 
         Commands::Scenario {
             target,
+            domain,
             format,
             focus,
             scope,
@@ -1707,6 +1711,7 @@ fn main() -> Result<()> {
             cwd,
         } => cmd_scenario(
             &target,
+            &domain,
             &format,
             &focus,
             scope,
@@ -4105,10 +4110,28 @@ fn scenario_format_slug(format: ScenarioFormat) -> &'static str {
 
 #[derive(Debug, Clone)]
 struct ScenarioProfile {
+    domain: String,
     depth: String,
     exploration_budget: u32,
     evals: bool,
     evals_interval: Option<u32>,
+}
+
+fn parse_scenario_domain(value: &str) -> Result<&'static str> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "general" | "generic" => Ok("general"),
+        "web" | "web-app" | "webapp" | "web app" => Ok("web"),
+        "mobile" | "mobile-app" | "mobileapp" | "mobile app" => Ok("mobile"),
+        "api" | "service" | "backend" => Ok("api"),
+        "cli" | "command-line" | "commandline" | "command line" => Ok("cli"),
+        "data" | "data-pipeline" | "datapipeline" | "data pipeline" | "pipeline" => {
+            Ok("data pipeline")
+        }
+        "infra" | "infrastructure" | "devops" => Ok("infrastructure"),
+        other => anyhow::bail!(
+            "Invalid scenario domain {other:?}; use general, web, mobile, api, cli, data-pipeline, or infrastructure"
+        ),
+    }
 }
 
 fn parse_scenario_depth(value: &str) -> Result<(&'static str, u32)> {
@@ -4121,13 +4144,16 @@ fn parse_scenario_depth(value: &str) -> Result<(&'static str, u32)> {
 }
 
 fn resolve_scenario_profile(
+    domain: &str,
     depth: &str,
     evals: bool,
     evals_interval: Option<u32>,
 ) -> Result<ScenarioProfile> {
     validate_chain_evals_flags("scenario", evals, evals_interval)?;
+    let domain = parse_scenario_domain(domain)?;
     let (depth, exploration_budget) = parse_scenario_depth(depth)?;
     Ok(ScenarioProfile {
+        domain: domain.to_string(),
         depth: depth.to_string(),
         exploration_budget,
         evals,
@@ -4203,6 +4229,7 @@ fn render_scenario_markdown(
         format.label()
     )
     .unwrap();
+    writeln!(out, "- Domain: {}", profile.domain).unwrap();
     writeln!(out, "- Focus: {focus}").unwrap();
     writeln!(out, "- Depth: {}", profile.depth).unwrap();
     writeln!(out, "- Exploration budget: {}", profile.exploration_budget).unwrap();
@@ -4260,6 +4287,7 @@ fn render_scenario_markdown(
 
 fn cmd_scenario(
     target: &str,
+    domain: &str,
     format: &str,
     focus: &str,
     scope: Vec<String>,
@@ -4271,7 +4299,7 @@ fn cmd_scenario(
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let format = parse_scenario_format(format)?;
-    let profile = resolve_scenario_profile(depth, evals, evals_interval)?;
+    let profile = resolve_scenario_profile(domain, depth, evals, evals_interval)?;
     let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
     let workspace = resolve_workspace_root(cwd);
     let output = output.unwrap_or_else(|| {
@@ -4298,6 +4326,7 @@ fn cmd_scenario(
             "findings": [],
             "config": {
                 "target": target,
+                "domain": profile.domain.as_str(),
                 "format": scenario_format_slug(format),
                 "focus": focus,
                 "scope": scope,
@@ -4323,6 +4352,7 @@ fn cmd_scenario(
             "path": output.display().to_string(),
             "handoff_path": handoff_path.as_ref().map(|path| path.display().to_string()),
             "target": target,
+            "domain": profile.domain.as_str(),
             "format": scenario_format_slug(format),
             "depth": profile.depth.as_str(),
             "exploration_budget": profile.exploration_budget,

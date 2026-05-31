@@ -683,6 +683,8 @@ fn test_scenario_writes_twelve_dimension_artifact() {
             "scenario",
             "--target",
             "Checkout flow",
+            "--domain",
+            "api",
             "--format",
             "threat-scenarios",
             "--focus",
@@ -697,10 +699,12 @@ fn test_scenario_writes_twelve_dimension_artifact() {
         .assert()
         .success()
         .stdout(predicate::str::contains("\"status\":\"written\""))
+        .stdout(predicate::str::contains("\"domain\":\"api\""))
         .stdout(predicate::str::contains("\"dimensions\":12"));
 
     let scenario = std::fs::read_to_string(&output).unwrap();
     assert!(scenario.contains("# Scenario Exploration: Checkout flow"));
+    assert!(scenario.contains("- Domain: api"));
     assert!(scenario.contains("Boundary Values"));
     assert!(scenario.contains("Resource Exhaustion"));
     assert!(scenario.contains("Threat"));
@@ -719,6 +723,8 @@ fn test_scenario_depth_and_evals_are_recorded() {
             "scenario",
             "--target",
             "Checkout flow",
+            "--domain",
+            "web",
             "--format",
             "test-scenarios",
             "--focus",
@@ -739,6 +745,7 @@ fn test_scenario_depth_and_evals_are_recorded() {
         ])
         .assert()
         .success()
+        .stdout(predicate::str::contains("\"domain\":\"web\""))
         .stdout(predicate::str::contains("\"depth\":\"deep\""))
         .stdout(predicate::str::contains("\"exploration_budget\":40"))
         .stdout(predicate::str::contains("\"evals\":true"))
@@ -747,11 +754,13 @@ fn test_scenario_depth_and_evals_are_recorded() {
 
     let scenario = std::fs::read_to_string(&output).unwrap();
     let handoff = std::fs::read_to_string(output.parent().unwrap().join("handoff.json")).unwrap();
+    assert!(scenario.contains("- Domain: web"));
     assert!(scenario.contains("- Depth: deep"));
     assert!(scenario.contains("- Exploration budget: 40"));
     assert!(scenario.contains("- Evals enabled: true"));
     assert!(scenario.contains("- Evals interval: 5"));
     assert!(handoff.contains("\"source_command\": \"scenario\""));
+    assert!(handoff.contains("\"domain\": \"web\""));
     assert!(handoff.contains("\"depth\": \"deep\""));
     assert!(handoff.contains("\"exploration_budget\": 40"));
     assert!(handoff.contains("\"chain\": ["));
