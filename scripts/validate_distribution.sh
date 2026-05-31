@@ -130,11 +130,15 @@ for command in "$ROOT"/commands/autoresearch.md "$ROOT"/commands/autoresearch/*.
 done
 
 require_grep '\$autoresearch' .agents/skills/autoresearch/SKILL.md
-require_grep 'autoresearch runtime run' .agents/skills/autoresearch/SKILL.md
+agents_skill_lines=$(wc -l < "$ROOT/.agents/skills/autoresearch/SKILL.md")
+[[ "$agents_skill_lines" -le 90 ]] || fail ".agents skill entrypoint is too large: $agents_skill_lines lines"
+require_grep 'thin router' .agents/skills/autoresearch/SKILL.md
+require_grep 'binary-operations\.md' .agents/skills/autoresearch/SKILL.md
+require_grep 'autoresearch runtime run' references/binary-operations.md
 require_grep 'exec-workflow\.md' .agents/skills/autoresearch/SKILL.md
 require_grep 'runtime-hard-invariants\.md' .agents/skills/autoresearch/SKILL.md
 require_grep 'autoresearch health --strict' SKILL.md
-require_grep 'autoresearch health --strict' .agents/skills/autoresearch/SKILL.md
+require_grep 'autoresearch health --strict' references/binary-operations.md
 require_grep 'autoresearch env --format json' README.md
 require_grep 'autoresearch env --format json' docs/GUIDE.md
 require_grep 'init metadata' docs/development-roadmap.md
@@ -161,8 +165,12 @@ require_grep 'autoresearch watch --websocket' README.md
 require_grep 'autoresearch watch --websocket' docs/GUIDE.md
 require_grep 'autoresearch dashboard --once' README.md
 require_grep 'autoresearch dashboard --once' docs/GUIDE.md
-require_grep 'WebSocket watch streams' .agents/skills/autoresearch/SKILL.md
-require_grep 'WebSocket watch streams' plugins/autoresearch/skills/autoresearch/SKILL.md
+require_grep 'Thin Codex routing skill' README.md
+require_grep 'thin router' docs/GUIDE.md
+require_grep 'Thin Codex skill router' docs/development-roadmap.md
+require_grep 'Token footprint' COMPARISON.md
+require_grep 'WebSocket watch streams' references/binary-operations.md
+require_grep 'WebSocket watch streams' plugins/autoresearch/skills/autoresearch/references/binary-operations.md
 require_grep 'Progress websocket for real-time monitoring' docs/development-roadmap.md
 require_grep '\[x\] Interactive TUI dashboard for monitoring runs' docs/development-roadmap.md
 require_grep 'autoresearch watch' guide/advanced-patterns.md
@@ -171,19 +179,19 @@ require_grep 'format jsonl' docs/GUIDE.md
 require_grep 'autoresearch lessons --add' README.md
 require_grep 'autoresearch lessons --add' docs/GUIDE.md
 require_grep 'autoresearch lessons --add' SKILL.md
-require_grep 'autoresearch lessons --add' .agents/skills/autoresearch/SKILL.md
+require_grep 'autoresearch lessons --add' references/binary-operations.md
 require_grep 'autoresearch search --from-state --log' README.md
 require_grep 'autoresearch search --from-state' docs/GUIDE.md
 require_grep 'autoresearch search --from-state --log' SKILL.md
-require_grep 'autoresearch search --from-state --log' .agents/skills/autoresearch/SKILL.md
+require_grep 'autoresearch search --from-state --log' references/binary-operations.md
 require_grep 'autoresearch mcp serve' README.md
 require_grep 'autoresearch mcp serve' docs/GUIDE.md
 require_grep 'autoresearch mcp serve' SKILL.md
-require_grep 'autoresearch mcp serve' .agents/skills/autoresearch/SKILL.md
+require_grep 'autoresearch mcp serve' references/binary-operations.md
 require_grep 'autoresearch mcp call' README.md
 require_grep 'autoresearch mcp call' docs/GUIDE.md
 require_grep 'mcp call --server-command' SKILL.md
-require_grep 'mcp call --server-command' .agents/skills/autoresearch/SKILL.md
+require_grep 'mcp call --server-command' references/binary-operations.md
 require_grep 'MCP tool server mode' docs/development-roadmap.md
 require_grep 'MCP client mode' docs/development-roadmap.md
 require_grep 'search.*meta-row' references/web-search-protocol.md
@@ -197,12 +205,12 @@ require_grep 'timeout-seconds' SKILL.md
 require_grep 'merge-strategy' SKILL.md
 require_grep 'rebase' SKILL.md
 require_grep 'autoresearch parallel cleanup' SKILL.md
-require_grep 'autoresearch parallel prepare' .agents/skills/autoresearch/SKILL.md
-require_grep 'autoresearch parallel run' .agents/skills/autoresearch/SKILL.md
-require_grep 'timeout-seconds' .agents/skills/autoresearch/SKILL.md
-require_grep 'merge-strategy' .agents/skills/autoresearch/SKILL.md
-require_grep 'rebase' .agents/skills/autoresearch/SKILL.md
-require_grep 'autoresearch parallel cleanup' .agents/skills/autoresearch/SKILL.md
+require_grep 'autoresearch parallel prepare' references/binary-operations.md
+require_grep 'autoresearch parallel run' references/binary-operations.md
+require_grep 'timeout-seconds' references/binary-operations.md
+require_grep 'merge-strategy' references/binary-operations.md
+require_grep 'rebase' references/binary-operations.md
+require_grep 'autoresearch parallel cleanup' references/binary-operations.md
 require_grep 'autoresearch parallel prepare' docs/GUIDE.md
 require_grep 'autoresearch parallel compare --a' README.md
 require_grep 'autoresearch parallel compare --a' docs/GUIDE.md
@@ -237,7 +245,7 @@ require_grep 'Workspace-aware scope expansion \(monorepo package boundaries\)' d
 require_grep 'autoresearch workspace exec' README.md
 require_grep 'autoresearch workspace exec' docs/GUIDE.md
 require_grep 'autoresearch workspace exec' SKILL.md
-require_grep 'autoresearch workspace exec' .agents/skills/autoresearch/SKILL.md
+require_grep 'autoresearch workspace exec' references/binary-operations.md
 require_grep 'Cross-repo change execution and rollback across companion repos' docs/development-roadmap.md
 require_grep 'autoresearch guard-presets --format json' README.md
 require_grep 'autoresearch guard-presets --format json' docs/GUIDE.md
@@ -278,7 +286,7 @@ done
 require_grep 'companion-repo-scope' references/results-logging.md
 require_grep 'companion-repo-scope' SKILL.md
 require_grep 'companion-repo-scope' skills/autoresearch/SKILL.md
-require_grep 'companion-repo-scope' .agents/skills/autoresearch/SKILL.md
+require_grep 'companion-repo-scope' references/binary-operations.md
 require_grep 'results\.tsv.*\.prev' references/exec-workflow.md
 require_grep 'lessons\.md.*read-only' references/exec-workflow.md
 require_grep 'multi-repo-smoke' scripts/run_skill_e2e.sh

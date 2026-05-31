@@ -24,6 +24,7 @@ The idea was simple enough that several people generalized it:
 | Install | Clone + Python | Copy/plugin install | Skill installer | Binary, Claude marketplace/plugin, OpenCode assets, Codex skill, local Codex plugin marketplace, GitHub Action, VS Code package |
 | Works with | Standalone | Claude Code | Codex CLI | **Claude Code, Codex, OpenCode, VS Code, CI, any agent** |
 | Commands | 1 (the loop) | 13 | Codex loop modes | **13 command protocols + exec + runtime + dashboard + parallel closeout** |
+| Token footprint | Small script | Thin routing commands | Thin skill + helper scripts | **Thin Codex router + reference-loaded protocols + native binary** |
 | When it gets stuck | You restart | Refine → Pivot → Stop | Re-anchor/resume | **Refine → Pivot → Web Search → Soft Blocker** |
 | Remembers across runs | No | Yes (lessons.md) | Yes (cross-run learning) | **Yes (lessons.md)** |
 | Health preflight | No | Markdown checklist | Helper scripts | **Native `autoresearch health` for git/artifact/disk/verify/guard/context** |

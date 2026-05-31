@@ -4,142 +4,74 @@ description: "Autonomous goal-directed iteration: modify, verify, keep/discard a
 version: 0.1.0
 ---
 
-# Autoresearch — Autonomous Goal-Directed Iteration (Codex)
+# Autoresearch (Codex)
 
-Invoke via `$autoresearch` mention syntax. Modes are passed as keywords:
-- `$autoresearch loop` — core metric iteration
-- `$autoresearch plan` — goal → config wizard
-- `$autoresearch debug` — bug hunting
-- `$autoresearch fix` — error crushing
-- `$autoresearch security` — STRIDE + OWASP audit
-- `$autoresearch ship` — 8-phase ship workflow
-- `$autoresearch scenario` — edge case generation
-- `$autoresearch predict` — multi-persona debate
-- `$autoresearch learn` — doc generation
-- `$autoresearch reason` — adversarial refinement
-- `$autoresearch probe` — requirement interrogation
-- `$autoresearch improve` — ICP-driven product improvement
-- `$autoresearch evals` — results analysis
-- `$autoresearch exec` — non-interactive CI/CD loop with structured JSON output
+Use `$autoresearch [mode]` when the user wants an autonomous improve-verify loop, launch planning, or one of the specialized autoresearch workflows. Keep this entrypoint as the thin router; load detailed references only when that behavior is active.
 
-## Safety Invariants
-- Never push, publish, or deploy without explicit user approval.
-- Bounded by default (25 iterations). Override with `Iterations: unlimited`.
-- All results logged to `autoresearch-results/` directory.
-- Never stage `autoresearch-results/` or `.codex-autoresearch/` artifacts in experiment commits.
+## Modes
 
-## Binary Operations
+| Mode | Purpose |
+|---|---|
+| `loop` | Core metric iteration |
+| `plan` | Goal-to-config wizard |
+| `debug` | Bug hunting |
+| `fix` | Error reduction |
+| `security` | STRIDE + OWASP audit |
+| `ship` | Release readiness |
+| `scenario` | Edge-case exploration |
+| `predict` | Multi-persona debate |
+| `learn` | Documentation generation |
+| `reason` | Adversarial refinement |
+| `probe` | Requirement interrogation |
+| `improve` | ICP-driven product improvement |
+| `evals` | Results analysis |
+| `exec` | Non-interactive CI/CD loop |
 
-The `autoresearch` binary handles mechanical operations:
-- `autoresearch init` — initialize results directory, baseline, config, and canonical context
-- `autoresearch init --companion-repo-scope PATH=SCOPE` — register clean companion repos in state/context and write repo-local pointers
-- `autoresearch exec` — run a fully specified non-interactive loop from JSON config
-- `autoresearch health --strict` — preflight git/artifact/disk/verify/context state and fail on warnings
-- `autoresearch env --format json` — probe CPU, disk, container, toolchains, and recommended parallelism for planning
-- `autoresearch verify` — run verify command, parse metric or metrics JSON
-- `autoresearch decide` — evaluate keep/discard logic, criteria gates, rollback, and escalation
-- `autoresearch parallel prepare` — create branch-backed worker worktrees, prompts, manifest, and batch file
-- `autoresearch parallel run` — launch prepared worker prompts with `codex exec`; record crashes/timeouts
-- `autoresearch parallel template` — generate editable worker batch JSON for manual parallel closeout
-- `autoresearch parallel compare --a <hypothesis> --b <hypothesis>` — prepare a two-arm A/B batch with explicit worker hypotheses
-- `autoresearch parallel closeout` — merge with cherry-pick, fast-forward, squash, or rebase; verify and retain one worker; log audit rows and update retained state once
-- `autoresearch parallel cleanup` — remove worker worktrees and branches
-- `autoresearch runtime run` — execute the supervised background loop; `start/status/supervise/stop` remain available for manual control
-- `autoresearch status --summary|resume|progress|watch|lessons|evals` — inspect/resume/monitor/analyze runs, including JSONL and WebSocket watch streams plus parallel worker sign-test summaries
-- `autoresearch checkpoint --format json` — run evals only when the active run reaches its checkpoint interval
-- `autoresearch cost --per-iteration-usd <usd> --format json` — estimate completed, remaining, and projected token/API spend for an active run
-- `autoresearch dashboard --once` — render a combined terminal dashboard for the active run
-- `autoresearch api --format json` — emit the stable CLI command/flag manifest and semver policy
-- `autoresearch scope expand --format json` — resolve primary and companion repo scopes with package-root annotations
-- `autoresearch guard-presets --format json` — suggest cross-repo guard commands for primary and companion repositories
-- `autoresearch lessons --add "..." --context "..."` — append reusable strategy lessons
-- `autoresearch lessons --workspace-context --last 5` — read shared workspace lessons with repo-target metadata
-- `autoresearch search --from-state --log` — build a run-aware search query, cache provider results, and log a search row; `decide` auto-runs this on Web Search escalation when `AUTORESEARCH_SEARCH_CMD` is configured
-- `autoresearch mcp serve` / `mcp call --server-command <cmd> --tool <name>` — expose read-only Autoresearch MCP tools and call external stdio MCP tools
-- `autoresearch workspace exec --command <cmd> --rollback-on-failure` — run one screened command across primary and companion repo targets with rollback
-- `autoresearch plugin list` / `plugin validate --path <file>` / `plugin marketplace` — load and validate local TOML mode plugins and marketplace indexes
-- `autoresearch hook <name>` — execute lifecycle hooks
+If no mode is supplied, infer one from the request; default to `loop` for metric improvement.
 
-## Core Protocol (Each Turn)
+## Load Rules
 
-### Phase 1: Read (git history as memory)
-- Read last 10-20 lines of `autoresearch-results/results.tsv`
-- Read `autoresearch-results/context.json` when present
-- Run `git log --oneline -10`
-- Consult `autoresearch-results/lessons.md` for strategy insights
+Always load `references/core-principles.md`, `references/modes.md`, and `references/structured-output-spec.md`.
 
-### Phase 2: Ideate
-ONE specific, testable, atomic hypothesis. Different from all previous.
+For fresh or resumable launches, load `references/session-resume.md`, `references/interaction-wizard.md`, and `references/environment-awareness.md`.
 
-### Phase 3: Modify
-ONE focused change within scope. Must fit in one sentence.
+For active execution, load `references/runtime-hard-invariants.md`, `references/runtime-protocol.md`, and `references/results-logging.md`.
 
-### Phase 4: Trial Commit
-```bash
-git add -- <scoped-files-only>
-git commit -m "experiment: <what changed and why>"
-```
+For CI/non-interactive runs, load `references/exec-workflow.md`.
 
-### Phase 5: Verify
-Run `autoresearch verify --format metrics_json --key <metric>` for structured output, or `autoresearch verify --command "<cmd>"` for scalar output. For noisy scalar metrics, use `--repeat N --aggregate median`.
+Load only when needed:
+- `references/autonomous-loop-protocol.md`, `references/loop-workflow.md`
+- `references/plan-workflow.md`, `references/debug-workflow.md`, `references/fix-workflow.md`
+- `references/security-workflow.md`, `references/ship-workflow.md`
+- `references/pivot-protocol.md`, `references/escalation.md`
+- `references/parallel-experiments-protocol.md`, `references/hypothesis-perspectives.md`
+- `references/web-search-protocol.md`, `references/lessons-protocol.md`
+- `references/health-check-protocol.md`, `references/binary-operations.md`
+- `references/security-checklist.md`, `references/predict-personas.md`, `references/reason-judge-protocol.md`
 
-### Phase 6: Guard (if configured)
-Run only after metric improvement. Must exit 0.
+## Native Binary
 
-### Phase 7: Decide
-- Prefer `autoresearch decide --decision auto --metric <value> --metrics-json '<json>' --commit <sha>`.
-- For parallel worker batches, use `autoresearch parallel prepare` to create worktrees and prompts, `autoresearch parallel run --timeout-seconds <seconds>` to launch workers and record crashes/timeouts, `autoresearch parallel closeout --batch-file <workers.json>` to merge, verify, and retain one result with `--merge-strategy cherry-pick|fast-forward|squash|rebase`, and `autoresearch parallel cleanup` after closeout. Use `autoresearch parallel template` only when worker branches already exist.
-- **keep** — improved + guard passed + required keep criteria passed → commit stays
-- **discard** — flat/regressed OR guard/criteria failed → binary reverts the experiment commit
-- **crash** — command errored → binary reverts the experiment commit
+Use `references/binary-operations.md` for the CLI catalog. It covers `autoresearch health --strict`, `autoresearch runtime run`, `autoresearch parallel prepare/run/cleanup`, `timeout-seconds`, `merge-strategy` including `rebase`, `autoresearch dashboard --once`, WebSocket watch streams, `autoresearch lessons --add`, `autoresearch search --from-state --log`, `autoresearch mcp serve`, `mcp call --server-command`, `autoresearch workspace exec`, and multi-repo `--companion-repo-scope PATH=SCOPE`.
 
-### Phase 8: Log
-Use the binary decision/log command to append `autoresearch-results/results.tsv` and update state.
+## Hard Invariants
 
-### Phase 9: Escalation
-- 3 consecutive discards → REFINE
-- 5 consecutive discards → PIVOT
-- 2 PIVOTs without keep → Web search
-- 3 PIVOTs without keep → Soft blocker
+1. Never push, publish, deploy, or run external ship actions without explicit user approval.
+2. Keep runs bounded by default; use `Iterations: unlimited` only when the user asks.
+3. Read before writing, then make one focused change per iteration.
+4. Use mechanical verification only.
+5. Create scoped trial commits before verification after launch approval.
+6. Never stage `autoresearch-results/` or `.codex-autoresearch/`.
+7. Never revert unrelated user changes.
+8. Keep `autoresearch-results/state.json`, `results.tsv`, and `context.json` as the authoritative run memory.
+9. On repeated discards, use REFINE -> PIVOT -> Web Search -> Stop.
 
-## Critical Rules
+## Core Turn
 
-1. **One change per turn** — atomic experiments create causality.
-2. **Read before write** — git log + results TSV before modifying.
-3. **Mechanical verification only** — run the command, parse the number.
-4. **Automatic rollback** — `git revert HEAD --no-edit` on failure.
-5. **Simplicity wins** — equal metric + less code = KEEP.
-6. **Git is memory** — experiments committed, failures reverted, TSV logs all.
-7. **Never stage artifacts** — `autoresearch-results/` and `.codex-autoresearch/` stay uncommitted.
-8. **When stuck, escalate** — REFINE → PIVOT → Web Search → Stop.
-
-## References
-
-Load only what the current mode requires:
-- `references/core-principles.md` — 8 foundational rules
-- `references/runtime-hard-invariants.md` — active execution checklist and artifact invariants
-- `references/runtime-protocol.md` — Closeout order, state machine, TSV format, verify/guard contracts
-- `references/loop-workflow.md` — core loop workflow
-- `references/autonomous-loop-protocol.md` — foreground/background launch and stop conditions
-- `references/interaction-wizard.md` — Guided setup flow from natural-language goals
-- `references/structured-output-spec.md` — mode output contracts
-- `references/modes.md` — mode routing reference
-- `references/session-resume.md` — Recovery flow for interrupted runs and stale artifacts
-- `references/escalation.md` — REFINE/PIVOT/web-search escalation thresholds and lessons
-- `references/health-check-protocol.md` — Runtime preflight and integrity checks
-- `references/results-logging.md` — TSV, state, context, and acceptance criteria semantics
-- `references/exec-workflow.md` — CI/CD exec mode and JSON output discipline
-- `references/plan-workflow.md` — Goal-to-config planning flow
-- `references/debug-workflow.md` — Bug-hunting workflow
-- `references/fix-workflow.md` — Error repair workflow
-- `references/security-workflow.md` — Security mode workflow
-- `references/ship-workflow.md` — Ship readiness workflow
-- `references/environment-awareness.md` — Resource, toolchain, and network probes for feasible hypotheses
-- `references/parallel-experiments-protocol.md` — Isolated worktree workers and batch closeout
-- `references/pivot-protocol.md` — Detailed REFINE/PIVOT counting and stuck recovery
-- `references/hypothesis-perspectives.md` — Hypothesis generation lenses
-- `references/web-search-protocol.md` — Controlled search escalation as hypothesis input
-- `references/lessons-protocol.md` — Persistent cross-run lesson extraction and reuse
-- `references/security-checklist.md` — STRIDE + OWASP tables
-- `references/predict-personas.md` — Expert persona definitions
-- `references/reason-judge-protocol.md` — Adversarial debate judge protocol
+1. Read recent `results.tsv`, `context.json`, `lessons.md`, and `git log`.
+2. Pick one new, testable hypothesis.
+3. Modify only declared scope.
+4. Commit with `experiment: <description>`.
+5. Verify with `autoresearch verify`; for noisy scalar metrics use `--repeat N --aggregate median`.
+6. Run guard only after metric improvement.
+7. Decide with `autoresearch decide` or verified parallel closeout.
+8. Log/update state through the binary.

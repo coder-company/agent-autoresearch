@@ -44,6 +44,7 @@ fn codex_skill_lists_packaged_references() {
         "references/pivot-protocol.md",
         "references/web-search-protocol.md",
         "references/lessons-protocol.md",
+        "references/binary-operations.md",
     ] {
         assert!(
             refs.contains(required),
@@ -58,6 +59,20 @@ fn codex_skill_lists_packaged_references() {
             "Codex skill lists {reference}, but the packaged file is missing"
         );
     }
+}
+
+#[test]
+fn codex_skill_entrypoint_stays_thin() {
+    let root = repo_root();
+    let skill = fs::read_to_string(root.join(".agents/skills/autoresearch/SKILL.md")).unwrap();
+    let line_count = skill.lines().count();
+
+    assert!(
+        line_count <= 90,
+        "Codex skill entrypoint should stay thin; got {line_count} lines"
+    );
+    assert!(skill.contains("thin router"));
+    assert!(skill.contains("references/binary-operations.md"));
 }
 
 #[test]

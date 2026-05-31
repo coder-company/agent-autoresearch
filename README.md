@@ -205,6 +205,7 @@ Covered in detail in the [guide](guide/):
 - **Package-manager metadata** — `cargo-binstall` archive metadata and a Homebrew formula template track the release assets
 - **GitHub Action runner** — `.github/actions/autoresearch` wraps `exec` mode for checked-in CI optimization loops
 - **VS Code extension package** — `./install.sh --yes --vscode` installs `integrations/vscode`, which exposes status, dashboard, and watch commands by delegating to the binary
+- **Thin Codex routing skill** — `.agents/skills/autoresearch/SKILL.md` stays under 90 lines and defers detailed operations to references
 - **Documentation site** — `book.toml` and `docs/SUMMARY.md` build the full docs set as an mdBook site for GitHub Pages
 - **Workspace scope expansion** — `autoresearch scope expand --format json` resolves primary and companion repo globs and annotates package roots for monorepos
 - **Cross-repo execution** — `autoresearch workspace exec --rollback-on-failure` runs one screened command across all repo targets and restores attempted repos on failure
