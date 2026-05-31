@@ -205,6 +205,7 @@ fn test_api_manifest_lists_nested_commands_and_flags() {
         .stdout(predicate::str::contains("\"start\""))
         .stdout(predicate::str::contains("\"plan\""))
         .stdout(predicate::str::contains("\"prd\""))
+        .stdout(predicate::str::contains("\"scenario\""))
         .stdout(predicate::str::contains("\"env\""))
         .stdout(predicate::str::contains("\"checkpoint\""))
         .stdout(predicate::str::contains("\"reanchor\""))
@@ -488,6 +489,40 @@ fn test_prd_writes_improvement_artifact() {
     assert!(prd.contains("activation_rate"));
     assert!(prd.contains("src/onboarding/**"));
     assert!(prd.contains("Ready-To-Run Autoresearch Config"));
+}
+
+#[test]
+fn test_scenario_writes_twelve_dimension_artifact() {
+    let dir = TempDir::new().unwrap();
+    let output = dir.path().join("scenario/checkout-scenarios.md");
+
+    cmd()
+        .args([
+            "scenario",
+            "--target",
+            "Checkout flow",
+            "--format",
+            "threat-scenarios",
+            "--focus",
+            "security",
+            "--scope",
+            "src/checkout/**",
+            "--output",
+            output.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\":\"written\""))
+        .stdout(predicate::str::contains("\"dimensions\":12"));
+
+    let scenario = std::fs::read_to_string(output).unwrap();
+    assert!(scenario.contains("# Scenario Exploration: Checkout flow"));
+    assert!(scenario.contains("Boundary Values"));
+    assert!(scenario.contains("Resource Exhaustion"));
+    assert!(scenario.contains("Threat"));
+    assert!(scenario.contains("src/checkout/**"));
 }
 
 #[test]

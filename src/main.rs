@@ -32,6 +32,7 @@ use autoresearch::escalation::pivot::{EscalationAction, EscalationState};
 use autoresearch::hooks;
 use autoresearch::modes::evals::{parse_results_tsv, ParsedRow};
 use autoresearch::modes::plan::{scan_repo_files, suggest_metrics, PATTERN_INDICATORS};
+use autoresearch::modes::scenario::{Dimension, ScenarioFormat};
 
 const RUNTIME_HARD_INVARIANTS_DOC: &str = include_str!("../references/runtime-hard-invariants.md");
 const CORE_PRINCIPLES_DOC: &str = include_str!("../references/core-principles.md");
@@ -551,6 +552,28 @@ enum Commands {
         /// Success metric to optimize
         #[arg(long)]
         metric: Option<String>,
+        /// Relevant implementation scope. Repeatable.
+        #[arg(long)]
+        scope: Vec<String>,
+        /// Output path. Relative paths resolve from the workspace root.
+        #[arg(long)]
+        output: Option<PathBuf>,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
+    /// Generate a 12-dimension scenario exploration artifact
+    Scenario {
+        /// Feature, workflow, or system to explore
+        #[arg(long)]
+        target: String,
+        /// Scenario format: use-cases, user-stories, test-scenarios, or threat-scenarios
+        #[arg(long, default_value = "test-scenarios")]
+        format: String,
+        /// Focus area: edge-cases, failures, security, or scale
+        #[arg(long, default_value = "edge-cases")]
+        focus: String,
         /// Relevant implementation scope. Repeatable.
         #[arg(long)]
         scope: Vec<String>,
@@ -1153,6 +1176,15 @@ fn main() -> Result<()> {
             cwd,
         } => cmd_prd(&title, &problem, icp, solution, metric, scope, output, cwd),
 
+        Commands::Scenario {
+            target,
+            format,
+            focus,
+            scope,
+            output,
+            cwd,
+        } => cmd_scenario(&target, &format, &focus, scope, output, cwd),
+
         Commands::Completions { shell } => cmd_completions(shell),
         Commands::Manpages { output_dir } => cmd_manpages(&output_dir),
         Commands::Api { format } => cmd_api(&format),
@@ -1725,6 +1757,179 @@ fn cmd_prd(
             "status": "written",
             "path": output.display().to_string(),
             "title": title,
+        })
+    );
+    Ok(())
+}
+
+fn parse_scenario_format(value: &str) -> Result<ScenarioFormat> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "use-case" | "use-cases" | "usecase" | "usecases" => Ok(ScenarioFormat::UseCase),
+        "user-story" | "user-stories" | "userstory" | "userstories" => {
+            Ok(ScenarioFormat::UserStory)
+        }
+        "test" | "tests" | "test-scenario" | "test-scenarios" | "testscenario"
+        | "testscenarios" => Ok(ScenarioFormat::TestScenario),
+        "threat" | "threats" | "threat-scenario" | "threat-scenarios" | "threatscenario"
+        | "threatscenarios" => Ok(ScenarioFormat::ThreatScenario),
+        other => anyhow::bail!(
+            "Invalid scenario format {other:?}; use use-cases, user-stories, test-scenarios, or threat-scenarios"
+        ),
+    }
+}
+
+fn scenario_format_slug(format: ScenarioFormat) -> &'static str {
+    match format {
+        ScenarioFormat::UseCase => "use-cases",
+        ScenarioFormat::UserStory => "user-stories",
+        ScenarioFormat::TestScenario => "test-scenarios",
+        ScenarioFormat::ThreatScenario => "threat-scenarios",
+    }
+}
+
+fn scenario_title(target: &str, dimension: Dimension, focus: &str) -> String {
+    match focus.trim().to_ascii_lowercase().as_str() {
+        "security" => format!("{} threat in {}", dimension.label(), target),
+        "scale" => format!("{} scaling pressure in {}", dimension.label(), target),
+        "failures" | "failure" => format!("{} failure path in {}", dimension.label(), target),
+        _ => format!("{} edge case in {}", dimension.label(), target),
+    }
+}
+
+fn scenario_expected(
+    format: ScenarioFormat,
+    dimension: Dimension,
+    target: &str,
+    focus: &str,
+) -> String {
+    let description = dimension.description();
+    match format {
+        ScenarioFormat::UseCase => format!(
+            "Document how {target} should behave when {description} appears, including the fallback and user-visible result."
+        ),
+        ScenarioFormat::UserStory => format!(
+            "As an affected user, I need {target} to handle {description} so the workflow remains recoverable."
+        ),
+        ScenarioFormat::TestScenario => format!(
+            "Add a focused test for {description}; assert that {target} returns a bounded, observable, and reversible result."
+        ),
+        ScenarioFormat::ThreatScenario => format!(
+            "Model how an attacker or failure source could exploit {description}; verify {target} preserves the {focus} boundary."
+        ),
+    }
+}
+
+fn render_scenario_markdown(
+    target: &str,
+    format: ScenarioFormat,
+    focus: &str,
+    scope: &[String],
+) -> String {
+    let mut out = String::new();
+    let scope_items = if scope.is_empty() {
+        vec!["DECISION NEEDED: identify implementation scope.".to_string()]
+    } else {
+        scope.to_vec()
+    };
+    let scope_lines = scope_items
+        .iter()
+        .map(|item| format!("- {item}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    writeln!(out, "# Scenario Exploration: {target}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "> Auto-generated scenario matrix. Use it to seed tests, threat modeling, debug hunts, or follow-up autoresearch runs."
+    )
+    .unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Summary").unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "- Format: {} ({})",
+        scenario_format_slug(format),
+        format.label()
+    )
+    .unwrap();
+    writeln!(out, "- Focus: {focus}").unwrap();
+    writeln!(out, "- Dimensions: {}", Dimension::all().len()).unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Scope").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "{scope_lines}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Scenario Matrix").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "| # | Dimension | Scenario | Expected Investigation |").unwrap();
+    writeln!(out, "|---|---|---|---|").unwrap();
+
+    for (index, dimension) in Dimension::all().iter().enumerate() {
+        let title = scenario_title(target, *dimension, focus);
+        let expected = scenario_expected(format, *dimension, target, focus);
+        writeln!(
+            out,
+            "| {} | {} | {} | {} |",
+            index + 1,
+            dimension.label(),
+            title,
+            expected
+        )
+        .unwrap();
+    }
+
+    writeln!(out).unwrap();
+    writeln!(out, "## Follow-Up").unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "- Convert high-severity rows into tests or `/autoresearch:debug` hypotheses."
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "- Use `autoresearch plan --goal \"cover {target} scenario gaps\"` to derive a metric and verify command."
+    )
+    .unwrap();
+    writeln!(out, "- DECISION NEEDED: choose severity labels and owners.").unwrap();
+    out
+}
+
+fn cmd_scenario(
+    target: &str,
+    format: &str,
+    focus: &str,
+    scope: Vec<String>,
+    output: Option<PathBuf>,
+    cwd: Option<PathBuf>,
+) -> Result<()> {
+    let format = parse_scenario_format(format)?;
+    let workspace = resolve_workspace_root(cwd);
+    let output = output.unwrap_or_else(|| {
+        PathBuf::from("scenario").join(format!("scenario-{}.md", slugify(target)))
+    });
+    let output = resolve_workspace_path(&workspace, output);
+    if let Some(parent) = output
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create {}", parent.display()))?;
+    }
+
+    let markdown = render_scenario_markdown(target, format, focus, &scope);
+    std::fs::write(&output, markdown)
+        .with_context(|| format!("failed to write {}", output.display()))?;
+    println!(
+        "{}",
+        serde_json::json!({
+            "status": "written",
+            "path": output.display().to_string(),
+            "target": target,
+            "format": scenario_format_slug(format),
+            "dimensions": Dimension::all().len(),
         })
     );
     Ok(())

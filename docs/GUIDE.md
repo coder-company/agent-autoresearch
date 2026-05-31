@@ -24,6 +24,7 @@ autoresearch verify --command "cat metric.txt"
 autoresearch verify --command "cat metric.txt" --repeat 3 --aggregate median
 autoresearch plan --goal "reduce any types" --format json
 autoresearch prd --title "Improve onboarding" --problem "New users stall before first run"
+autoresearch scenario --target "Checkout flow" --format test-scenarios --scope "src/checkout/**"
 autoresearch decide --decision auto --metric 4 --commit abc1234 --description "improved"
 autoresearch status --summary
 autoresearch progress
@@ -80,6 +81,7 @@ Use `autoresearch config template --output .autoresearch.toml` to write a starte
 Use `autoresearch config validate` to parse defaults, validate options, and screen configured commands without running them.
 Use `autoresearch plan --goal <goal> --format json` to get a launch-ready suggested scope, metric, direction, verify, guard, and iteration count from detected repo tooling.
 Use `autoresearch prd --title <title> --problem <problem>` to write a focused improve-mode PRD with DECISION NEEDED markers, acceptance criteria, risks, success metrics, and an autoresearch config block.
+Use `autoresearch scenario --target <feature> --format <test-scenarios|threat-scenarios|use-cases|user-stories>` to write a 12-dimension scenario matrix for tests, threat modeling, or debug follow-up.
 Use `autoresearch api --format json` to inspect the stable command/flag manifest and semver policy used by wrappers and agents.
 Use `autoresearch mcp serve` as a stdio MCP server exposing read-only `autoresearch_status` and `autoresearch_watch_snapshot` tools.
 Use `autoresearch mcp call --server-command <cmd> --tool <name> --arguments '{}'` to call a tool on an external stdio MCP server from an iteration script.
