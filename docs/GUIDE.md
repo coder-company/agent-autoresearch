@@ -37,6 +37,7 @@ autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.
 autoresearch evals --format json
 autoresearch api --format json
 autoresearch mcp serve
+autoresearch mcp call --server-command "autoresearch mcp serve" --tool autoresearch_status
 autoresearch scope expand --format json
 autoresearch guard-presets --format json
 autoresearch lessons --workspace-context --last 5
@@ -60,6 +61,7 @@ Use `autoresearch config template --output .autoresearch.toml` to write a starte
 Use `autoresearch config validate` to parse defaults, validate options, and screen configured commands without running them.
 Use `autoresearch api --format json` to inspect the stable command/flag manifest and semver policy used by wrappers and agents.
 Use `autoresearch mcp serve` as a stdio MCP server exposing read-only `autoresearch_status` and `autoresearch_watch_snapshot` tools.
+Use `autoresearch mcp call --server-command <cmd> --tool <name> --arguments '{}'` to call a tool on an external stdio MCP server from an iteration script.
 Use `autoresearch scope expand --format json` to resolve active primary and companion repo scopes, with package roots inferred from `Cargo.toml`, `package.json`, `pyproject.toml`, and `go.mod`.
 Use `autoresearch guard-presets --format json` to suggest per-repo guard commands for primary and companion repositories.
 Use `autoresearch lessons --workspace-context --last 5` from any managed repo to show the shared workspace lessons path and repo targets.

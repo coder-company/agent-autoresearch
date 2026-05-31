@@ -34,7 +34,7 @@
 
 - [x] Built-in web search escalation (configurable provider command)
 - [x] MCP tool server mode — expose autoresearch as an MCP tool
-- [ ] MCP client mode — call external MCP tools during iteration
+- [x] MCP client mode — call external MCP tools during iteration
 - [x] Structured search queries from escalation context
 - [x] Search result caching to avoid redundant queries
 - [x] `autoresearch search` — standalone web search for the current problem

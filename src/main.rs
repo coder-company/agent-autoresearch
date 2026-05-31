@@ -692,6 +692,21 @@ enum McpCommands {
         #[arg(long)]
         cwd: Option<PathBuf>,
     },
+    /// Call one tool on an external MCP stdio server
+    Call {
+        /// Command that starts the MCP stdio server
+        #[arg(long)]
+        server_command: String,
+        /// Tool name to call
+        #[arg(long)]
+        tool: String,
+        /// Tool arguments as a JSON object
+        #[arg(long, default_value = "{}")]
+        arguments: String,
+        /// Working directory for the MCP server process
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
 }
 
 fn main() -> Result<()> {
@@ -818,6 +833,12 @@ fn main() -> Result<()> {
 
         Commands::Mcp { command } => match command {
             McpCommands::Serve { cwd } => cmd_mcp_serve(cwd),
+            McpCommands::Call {
+                server_command,
+                tool,
+                arguments,
+                cwd,
+            } => cmd_mcp_call(&server_command, &tool, &arguments, cwd),
         },
 
         Commands::Screen { command } => cmd_screen(&command),
@@ -3254,6 +3275,101 @@ fn cmd_mcp_serve(cwd: Option<PathBuf>) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn cmd_mcp_call(
+    server_command: &str,
+    tool: &str,
+    arguments: &str,
+    cwd: Option<PathBuf>,
+) -> Result<()> {
+    verify::screen_command(server_command).context("unsafe MCP server command")?;
+    let arguments: serde_json::Value =
+        serde_json::from_str(arguments).context("failed to parse MCP tool arguments JSON")?;
+    if !arguments.is_object() {
+        anyhow::bail!("MCP tool arguments must be a JSON object");
+    }
+
+    let workspace = resolve_cwd(cwd);
+    let mut child = Command::new("sh")
+        .arg("-c")
+        .arg(server_command)
+        .current_dir(&workspace)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .with_context(|| format!("failed to start MCP server command: {server_command}"))?;
+
+    let input = [
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": MCP_PROTOCOL_VERSION,
+                "capabilities": {},
+                "clientInfo": {
+                    "name": "autoresearch",
+                    "version": env!("CARGO_PKG_VERSION"),
+                },
+            },
+        }),
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "notifications/initialized",
+        }),
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "tools/call",
+            "params": {
+                "name": tool,
+                "arguments": arguments,
+            },
+        }),
+    ]
+    .into_iter()
+    .map(|message| message.to_string())
+    .collect::<Vec<_>>()
+    .join("\n");
+
+    {
+        let mut stdin = child
+            .stdin
+            .take()
+            .context("failed to open MCP server stdin")?;
+        stdin
+            .write_all(format!("{input}\n").as_bytes())
+            .context("failed to write MCP request")?;
+    }
+
+    let output = child
+        .wait_with_output()
+        .context("failed to wait for MCP server command")?;
+    if !output.status.success() {
+        anyhow::bail!(
+            "MCP server command exited with {}: {}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr).trim()
+        );
+    }
+
+    let response = mcp_find_response(&output.stdout, 2)?;
+    println!("{}", serde_json::to_string_pretty(&response)?);
+    Ok(())
+}
+
+fn mcp_find_response(stdout: &[u8], id: i64) -> Result<serde_json::Value> {
+    let stdout = std::str::from_utf8(stdout).context("MCP server stdout was not UTF-8")?;
+    for line in stdout.lines().filter(|line| !line.trim().is_empty()) {
+        let value: serde_json::Value =
+            serde_json::from_str(line).with_context(|| format!("invalid MCP response: {line}"))?;
+        if value.get("id").and_then(|value| value.as_i64()) == Some(id) {
+            return Ok(value);
+        }
+    }
+    anyhow::bail!("MCP server did not return a response for id {id}")
 }
 
 fn handle_mcp_request(

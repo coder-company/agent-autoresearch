@@ -148,6 +148,52 @@ fn test_mcp_server_calls_status_tool() {
 }
 
 #[test]
+fn test_mcp_client_calls_external_server_tool() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let bin = assert_cmd::cargo::cargo_bin("autoresearch");
+    let server_command = format!("{} mcp serve --cwd {}", bin.display(), root);
+    let arguments = serde_json::json!({
+        "cwd": root
+    });
+
+    cmd()
+        .args([
+            "mcp",
+            "call",
+            "--server-command",
+            &server_command,
+            "--tool",
+            "autoresearch_status",
+            "--arguments",
+            &arguments.to_string(),
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"id\": 2"))
+        .stdout(predicate::str::contains("\"isError\": false"))
+        .stdout(predicate::str::contains("\"active\": true"))
+        .stdout(predicate::str::contains("\"iteration\": 0"));
+}
+
+#[test]
 fn test_api_manifest_lists_nested_commands_and_flags() {
     cmd()
         .arg("api")

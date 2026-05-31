@@ -50,7 +50,7 @@ This skill uses Claude Code's `/goal` command as the native continuation engine.
 - Use `autoresearch guard-presets --format json` when primary or companion repos need a guard command suggestion
 - Use `autoresearch lessons --workspace-context --last 5` when reading lessons from a companion repo to confirm the shared workspace source
 - Use `autoresearch plugin list`, `autoresearch plugin validate --path <file>`, or `autoresearch plugin marketplace` when local TOML mode plugins or marketplace indexes are present
-- Use `autoresearch mcp serve` when an MCP client needs read-only run status or watch snapshot tools over stdio
+- Use `autoresearch mcp serve` when an MCP client needs read-only run status or watch snapshot tools over stdio; use `autoresearch mcp call --server-command <cmd> --tool <name>` to call an external MCP tool from an iteration script
 - Run `git log --oneline -10` — see what worked/failed
 - If last iteration was "keep" → run `git diff HEAD~1`
 - Consult `autoresearch-results/lessons.md` for strategy insights

@@ -156,7 +156,12 @@ require_grep 'autoresearch mcp serve' README.md
 require_grep 'autoresearch mcp serve' docs/GUIDE.md
 require_grep 'autoresearch mcp serve' SKILL.md
 require_grep 'autoresearch mcp serve' .agents/skills/autoresearch/SKILL.md
+require_grep 'autoresearch mcp call' README.md
+require_grep 'autoresearch mcp call' docs/GUIDE.md
+require_grep 'mcp call --server-command' SKILL.md
+require_grep 'mcp call --server-command' .agents/skills/autoresearch/SKILL.md
 require_grep 'MCP tool server mode' docs/development-roadmap.md
+require_grep 'MCP client mode' docs/development-roadmap.md
 require_grep 'search.*meta-row' references/web-search-protocol.md
 require_grep 'AUTORESEARCH_SEARCH_CMD' references/web-search-protocol.md
 require_grep 'auto_search\.status' references/web-search-protocol.md
