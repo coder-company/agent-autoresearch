@@ -45,6 +45,7 @@ This skill uses Claude Code's `/goal` command as the native continuation engine.
 ### Phase 1: Read (git history as memory)
 - Read last 10-20 lines of `autoresearch-results/results.tsv`
 - Read `autoresearch-results/context.json` when present
+- Use `autoresearch api --format json` when an integration needs the stable command/flag manifest
 - Run `git log --oneline -10` — see what worked/failed
 - If last iteration was "keep" → run `git diff HEAD~1`
 - Consult `autoresearch-results/lessons.md` for strategy insights

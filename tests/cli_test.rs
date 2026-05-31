@@ -78,6 +78,38 @@ fn test_manpages_writes_root_page() {
 }
 
 #[test]
+fn test_api_manifest_lists_nested_commands_and_flags() {
+    cmd()
+        .arg("api")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"schema_version\": 1"))
+        .stdout(predicate::str::contains("\"stability\": \"stable\""))
+        .stdout(predicate::str::contains("\"runtime\""))
+        .stdout(predicate::str::contains("\"start\""))
+        .stdout(predicate::str::contains("\"provider-command\""));
+}
+
+#[test]
+fn test_api_manifest_markdown_format() {
+    cmd()
+        .args(["api", "--format", "md"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("# Autoresearch CLI API"))
+        .stdout(predicate::str::contains("| `runtime start` |"));
+}
+
+#[test]
+fn test_api_manifest_rejects_invalid_format() {
+    cmd()
+        .args(["api", "--format", "yaml"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Invalid api format"));
+}
+
+#[test]
 fn test_config_template_prints_toml() {
     cmd()
         .args(["config", "template"])

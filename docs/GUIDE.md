@@ -34,6 +34,7 @@ autoresearch parallel template --workers 3 --output autoresearch-results/paralle
 autoresearch parallel closeout --batch-file autoresearch-results/parallel-workers.json --merge-strategy cherry-pick
 autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.json
 autoresearch evals --format json
+autoresearch api --format json
 autoresearch completions zsh > ~/.zfunc/_autoresearch
 ```
 
@@ -48,6 +49,7 @@ Use `autoresearch completions <bash|zsh|fish|elvish|powershell>` to generate she
 Use `autoresearch manpages --output-dir man/man1` to generate a local `autoresearch.1` manual page.
 Use `autoresearch config template --output .autoresearch.toml` to write a starter project defaults file.
 Use `autoresearch config validate` to parse defaults, validate options, and screen configured commands without running them.
+Use `autoresearch api --format json` to inspect the stable command/flag manifest and semver policy used by wrappers and agents.
 
 ## Project Defaults
 

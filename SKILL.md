@@ -135,6 +135,7 @@ Optional:
 | `autoresearch runtime stop` | Mark a background runtime stopped |
 | `autoresearch lessons --search "query" --last 5` | Query lessons for strategy |
 | `autoresearch evals [path]` | Analyze results: trends, plateaus |
+| `autoresearch api --format json` | Emit the stable CLI command/flag manifest and semver policy |
 | `autoresearch handoff --source loop --status GOAL_MET` | Write chain handoff.json |
 | `autoresearch screen --command "..."` | Safety screen for dangerous patterns |
 | `autoresearch hook <name>` | Plugin hook dispatch (<5ms) |

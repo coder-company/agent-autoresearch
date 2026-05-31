@@ -423,6 +423,13 @@ enum Commands {
         output_dir: PathBuf,
     },
 
+    /// Print the stable CLI API manifest for wrappers and agents
+    Api {
+        /// Output format: json or md
+        #[arg(long, default_value = "json")]
+        format: String,
+    },
+
     /// Manage project-level autoresearch configuration
     Config {
         #[command(subcommand)]
@@ -788,6 +795,7 @@ fn main() -> Result<()> {
 
         Commands::Completions { shell } => cmd_completions(shell),
         Commands::Manpages { output_dir } => cmd_manpages(&output_dir),
+        Commands::Api { format } => cmd_api(&format),
         Commands::Config { command } => match command {
             ConfigCommands::Template { output, force } => cmd_config_template(output, force),
             ConfigCommands::Validate { path, cwd } => cmd_config_validate(path, cwd),
@@ -820,6 +828,139 @@ fn cmd_manpages(output_dir: &Path) -> Result<()> {
         })
     );
     Ok(())
+}
+
+fn cmd_api(format: &str) -> Result<()> {
+    let manifest = cli_api_manifest();
+    match format {
+        "json" => {
+            println!("{}", serde_json::to_string_pretty(&manifest)?);
+            Ok(())
+        }
+        "md" => {
+            print!("{}", render_cli_api_markdown(&manifest));
+            Ok(())
+        }
+        other => anyhow::bail!("Invalid api format {other:?}; use json or md"),
+    }
+}
+
+fn cli_api_manifest() -> serde_json::Value {
+    let command = Cli::command();
+    let mut commands = Vec::new();
+    collect_cli_commands(&command, Vec::new(), &mut commands);
+    serde_json::json!({
+        "schema_version": 1,
+        "cli_version": env!("CARGO_PKG_VERSION"),
+        "stability": "stable",
+        "semver_policy": {
+            "breaking_changes": "major version",
+            "additive_commands_or_flags": "minor version",
+            "bugfixes_and_documentation": "patch version",
+            "output_format_changes": "major version for stable commands",
+        },
+        "commands": commands,
+    })
+}
+
+fn collect_cli_commands(
+    command: &clap::Command,
+    prefix: Vec<String>,
+    commands: &mut Vec<serde_json::Value>,
+) {
+    for subcommand in command.get_subcommands() {
+        let mut path = prefix.clone();
+        path.push(subcommand.get_name().to_string());
+        commands.push(serde_json::json!({
+            "path": path,
+            "about": subcommand.get_about().map(|about| about.to_string()),
+            "args": subcommand
+                .get_arguments()
+                .map(cli_arg_manifest)
+                .collect::<Vec<_>>(),
+        }));
+        collect_cli_commands(subcommand, path, commands);
+    }
+}
+
+fn cli_arg_manifest(arg: &clap::Arg) -> serde_json::Value {
+    let default_values = arg
+        .get_default_values()
+        .iter()
+        .map(|value| value.to_string_lossy().to_string())
+        .collect::<Vec<_>>();
+    let value_names = arg.get_value_names().map(|names| {
+        names
+            .iter()
+            .map(|value| value.to_string())
+            .collect::<Vec<_>>()
+    });
+    serde_json::json!({
+        "id": arg.get_id().as_str(),
+        "long": arg.get_long(),
+        "short": arg.get_short().map(|short| short.to_string()),
+        "required": arg.is_required_set(),
+        "action": format!("{:?}", arg.get_action()),
+        "value_names": value_names,
+        "default_values": default_values,
+        "help": arg.get_help().map(|help| help.to_string()),
+    })
+}
+
+fn render_cli_api_markdown(manifest: &serde_json::Value) -> String {
+    let mut out = String::new();
+    writeln!(out, "# Autoresearch CLI API").unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "- Schema version: {}",
+        manifest["schema_version"].as_u64().unwrap_or(0)
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "- CLI version: {}",
+        manifest["cli_version"].as_str().unwrap_or("unknown")
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "- Stability: {}",
+        manifest["stability"].as_str().unwrap_or("unknown")
+    )
+    .unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Commands").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "| Command | Args |").unwrap();
+    writeln!(out, "|---------|------|").unwrap();
+    if let Some(commands) = manifest["commands"].as_array() {
+        for command in commands {
+            let path = command["path"]
+                .as_array()
+                .map(|parts| {
+                    parts
+                        .iter()
+                        .filter_map(|part| part.as_str())
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                })
+                .unwrap_or_default();
+            let args = command["args"]
+                .as_array()
+                .map(|args| {
+                    args.iter()
+                        .filter_map(|arg| arg["long"].as_str().or_else(|| arg["id"].as_str()))
+                        .map(|arg| format!("`--{arg}`"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                })
+                .filter(|args| !args.is_empty())
+                .unwrap_or_else(|| "-".to_string());
+            writeln!(out, "| `{path}` | {args} |").unwrap();
+        }
+    }
+    out
 }
 
 fn cmd_config_template(output: Option<PathBuf>, force: bool) -> Result<()> {

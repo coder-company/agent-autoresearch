@@ -180,6 +180,9 @@ require_grep 'autoresearch manpages --output-dir' README.md
 require_grep 'autoresearch manpages --output-dir' docs/GUIDE.md
 require_grep 'autoresearch manpages --output-dir' docs/INSTALL.md
 require_grep 'Man pages generation' docs/development-roadmap.md
+require_grep 'autoresearch api --format json' README.md
+require_grep 'autoresearch api --format json' docs/GUIDE.md
+require_grep 'Stable CLI API — semver guarantees' docs/development-roadmap.md
 require_grep '\.autoresearch\.toml' README.md
 require_grep '\.autoresearch\.toml' docs/GUIDE.md
 require_grep 'autoresearch config template' README.md
