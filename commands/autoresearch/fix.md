@@ -1,7 +1,7 @@
 ---
 name: autoresearch:fix
 description: "Crush errors one-by-one until zero remain: tests, types, lint, build"
-argument-hint: "[Target: <cmd>] [Scope: <glob>] [Guard: <cmd>] [Iterations: N] [--evals] [--from-debug]"
+argument-hint: "[Target: <cmd>] [Scope: <glob>] [Guard: <cmd>] [Iterations: N] [--learn] [--evals] [--from-debug]"
 ---
 
 EXECUTE IMMEDIATELY.
@@ -15,6 +15,7 @@ Extract from $ARGUMENTS:
 - `Iterations:` or `--iterations` — default 20. "unlimited" for unbounded.
 - `--from-debug` — read handoff.json from previous debug run
 - `--category` — filter: test, type, lint, build
+- `--learn` — shorthand for `--chain learn`
 - `--evals`, `--evals-interval N`, `--chain`
 
 ## Setup (if required context missing)

@@ -1498,6 +1498,35 @@ fn test_fix_chain_and_evals_are_recorded() {
 }
 
 #[test]
+fn test_fix_learn_flag_records_learn_handoff() {
+    let dir = TempDir::new().unwrap();
+    let output_dir = dir.path().join("autoresearch-results/fix/lint-errors");
+
+    cmd()
+        .args([
+            "fix",
+            "--target",
+            "npm run lint",
+            "--scope",
+            "src/**/*.ts",
+            "--learn",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"next_target\":\"learn\""));
+
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+    assert!(handoff.contains("\"source_command\": \"fix\""));
+    assert!(handoff.contains("\"chain\": ["));
+    assert!(handoff.contains("\"learn\""));
+    assert!(handoff.contains("\"next_target\": \"learn\""));
+}
+
+#[test]
 fn test_native_artifact_defaults_stay_under_ignored_results_root() {
     let dir = TempDir::new().unwrap();
     let cwd = dir.path().to_str().unwrap();

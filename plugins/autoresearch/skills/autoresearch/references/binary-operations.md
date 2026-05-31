@@ -10,7 +10,7 @@ autoresearch init --environment-summary auto --verify "<cmd>" --direction <highe
 autoresearch init --companion-repo-scope ../frontend='src/**/*.ts' ...
 autoresearch plan --goal "reduce any types" --format json --chain debug
 autoresearch debug --symptom "API returns 500" --scope "src/**/*.rs" --depth deep --iterations 12 --severity high
-autoresearch fix --target "npx tsc --noEmit" --scope "src/**/*.ts" --category type --iterations 7 --chain learn --evals
+autoresearch fix --target "npx tsc --noEmit" --scope "src/**/*.ts" --category type --iterations 7 --learn --evals
 autoresearch improve --goal "Improve onboarding activation" --icp "Developer tools teams" --depth deep --iterations 24 --seeds 5 --evals --learn
 autoresearch prd --title "Improve onboarding" --problem "New users stall before first run"
 autoresearch security --scope "src/**/*.rs" --focus auth --depth deep --iterations 18 --diff --evals
@@ -35,7 +35,7 @@ Native artifact generators default to ignored `autoresearch-results/<mode>/` pat
 `debug --depth <level> --iterations <n> --severity <level>` records investigation budget and severity filter metadata in the summary and handoff.
 `fix --iterations <n>` writes a repair-plan artifact bundle under `autoresearch-results/fix` with priority order, fix-results TSV, iteration budget, and handoff JSON.
 `fix --from-debug` imports the latest debug handoff scope, symptom, and finding count before writing the repair-plan bundle.
-`fix --chain <targets> --evals` records comma-separated downstream targets and checkpoint propagation metadata in handoff JSON.
+`fix --learn --evals` records downstream learn handoff and checkpoint propagation metadata in handoff JSON; `fix --chain <targets>` still records explicit downstream targets.
 `improve` writes a product-improvement artifact bundle with research findings, ranked plan, summary, improve-results TSV, and handoff JSON.
 `improve --depth <level> --iterations <n> --evals` records active category count, iteration budget, and checkpoint metadata in the research bundle.
 `improve --seeds <n> --discover|--no-discover --learn` records seed volume, discovery posture, and downstream learn handoff metadata; `improve --chain <targets>` still records explicit downstream targets.

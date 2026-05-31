@@ -760,6 +760,9 @@ enum Commands {
         /// Error-repair iteration budget
         #[arg(long)]
         iterations: Option<u32>,
+        /// Chain into learn mode after writing the repair plan
+        #[arg(long)]
+        learn: bool,
         /// Comma-separated downstream command targets to record in handoff.json
         #[arg(long)]
         chain: Option<String>,
@@ -1735,6 +1738,7 @@ fn main() -> Result<()> {
             guard,
             category,
             iterations,
+            learn,
             chain,
             evals,
             evals_interval,
@@ -1747,6 +1751,7 @@ fn main() -> Result<()> {
             guard,
             category,
             iterations,
+            learn,
             chain,
             evals,
             evals_interval,
@@ -4097,6 +4102,7 @@ fn cmd_fix(
     guard: Option<String>,
     category: Option<String>,
     iterations: Option<u32>,
+    learn: bool,
     chain: Option<String>,
     evals: bool,
     evals_interval: Option<u32>,
@@ -4108,7 +4114,8 @@ fn cmd_fix(
         anyhow::bail!("fix iterations must be greater than zero");
     }
     let iteration_budget = iterations.unwrap_or(20);
-    let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
+    let forced_targets = if learn { &["learn"][..] } else { &[][..] };
+    let chain_targets = chain_targets_with_forced(chain.as_deref(), forced_targets)?;
     let next_target = next_chain_target_value(&chain_targets);
     let category = parse_fix_category(category.as_deref())?;
     let workspace = resolve_workspace_root(cwd);
