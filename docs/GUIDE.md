@@ -97,6 +97,7 @@ Use `autoresearch fix --from-debug` to import the latest debug handoff scope, sy
 Use `autoresearch improve --goal <product-area> --icp <persona>` to write an improve-mode artifact bundle: research findings, ranked plan, summary, TSV, and handoff JSON.
 Use `autoresearch prd --title <title> --problem <problem>` to write a focused improve-mode PRD with DECISION NEEDED markers, acceptance criteria, risks, success metrics, and an autoresearch config block.
 Use `autoresearch security --scope <glob> --focus <area>` to write a STRIDE + OWASP audit bundle with overview, threat model, attack surface, coverage, findings, recommendations, TSV, and handoff JSON.
+Add `--fail-on <severity>` and `--fix` to `autoresearch security` to record CI gate and repair-chain metadata for confirmed findings.
 Use `autoresearch ship --target <thing> --type <kind> --dry-run` to write an 8-phase ship checklist, summary, ship log, and handoff JSON without external side effects.
 Use `autoresearch scenario --target <feature> --format <test-scenarios|threat-scenarios|use-cases|user-stories>` to write a 12-dimension scenario matrix for tests, threat modeling, or debug follow-up.
 Use `autoresearch predict --proposal <change>` to write a five-persona review covering architecture, security, performance, UX, and adversarial risks.

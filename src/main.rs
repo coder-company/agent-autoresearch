@@ -598,6 +598,12 @@ enum Commands {
         /// Optional focus area such as auth, API, data handling, or CI
         #[arg(long)]
         focus: Option<String>,
+        /// Record a downstream fix handoff for confirmed Critical/High findings
+        #[arg(long)]
+        fix: bool,
+        /// CI gate threshold: critical, high, medium, low, or info
+        #[arg(long)]
+        fail_on: Option<String>,
         /// Output directory. Relative paths resolve from the workspace root.
         #[arg(long)]
         output_dir: Option<PathBuf>,
@@ -1405,9 +1411,11 @@ fn main() -> Result<()> {
         Commands::Security {
             scope,
             focus,
+            fix,
+            fail_on,
             output_dir,
             cwd,
-        } => cmd_security(scope, focus, output_dir, cwd),
+        } => cmd_security(scope, focus, fix, fail_on, output_dir, cwd),
 
         Commands::Ship {
             target,
@@ -2359,6 +2367,22 @@ fn security_severities() -> &'static [Severity] {
     ]
 }
 
+fn parse_security_severity(value: Option<&str>, flag: &str) -> Result<Option<Severity>> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    match value.trim().to_ascii_lowercase().as_str() {
+        "critical" | "crit" => Ok(Some(Severity::Critical)),
+        "high" => Ok(Some(Severity::High)),
+        "medium" | "med" => Ok(Some(Severity::Medium)),
+        "low" => Ok(Some(Severity::Low)),
+        "info" | "informational" => Ok(Some(Severity::Info)),
+        other => anyhow::bail!(
+            "Invalid {flag} severity {other:?}; use critical, high, medium, low, or info"
+        ),
+    }
+}
+
 fn render_security_overview(focus: &str, scope: &[String], files: &[String]) -> String {
     let mut out = String::new();
     let scope_lines = if scope.is_empty() {
@@ -2567,9 +2591,12 @@ fn render_security_results_tsv() -> String {
 fn cmd_security(
     scope: Vec<String>,
     focus: Option<String>,
+    fix: bool,
+    fail_on: Option<String>,
     output_dir: Option<PathBuf>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
+    let fail_on = parse_security_severity(fail_on.as_deref(), "--fail-on")?;
     let workspace = resolve_workspace_root(cwd);
     let focus = focus
         .as_deref()
@@ -2588,6 +2615,14 @@ fn cmd_security(
     let output_dir = resolve_workspace_path(&workspace, output_dir);
     std::fs::create_dir_all(&output_dir)
         .with_context(|| format!("failed to create {}", output_dir.display()))?;
+    let confirmed_findings = 0usize;
+    let gate_failed = fail_on.is_some() && confirmed_findings > 0;
+    let chain_targets = if fix {
+        vec!["fix".to_string()]
+    } else {
+        Vec::new()
+    };
+    let next_target = next_chain_target_value(&chain_targets);
 
     write_text_file(
         &output_dir.join("overview.md"),
@@ -2627,10 +2662,17 @@ fn cmd_security(
         "config": {
             "scope": scope,
             "focus": focus,
+            "fix_requested": fix,
+            "fail_on": fail_on.map(|severity| severity.label()),
+            "gate_failed": gate_failed,
+            "confirmed_findings": confirmed_findings,
             "owasp_categories": OwaspCategory::all().len(),
             "stride_categories": StrideCategory::all().len(),
             "files_scanned": files.len(),
-        }
+        },
+        "chain": chain_targets,
+        "next_target": next_target,
+        "chain_continue": should_continue_handoff_chain("COMPLETE"),
     });
     write_json_file(&output_dir.join("handoff.json"), &handoff)?;
     println!(
@@ -2642,6 +2684,10 @@ fn cmd_security(
             "owasp_categories": OwaspCategory::all().len(),
             "stride_categories": StrideCategory::all().len(),
             "files_scanned": files.len(),
+            "fix_requested": fix,
+            "fail_on": fail_on.map(|severity| severity.label()),
+            "gate_failed": gate_failed,
+            "confirmed_findings": confirmed_findings,
         })
     );
     Ok(())

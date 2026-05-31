@@ -92,7 +92,7 @@ Score: 48.3 | Findings: 7
 ## Output
 
 ```
-autoresearch/security-250527-1430/
+autoresearch-results/security/security-250527-1430/
 ├── overview.md              # Product + stack context
 ├── threat-model.md          # STRIDE threats per component
 ├── attack-surface-map.md    # Entry points and data flows

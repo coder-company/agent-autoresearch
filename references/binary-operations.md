@@ -36,6 +36,7 @@ Native artifact generators default to ignored `autoresearch-results/<mode>/` pat
 `improve` writes a product-improvement artifact bundle with research findings, ranked plan, summary, improve-results TSV, and handoff JSON.
 `prd` writes a focused improve-mode markdown artifact with DECISION NEEDED markers, acceptance criteria, risks, success metrics, and a ready-to-run autoresearch config block.
 `security` writes a STRIDE + OWASP audit artifact bundle: overview, threat model, attack surface map, coverage, findings, recommendations, results TSV, and handoff JSON.
+`security --fail-on <severity> --fix` records the CI gate threshold, confirmed finding count, and downstream fix target metadata.
 `ship` writes an 8-phase checklist, summary, ship log TSV, and handoff JSON without performing external ship actions.
 `scenario` writes a markdown artifact covering all 12 scenario dimensions for the requested target, format, focus, and implementation scope.
 `predict` writes a five-persona pre-implementation review with architecture, security, performance, UX, and adversarial findings.

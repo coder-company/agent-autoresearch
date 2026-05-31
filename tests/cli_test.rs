@@ -615,6 +615,41 @@ fn test_security_writes_audit_artifact_bundle() {
 }
 
 #[test]
+fn test_security_fix_and_fail_on_write_gate_handoff() {
+    let dir = TempDir::new().unwrap();
+    let output_dir = dir.path().join("autoresearch-results/security/auth");
+
+    cmd()
+        .args([
+            "security",
+            "--focus",
+            "auth",
+            "--scope",
+            "src/**/*.rs",
+            "--fix",
+            "--fail-on",
+            "high",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"fix_requested\":true"))
+        .stdout(predicate::str::contains("\"fail_on\":\"HIGH\""))
+        .stdout(predicate::str::contains("\"gate_failed\":false"));
+
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+    assert!(handoff.contains("\"fix_requested\": true"));
+    assert!(handoff.contains("\"fail_on\": \"HIGH\""));
+    assert!(handoff.contains("\"gate_failed\": false"));
+    assert!(handoff.contains("\"confirmed_findings\": 0"));
+    assert!(handoff.contains("\"next_target\": \"fix\""));
+    assert!(handoff.contains("\"chain_continue\": true"));
+}
+
+#[test]
 fn test_ship_writes_checklist_artifact_bundle() {
     let dir = TempDir::new().unwrap();
     let output_dir = dir.path().join("ship/release");
