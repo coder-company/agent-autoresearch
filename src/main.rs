@@ -1865,13 +1865,6 @@ fn cmd_prd(
     let output = output
         .unwrap_or_else(|| PathBuf::from("improve").join(format!("prd-{}.md", slugify(title))));
     let output = resolve_workspace_path(&workspace, output);
-    if let Some(parent) = output
-        .parent()
-        .filter(|parent| !parent.as_os_str().is_empty())
-    {
-        std::fs::create_dir_all(parent)
-            .with_context(|| format!("failed to create {}", parent.display()))?;
-    }
     let markdown = render_prd_markdown(
         title,
         problem,
@@ -1880,8 +1873,7 @@ fn cmd_prd(
         metric.as_deref(),
         &scope,
     );
-    std::fs::write(&output, markdown)
-        .with_context(|| format!("failed to write {}", output.display()))?;
+    write_text_file(&output, &markdown)?;
     println!(
         "{}",
         serde_json::json!({
@@ -2094,46 +2086,22 @@ fn cmd_improve(
     std::fs::create_dir_all(&output_dir)
         .with_context(|| format!("failed to create {}", output_dir.display()))?;
 
-    std::fs::write(
-        output_dir.join("research-findings.md"),
-        render_improve_research_markdown(goal, icp, &scope),
-    )
-    .with_context(|| {
-        format!(
-            "failed to write {}",
-            output_dir.join("research-findings.md").display()
-        )
-    })?;
-    std::fs::write(
-        output_dir.join("improvement-plan.md"),
-        render_improve_plan_markdown(goal, icp),
-    )
-    .with_context(|| {
-        format!(
-            "failed to write {}",
-            output_dir.join("improvement-plan.md").display()
-        )
-    })?;
-    std::fs::write(
-        output_dir.join("summary.md"),
-        render_improve_summary_markdown(goal, icp, &output_dir),
-    )
-    .with_context(|| {
-        format!(
-            "failed to write {}",
-            output_dir.join("summary.md").display()
-        )
-    })?;
-    std::fs::write(
-        output_dir.join("improve-results.tsv"),
-        render_improve_results_tsv(goal),
-    )
-    .with_context(|| {
-        format!(
-            "failed to write {}",
-            output_dir.join("improve-results.tsv").display()
-        )
-    })?;
+    write_text_file(
+        &output_dir.join("research-findings.md"),
+        &render_improve_research_markdown(goal, icp, &scope),
+    )?;
+    write_text_file(
+        &output_dir.join("improvement-plan.md"),
+        &render_improve_plan_markdown(goal, icp),
+    )?;
+    write_text_file(
+        &output_dir.join("summary.md"),
+        &render_improve_summary_markdown(goal, icp, &output_dir),
+    )?;
+    write_text_file(
+        &output_dir.join("improve-results.tsv"),
+        &render_improve_results_tsv(goal),
+    )?;
     let findings = improve_categories()
         .iter()
         .map(|(category, _)| {
@@ -2161,16 +2129,7 @@ fn cmd_improve(
             "prds_generated": 0,
         }
     });
-    std::fs::write(
-        output_dir.join("handoff.json"),
-        serde_json::to_string_pretty(&handoff)?,
-    )
-    .with_context(|| {
-        format!(
-            "failed to write {}",
-            output_dir.join("handoff.json").display()
-        )
-    })?;
+    write_json_file(&output_dir.join("handoff.json"), &handoff)?;
     println!(
         "{}",
         serde_json::json!({
@@ -2334,17 +2293,9 @@ fn cmd_scenario(
         PathBuf::from("scenario").join(format!("scenario-{}.md", slugify(target)))
     });
     let output = resolve_workspace_path(&workspace, output);
-    if let Some(parent) = output
-        .parent()
-        .filter(|parent| !parent.as_os_str().is_empty())
-    {
-        std::fs::create_dir_all(parent)
-            .with_context(|| format!("failed to create {}", parent.display()))?;
-    }
 
     let markdown = render_scenario_markdown(target, format, focus, &scope);
-    std::fs::write(&output, markdown)
-        .with_context(|| format!("failed to write {}", output.display()))?;
+    write_text_file(&output, &markdown)?;
     println!(
         "{}",
         serde_json::json!({
@@ -2466,17 +2417,9 @@ fn cmd_predict(
         PathBuf::from("predict").join(format!("predict-{}.md", slugify(proposal)))
     });
     let output = resolve_workspace_path(&workspace, output);
-    if let Some(parent) = output
-        .parent()
-        .filter(|parent| !parent.as_os_str().is_empty())
-    {
-        std::fs::create_dir_all(parent)
-            .with_context(|| format!("failed to create {}", parent.display()))?;
-    }
 
     let markdown = render_predict_markdown(proposal, &scope);
-    std::fs::write(&output, markdown)
-        .with_context(|| format!("failed to write {}", output.display()))?;
+    write_text_file(&output, &markdown)?;
     println!(
         "{}",
         serde_json::json!({
@@ -2678,17 +2621,9 @@ fn cmd_reason(
         PathBuf::from("reason").join(format!("reason-{}.md", slugify(question)))
     });
     let output = resolve_workspace_path(&workspace, output);
-    if let Some(parent) = output
-        .parent()
-        .filter(|parent| !parent.as_os_str().is_empty())
-    {
-        std::fs::create_dir_all(parent)
-            .with_context(|| format!("failed to create {}", parent.display()))?;
-    }
 
     let markdown = render_reason_markdown(question, mode, domain, &scope);
-    std::fs::write(&output, markdown)
-        .with_context(|| format!("failed to write {}", output.display()))?;
+    write_text_file(&output, &markdown)?;
     println!(
         "{}",
         serde_json::json!({
@@ -2804,17 +2739,9 @@ fn cmd_probe(
     let output = output
         .unwrap_or_else(|| PathBuf::from("probe").join(format!("probe-{}.md", slugify(subject))));
     let output = resolve_workspace_path(&workspace, output);
-    if let Some(parent) = output
-        .parent()
-        .filter(|parent| !parent.as_os_str().is_empty())
-    {
-        std::fs::create_dir_all(parent)
-            .with_context(|| format!("failed to create {}", parent.display()))?;
-    }
 
     let markdown = render_probe_markdown(subject, &scope);
-    std::fs::write(&output, markdown)
-        .with_context(|| format!("failed to write {}", output.display()))?;
+    write_text_file(&output, &markdown)?;
     println!(
         "{}",
         serde_json::json!({
@@ -2987,36 +2914,18 @@ fn cmd_learn(
         .with_context(|| format!("failed to create {}", output_dir.display()))?;
     let files = collect_learn_files(&workspace, &scope);
 
-    std::fs::write(
-        output_dir.join("summary.md"),
-        render_learn_summary(mode, &files, &scope),
-    )
-    .with_context(|| {
-        format!(
-            "failed to write {}",
-            output_dir.join("summary.md").display()
-        )
-    })?;
-    std::fs::write(
-        output_dir.join("validation-report.md"),
-        render_learn_validation(&files),
-    )
-    .with_context(|| {
-        format!(
-            "failed to write {}",
-            output_dir.join("validation-report.md").display()
-        )
-    })?;
-    std::fs::write(
-        output_dir.join("learn-results.tsv"),
-        render_learn_results_tsv(&files),
-    )
-    .with_context(|| {
-        format!(
-            "failed to write {}",
-            output_dir.join("learn-results.tsv").display()
-        )
-    })?;
+    write_text_file(
+        &output_dir.join("summary.md"),
+        &render_learn_summary(mode, &files, &scope),
+    )?;
+    write_text_file(
+        &output_dir.join("validation-report.md"),
+        &render_learn_validation(&files),
+    )?;
+    write_text_file(
+        &output_dir.join("learn-results.tsv"),
+        &render_learn_results_tsv(&files),
+    )?;
     let handoff = serde_json::json!({
         "version": "2.1.0",
         "source": "learn",
@@ -3030,16 +2939,7 @@ fn cmd_learn(
             "files_scanned": files.len(),
         }
     });
-    std::fs::write(
-        output_dir.join("handoff.json"),
-        serde_json::to_string_pretty(&handoff)?,
-    )
-    .with_context(|| {
-        format!(
-            "failed to write {}",
-            output_dir.join("handoff.json").display()
-        )
-    })?;
+    write_json_file(&output_dir.join("handoff.json"), &handoff)?;
     println!(
         "{}",
         serde_json::json!({
@@ -9059,12 +8959,26 @@ fn validate_companion_repo_clean(repo: &GitRepo, label: &str) -> Result<()> {
 }
 
 fn write_json_file(path: &Path, value: &serde_json::Value) -> Result<()> {
-    if let Some(parent) = path.parent() {
+    if let Some(parent) = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
         std::fs::create_dir_all(parent)
             .with_context(|| format!("failed to create {}", parent.display()))?;
     }
     std::fs::write(path, format!("{}\n", serde_json::to_string_pretty(value)?))
         .with_context(|| format!("failed to write {}", path.display()))
+}
+
+fn write_text_file(path: &Path, content: &str) -> Result<()> {
+    if let Some(parent) = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create {}", parent.display()))?;
+    }
+    std::fs::write(path, content).with_context(|| format!("failed to write {}", path.display()))
 }
 
 fn run_git_command(workspace: &Path, args: &[String]) -> Result<()> {
