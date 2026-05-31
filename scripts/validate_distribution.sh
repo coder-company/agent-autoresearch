@@ -201,6 +201,7 @@ require_grep 'autoresearch security --scope' docs/GUIDE.md
 require_grep 'autoresearch security --scope' references/binary-operations.md
 require_grep 'security --fail-on' README.md
 require_grep 'security --fail-on' references/binary-operations.md
+require_grep 'security --depth <level> --diff' references/binary-operations.md
 require_grep 'Native security generator' docs/development-roadmap.md
 require_grep '`autoresearch security` writes' COMPARISON.md
 require_grep 'autoresearch ship --target' README.md

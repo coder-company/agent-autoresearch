@@ -739,6 +739,58 @@ fn test_security_fix_and_fail_on_write_gate_handoff() {
 }
 
 #[test]
+fn test_security_profile_chain_and_evals_are_recorded() {
+    let dir = TempDir::new().unwrap();
+    let output_dir = dir.path().join("autoresearch-results/security/api");
+
+    cmd()
+        .args([
+            "security",
+            "--focus",
+            "api",
+            "--scope",
+            "src/**/*.rs",
+            "--depth",
+            "quick",
+            "--diff",
+            "--chain",
+            "learn",
+            "--fix",
+            "--fail-on",
+            "medium",
+            "--evals",
+            "--evals-interval",
+            "5",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"depth\":\"quick\""))
+        .stdout(predicate::str::contains("\"diff\":true"))
+        .stdout(predicate::str::contains("\"next_target\":\"learn\""))
+        .stdout(predicate::str::contains("\"evals\":true"));
+
+    let overview = std::fs::read_to_string(output_dir.join("overview.md")).unwrap();
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+
+    assert!(overview.contains("- Depth: quick"));
+    assert!(overview.contains("- Diff mode: true"));
+    assert!(overview.contains("- Evals interval: 5"));
+    assert!(handoff.contains("\"depth\": \"quick\""));
+    assert!(handoff.contains("\"iteration_budget\": 5"));
+    assert!(handoff.contains("\"diff\": true"));
+    assert!(handoff.contains("\"chain\": ["));
+    assert!(handoff.contains("\"learn\""));
+    assert!(handoff.contains("\"fix\""));
+    assert!(handoff.contains("\"next_target\": \"learn\""));
+    assert!(handoff.contains("\"propagate_evals\": true"));
+    assert!(handoff.contains("\"evals_interval\": 5"));
+}
+
+#[test]
 fn test_ship_writes_checklist_artifact_bundle() {
     let dir = TempDir::new().unwrap();
     let output_dir = dir.path().join("ship/release");

@@ -207,6 +207,7 @@ Covered in detail in the [guide](guide/):
 - **PRD artifact generation** — `autoresearch prd --title ... --problem ...` writes improve-mode PRDs with decision markers and ready-to-run config blocks
 - **Security artifact generation** — `autoresearch security --scope ... --focus ...` writes STRIDE, OWASP, findings, recommendations, TSV, and handoff artifacts
 - **Security gating** — `autoresearch security --fail-on high --fix` records CI threshold and downstream repair handoff metadata
+- **Security audit controls** — `autoresearch security --depth deep --diff --chain fix --evals` records audit budget, delta mode, chain, and checkpoint metadata
 - **Ship artifact generation** — `autoresearch ship --target ... --type ... --dry-run` writes an 8-phase checklist, summary, ship log, and handoff
 - **Scenario artifact generation** — `autoresearch scenario --target ... --format test-scenarios` writes a 12-dimension edge-case matrix grounded in scope
 - **Scenario exploration controls** — `autoresearch scenario --depth deep --evals` records exploration budget and checkpoint metadata

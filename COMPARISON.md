@@ -34,7 +34,7 @@ The idea was simple enough that several people generalized it:
 | Fix output | Manual repair loop | Error-crushing protocol | Protocol guidance | **`autoresearch fix` writes repair-plan bundles under `autoresearch-results/fix`** |
 | Improve research | Manual notes | Research findings + plans | Protocol guidance | **`autoresearch improve` writes findings, plan, TSV, summary, handoff, depth, and eval metadata** |
 | PRD output | No | Improve-mode PRDs | No | **`autoresearch prd` writes selected-improvement PRD artifacts** |
-| Security output | No | STRIDE/OWASP reports | Protocol guidance | **`autoresearch security` writes audit bundles with coverage and handoff** |
+| Security output | No | STRIDE/OWASP reports | Protocol guidance | **`autoresearch security` writes audit bundles with coverage, gates, depth, chain, and handoff** |
 | Ship output | Manual release | Checklist + ship logs | Protocol guidance | **`autoresearch ship` writes 8-phase checklist bundles** |
 | Scenario output | No | Scenario markdown reports | Protocol guidance | **`autoresearch scenario` writes 12-dimension edge-case artifacts** |
 | Predict output | No | Persona debate reports | Protocol guidance | **`autoresearch predict` writes five-persona review artifacts** |

@@ -607,12 +607,27 @@ enum Commands {
         /// Optional focus area such as auth, API, data handling, or CI
         #[arg(long)]
         focus: Option<String>,
+        /// Audit depth: quick, standard, or deep
+        #[arg(long, default_value = "standard")]
+        depth: String,
+        /// Delta mode: record that only files changed since the last audit should be audited
+        #[arg(long)]
+        diff: bool,
         /// Record a downstream fix handoff for confirmed Critical/High findings
         #[arg(long)]
         fix: bool,
         /// CI gate threshold: critical, high, medium, low, or info
         #[arg(long)]
         fail_on: Option<String>,
+        /// Comma-separated downstream command targets to record in handoff.json
+        #[arg(long)]
+        chain: Option<String>,
+        /// Propagate eval checkpoints to downstream chain targets
+        #[arg(long)]
+        evals: bool,
+        /// Propagated eval checkpoint interval
+        #[arg(long)]
+        evals_interval: Option<u32>,
         /// Output directory. Relative paths resolve from the workspace root.
         #[arg(long)]
         output_dir: Option<PathBuf>,
@@ -1504,11 +1519,28 @@ fn main() -> Result<()> {
         Commands::Security {
             scope,
             focus,
+            depth,
+            diff,
             fix,
             fail_on,
+            chain,
+            evals,
+            evals_interval,
             output_dir,
             cwd,
-        } => cmd_security(scope, focus, fix, fail_on, output_dir, cwd),
+        } => cmd_security(
+            scope,
+            focus,
+            &depth,
+            diff,
+            fix,
+            fail_on,
+            chain,
+            evals,
+            evals_interval,
+            output_dir,
+            cwd,
+        ),
 
         Commands::Ship {
             target,
@@ -2658,7 +2690,47 @@ fn parse_security_severity(value: Option<&str>, flag: &str) -> Result<Option<Sev
     }
 }
 
-fn render_security_overview(focus: &str, scope: &[String], files: &[String]) -> String {
+#[derive(Debug, Clone)]
+struct SecurityProfile {
+    depth: String,
+    iteration_budget: u32,
+    diff: bool,
+    evals: bool,
+    evals_interval: Option<u32>,
+}
+
+fn parse_security_depth(value: &str) -> Result<(&'static str, u32)> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "quick" | "shallow" => Ok(("quick", 5)),
+        "standard" | "normal" => Ok(("standard", 15)),
+        "deep" | "comprehensive" => Ok(("deep", 30)),
+        other => anyhow::bail!("Invalid security depth {other:?}; use quick, standard, or deep"),
+    }
+}
+
+fn resolve_security_profile(
+    depth: &str,
+    diff: bool,
+    evals: bool,
+    evals_interval: Option<u32>,
+) -> Result<SecurityProfile> {
+    validate_chain_evals_flags("security", evals, evals_interval)?;
+    let (depth, iteration_budget) = parse_security_depth(depth)?;
+    Ok(SecurityProfile {
+        depth: depth.to_string(),
+        iteration_budget,
+        diff,
+        evals,
+        evals_interval,
+    })
+}
+
+fn render_security_overview(
+    focus: &str,
+    scope: &[String],
+    files: &[String],
+    profile: &SecurityProfile,
+) -> String {
     let mut out = String::new();
     let scope_lines = if scope.is_empty() {
         "- DECISION NEEDED: identify audit scope.".to_string()
@@ -2672,6 +2744,19 @@ fn render_security_overview(focus: &str, scope: &[String], files: &[String]) -> 
     writeln!(out, "# Security Audit Overview").unwrap();
     writeln!(out).unwrap();
     writeln!(out, "- Focus: {focus}").unwrap();
+    writeln!(out, "- Depth: {}", profile.depth).unwrap();
+    writeln!(out, "- Iteration budget: {}", profile.iteration_budget).unwrap();
+    writeln!(out, "- Diff mode: {}", profile.diff).unwrap();
+    writeln!(out, "- Evals enabled: {}", profile.evals).unwrap();
+    writeln!(
+        out,
+        "- Evals interval: {}",
+        profile
+            .evals_interval
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "none".to_string())
+    )
+    .unwrap();
     writeln!(out, "- Files scanned: {}", files.len()).unwrap();
     writeln!(out, "- OWASP categories: {}", OwaspCategory::all().len()).unwrap();
     writeln!(out, "- STRIDE categories: {}", StrideCategory::all().len()).unwrap();
@@ -2866,12 +2951,21 @@ fn render_security_results_tsv() -> String {
 fn cmd_security(
     scope: Vec<String>,
     focus: Option<String>,
+    depth: &str,
+    diff: bool,
     fix: bool,
     fail_on: Option<String>,
+    chain: Option<String>,
+    evals: bool,
+    evals_interval: Option<u32>,
     output_dir: Option<PathBuf>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let fail_on = parse_security_severity(fail_on.as_deref(), "--fail-on")?;
+    let profile = resolve_security_profile(depth, diff, evals, evals_interval)?;
+    let forced_targets = if fix { &["fix"][..] } else { &[][..] };
+    let chain_targets = chain_targets_with_forced(chain.as_deref(), forced_targets)?;
+    let next_target = next_chain_target_value(&chain_targets);
     let workspace = resolve_workspace_root(cwd);
     let focus = focus
         .as_deref()
@@ -2892,16 +2986,10 @@ fn cmd_security(
         .with_context(|| format!("failed to create {}", output_dir.display()))?;
     let confirmed_findings = 0usize;
     let gate_failed = fail_on.is_some() && confirmed_findings > 0;
-    let chain_targets = if fix {
-        vec!["fix".to_string()]
-    } else {
-        Vec::new()
-    };
-    let next_target = next_chain_target_value(&chain_targets);
 
     write_text_file(
         &output_dir.join("overview.md"),
-        &render_security_overview(focus, &scope, &files),
+        &render_security_overview(focus, &scope, &files, &profile),
     )?;
     write_text_file(
         &output_dir.join("threat-model.md"),
@@ -2937,6 +3025,9 @@ fn cmd_security(
         "config": {
             "scope": scope,
             "focus": focus,
+            "depth": profile.depth.as_str(),
+            "iteration_budget": profile.iteration_budget,
+            "diff": profile.diff,
             "fix_requested": fix,
             "fail_on": fail_on.map(|severity| severity.label()),
             "gate_failed": gate_failed,
@@ -2946,8 +3037,10 @@ fn cmd_security(
             "files_scanned": files.len(),
         },
         "chain": chain_targets,
-        "next_target": next_target,
+        "next_target": next_target.clone(),
         "chain_continue": should_continue_handoff_chain("COMPLETE"),
+        "propagate_evals": profile.evals,
+        "evals_interval": profile.evals_interval,
     });
     write_json_file(&output_dir.join("handoff.json"), &handoff)?;
     println!(
@@ -2956,6 +3049,9 @@ fn cmd_security(
             "status": "written",
             "output_dir": output_dir.display().to_string(),
             "focus": focus,
+            "depth": profile.depth.as_str(),
+            "iteration_budget": profile.iteration_budget,
+            "diff": profile.diff,
             "owasp_categories": OwaspCategory::all().len(),
             "stride_categories": StrideCategory::all().len(),
             "files_scanned": files.len(),
@@ -2963,6 +3059,9 @@ fn cmd_security(
             "fail_on": fail_on.map(|severity| severity.label()),
             "gate_failed": gate_failed,
             "confirmed_findings": confirmed_findings,
+            "next_target": next_target,
+            "evals": profile.evals,
+            "evals_interval": profile.evals_interval,
         })
     );
     Ok(())
