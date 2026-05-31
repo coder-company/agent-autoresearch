@@ -704,6 +704,15 @@ enum Commands {
         /// Relevant implementation scope. Repeatable.
         #[arg(long)]
         scope: Vec<String>,
+        /// Exploration depth: shallow, standard, or deep
+        #[arg(long, default_value = "standard")]
+        depth: String,
+        /// Record eval checkpoint metadata
+        #[arg(long)]
+        evals: bool,
+        /// Eval checkpoint interval
+        #[arg(long)]
+        evals_interval: Option<u32>,
         /// Output path. Relative paths resolve from the workspace root.
         #[arg(long)]
         output: Option<PathBuf>,
@@ -1506,9 +1515,22 @@ fn main() -> Result<()> {
             format,
             focus,
             scope,
+            depth,
+            evals,
+            evals_interval,
             output,
             cwd,
-        } => cmd_scenario(&target, &format, &focus, scope, output, cwd),
+        } => cmd_scenario(
+            &target,
+            &format,
+            &focus,
+            scope,
+            &depth,
+            evals,
+            evals_interval,
+            output,
+            cwd,
+        ),
 
         Commands::Predict {
             proposal,
@@ -3435,6 +3457,38 @@ fn scenario_format_slug(format: ScenarioFormat) -> &'static str {
     }
 }
 
+#[derive(Debug, Clone)]
+struct ScenarioProfile {
+    depth: String,
+    exploration_budget: u32,
+    evals: bool,
+    evals_interval: Option<u32>,
+}
+
+fn parse_scenario_depth(value: &str) -> Result<(&'static str, u32)> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "shallow" | "quick" => Ok(("shallow", 10)),
+        "standard" | "normal" => Ok(("standard", 20)),
+        "deep" | "comprehensive" => Ok(("deep", 40)),
+        other => anyhow::bail!("Invalid scenario depth {other:?}; use shallow, standard, or deep"),
+    }
+}
+
+fn resolve_scenario_profile(
+    depth: &str,
+    evals: bool,
+    evals_interval: Option<u32>,
+) -> Result<ScenarioProfile> {
+    validate_chain_evals_flags("scenario", evals, evals_interval)?;
+    let (depth, exploration_budget) = parse_scenario_depth(depth)?;
+    Ok(ScenarioProfile {
+        depth: depth.to_string(),
+        exploration_budget,
+        evals,
+        evals_interval,
+    })
+}
+
 fn scenario_title(target: &str, dimension: Dimension, focus: &str) -> String {
     match focus.trim().to_ascii_lowercase().as_str() {
         "security" => format!("{} threat in {}", dimension.label(), target),
@@ -3472,6 +3526,7 @@ fn render_scenario_markdown(
     format: ScenarioFormat,
     focus: &str,
     scope: &[String],
+    profile: &ScenarioProfile,
 ) -> String {
     let mut out = String::new();
     let scope_items = if scope.is_empty() {
@@ -3503,6 +3558,18 @@ fn render_scenario_markdown(
     )
     .unwrap();
     writeln!(out, "- Focus: {focus}").unwrap();
+    writeln!(out, "- Depth: {}", profile.depth).unwrap();
+    writeln!(out, "- Exploration budget: {}", profile.exploration_budget).unwrap();
+    writeln!(out, "- Evals enabled: {}", profile.evals).unwrap();
+    writeln!(
+        out,
+        "- Evals interval: {}",
+        profile
+            .evals_interval
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "none".to_string())
+    )
+    .unwrap();
     writeln!(out, "- Dimensions: {}", Dimension::all().len()).unwrap();
     writeln!(out).unwrap();
     writeln!(out, "## Scope").unwrap();
@@ -3550,17 +3617,21 @@ fn cmd_scenario(
     format: &str,
     focus: &str,
     scope: Vec<String>,
+    depth: &str,
+    evals: bool,
+    evals_interval: Option<u32>,
     output: Option<PathBuf>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let format = parse_scenario_format(format)?;
+    let profile = resolve_scenario_profile(depth, evals, evals_interval)?;
     let workspace = resolve_workspace_root(cwd);
     let output = output.unwrap_or_else(|| {
         default_artifact_path("scenario", format!("scenario-{}.md", slugify(target)))
     });
     let output = resolve_workspace_path(&workspace, output);
 
-    let markdown = render_scenario_markdown(target, format, focus, &scope);
+    let markdown = render_scenario_markdown(target, format, focus, &scope, &profile);
     write_text_file(&output, &markdown)?;
     println!(
         "{}",
@@ -3569,6 +3640,10 @@ fn cmd_scenario(
             "path": output.display().to_string(),
             "target": target,
             "format": scenario_format_slug(format),
+            "depth": profile.depth,
+            "exploration_budget": profile.exploration_budget,
+            "evals": profile.evals,
+            "evals_interval": profile.evals_interval,
             "dimensions": Dimension::all().len(),
         })
     );

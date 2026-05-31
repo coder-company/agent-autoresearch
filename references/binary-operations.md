@@ -39,6 +39,7 @@ Native artifact generators default to ignored `autoresearch-results/<mode>/` pat
 `security --fail-on <severity> --fix` records the CI gate threshold, confirmed finding count, and downstream fix target metadata.
 `ship` writes an 8-phase checklist, summary, ship log TSV, and handoff JSON without performing external ship actions.
 `scenario` writes a markdown artifact covering all 12 scenario dimensions for the requested target, format, focus, and implementation scope.
+`scenario --depth <level> --evals` records exploration budget and checkpoint metadata in the generated matrix.
 `predict` writes a five-persona pre-implementation review with architecture, security, performance, UX, and adversarial findings.
 `predict --depth <level> --adversarial --fail-on <severity>` records review profile, finding budget, incremental mode, and CI gate metadata.
 `predict --chain <targets>` writes a sidecar handoff with comma-separated downstream targets and eval propagation metadata when requested.

@@ -83,7 +83,7 @@ The agent tracks coverage per dimension. If 3 consecutive iterations produce onl
 ## Output
 
 ```
-autoresearch/scenario-250527-1430/
+autoresearch-results/scenario/scenario-250527-1430/
 ├── scenarios.md         # Organized by dimension, severity-ranked
 ├── edge-cases.md        # Flat severity-ranked list
 └── scenario-results.tsv # Raw iteration data

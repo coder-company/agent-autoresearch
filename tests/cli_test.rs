@@ -573,6 +573,48 @@ fn test_scenario_writes_twelve_dimension_artifact() {
 }
 
 #[test]
+fn test_scenario_depth_and_evals_are_recorded() {
+    let dir = TempDir::new().unwrap();
+    let output = dir
+        .path()
+        .join("autoresearch-results/scenario/checkout-scenarios.md");
+
+    cmd()
+        .args([
+            "scenario",
+            "--target",
+            "Checkout flow",
+            "--format",
+            "test-scenarios",
+            "--focus",
+            "failures",
+            "--scope",
+            "src/checkout/**",
+            "--depth",
+            "deep",
+            "--evals",
+            "--evals-interval",
+            "5",
+            "--output",
+            output.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"depth\":\"deep\""))
+        .stdout(predicate::str::contains("\"exploration_budget\":40"))
+        .stdout(predicate::str::contains("\"evals\":true"))
+        .stdout(predicate::str::contains("\"evals_interval\":5"));
+
+    let scenario = std::fs::read_to_string(output).unwrap();
+    assert!(scenario.contains("- Depth: deep"));
+    assert!(scenario.contains("- Exploration budget: 40"));
+    assert!(scenario.contains("- Evals enabled: true"));
+    assert!(scenario.contains("- Evals interval: 5"));
+}
+
+#[test]
 fn test_security_writes_audit_artifact_bundle() {
     let dir = TempDir::new().unwrap();
     std::fs::create_dir_all(dir.path().join("src/auth")).unwrap();

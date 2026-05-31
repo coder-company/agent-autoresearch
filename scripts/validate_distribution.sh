@@ -210,6 +210,8 @@ require_grep '`autoresearch ship` writes' COMPARISON.md
 require_grep 'autoresearch scenario --target' README.md
 require_grep 'autoresearch scenario --target' docs/GUIDE.md
 require_grep 'autoresearch scenario --target' references/binary-operations.md
+require_grep 'scenario --depth' README.md
+require_grep 'scenario --depth' references/binary-operations.md
 require_grep 'Native scenario generator' docs/development-roadmap.md
 require_grep '`autoresearch scenario` writes' COMPARISON.md
 require_grep 'autoresearch predict --proposal' README.md
