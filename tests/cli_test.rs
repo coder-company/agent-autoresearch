@@ -2143,6 +2143,41 @@ fn test_learn_controls_are_recorded_in_handoff() {
 }
 
 #[test]
+fn test_learn_iterations_override_depth_budget() {
+    let dir = TempDir::new().unwrap();
+    std::fs::create_dir_all(dir.path().join("docs")).unwrap();
+    std::fs::write(dir.path().join("docs/api.md"), "# API\n").unwrap();
+    let output_dir = dir.path().join("learn/custom-budget");
+
+    cmd()
+        .args([
+            "learn",
+            "--mode",
+            "check",
+            "--file",
+            "docs/api.md",
+            "--depth",
+            "comprehensive",
+            "--iterations",
+            "14",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"iteration_budget\":14"));
+
+    let summary = std::fs::read_to_string(output_dir.join("summary.md")).unwrap();
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+
+    assert!(summary.contains("- Depth: comprehensive"));
+    assert!(summary.contains("- Iteration budget: 14"));
+    assert!(handoff.contains("\"iteration_budget\": 14"));
+}
+
+#[test]
 fn test_config_template_prints_toml() {
     cmd()
         .args(["config", "template"])

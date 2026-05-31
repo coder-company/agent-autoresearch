@@ -951,6 +951,9 @@ enum Commands {
         /// Documentation depth: overview, standard, or comprehensive
         #[arg(long, default_value = "standard")]
         depth: String,
+        /// Override the depth-derived documentation iteration budget
+        #[arg(long)]
+        iterations: Option<u32>,
         /// Specific file to document. Repeatable.
         #[arg(long)]
         file: Vec<String>,
@@ -1839,6 +1842,7 @@ fn main() -> Result<()> {
             mode,
             scope,
             depth,
+            iterations,
             file,
             scan,
             topics,
@@ -1853,6 +1857,7 @@ fn main() -> Result<()> {
             &mode,
             scope,
             &depth,
+            iterations,
             file,
             scan,
             topics,
@@ -5312,6 +5317,7 @@ fn learn_sub_mode_label(mode: LearnSubMode) -> &'static str {
 #[derive(Debug, Clone)]
 struct LearnProfile {
     depth: String,
+    iteration_budget: u32,
     scan_limit: usize,
     inventory_limit: usize,
     scan: bool,
@@ -5322,11 +5328,11 @@ struct LearnProfile {
     evals_interval: Option<u32>,
 }
 
-fn parse_learn_depth(value: &str) -> Result<(&'static str, usize)> {
+fn parse_learn_depth(value: &str) -> Result<(&'static str, usize, u32)> {
     match value.trim().to_ascii_lowercase().as_str() {
-        "overview" | "shallow" | "quick" => Ok(("overview", 10)),
-        "standard" | "normal" => Ok(("standard", 25)),
-        "comprehensive" | "deep" => Ok(("comprehensive", 50)),
+        "overview" | "shallow" | "quick" => Ok(("overview", 10, 5)),
+        "standard" | "normal" => Ok(("standard", 25, 10)),
+        "comprehensive" | "deep" => Ok(("comprehensive", 50, 20)),
         other => {
             anyhow::bail!("Invalid learn depth {other:?}; use overview, standard, or comprehensive")
         }
@@ -5354,6 +5360,7 @@ fn parse_learn_topics(topics: Option<&str>) -> Vec<String> {
 
 fn resolve_learn_profile(
     depth: &str,
+    iterations: Option<u32>,
     scan: bool,
     topics: Option<&str>,
     no_fix: bool,
@@ -5362,7 +5369,10 @@ fn resolve_learn_profile(
     evals_interval: Option<u32>,
 ) -> Result<LearnProfile> {
     validate_chain_evals_flags("learn", evals, evals_interval)?;
-    let (depth, scan_limit) = parse_learn_depth(depth)?;
+    let (depth, scan_limit, iteration_budget) = parse_learn_depth(depth)?;
+    if iterations == Some(0) {
+        anyhow::bail!("learn iterations must be greater than zero");
+    }
     let format = parse_learn_format(format)?;
     let mut topics = parse_learn_topics(topics);
     if topics.is_empty() {
@@ -5370,6 +5380,7 @@ fn resolve_learn_profile(
     }
     Ok(LearnProfile {
         depth: depth.to_string(),
+        iteration_budget: iterations.unwrap_or(iteration_budget),
         scan_limit,
         inventory_limit: scan_limit.min(25),
         scan,
@@ -5439,6 +5450,7 @@ fn render_learn_summary(
     writeln!(out).unwrap();
     writeln!(out, "- Mode: {}", learn_sub_mode_label(mode)).unwrap();
     writeln!(out, "- Depth: {}", profile.depth).unwrap();
+    writeln!(out, "- Iteration budget: {}", profile.iteration_budget).unwrap();
     writeln!(out, "- Format: {}", profile.format).unwrap();
     writeln!(out, "- Topics: {topics}").unwrap();
     writeln!(out, "- Fresh scan requested: {}", profile.scan).unwrap();
@@ -5542,6 +5554,7 @@ fn cmd_learn(
     mode: &str,
     scope: Vec<String>,
     depth: &str,
+    iterations: Option<u32>,
     explicit_files: Vec<String>,
     scan: bool,
     topics: Option<String>,
@@ -5556,6 +5569,7 @@ fn cmd_learn(
     let mode = parse_learn_sub_mode(mode)?;
     let profile = resolve_learn_profile(
         depth,
+        iterations,
         scan,
         topics.as_deref(),
         no_fix,
@@ -5599,6 +5613,7 @@ fn cmd_learn(
             "scope": scope,
             "files": explicit_files,
             "depth": profile.depth.as_str(),
+            "iteration_budget": profile.iteration_budget,
             "scan_limit": profile.scan_limit,
             "scan": profile.scan,
             "topics": profile.topics.clone(),
@@ -5620,6 +5635,7 @@ fn cmd_learn(
             "output_dir": output_dir.display().to_string(),
             "mode": learn_sub_mode_label(mode),
             "depth": profile.depth.as_str(),
+            "iteration_budget": profile.iteration_budget,
             "format": profile.format.as_str(),
             "topics": profile.topics.clone(),
             "auto_fix": profile.auto_fix,

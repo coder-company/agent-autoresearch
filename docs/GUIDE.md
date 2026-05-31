@@ -118,7 +118,7 @@ Use `autoresearch probe --subject <requirement>` to write eight persona-driven q
 Use `autoresearch probe --subject <requirement> --mode autonomous --depth deep --adversarial` to record interrogation profile and saturation metadata.
 Use `autoresearch probe --subject <requirement> --chain plan` to pass discovered constraints into planning through handoff metadata.
 Use `autoresearch learn --mode <init|update|check|summarize> --scope <glob>` to write documentation summary, validation, TSV, and handoff artifacts.
-Use `autoresearch learn --mode check --file <path> --depth overview --topics architecture,api --no-fix --evals` to record learn profile, specific-file scope, validation behavior, chain, and checkpoint metadata.
+Use `autoresearch learn --mode check --file <path> --depth overview --iterations 14 --topics architecture,api --no-fix --evals` to record learn profile, specific-file scope, validation behavior, chain, and checkpoint metadata.
 Use `autoresearch api --format json` to inspect the stable command/flag manifest and semver policy used by wrappers and agents.
 Use `autoresearch mcp serve` as a stdio MCP server exposing read-only `autoresearch_status` and `autoresearch_watch_snapshot` tools.
 Use `autoresearch mcp call --server-command <cmd> --tool <name> --arguments '{}'` to call a tool on an external stdio MCP server from an iteration script.
