@@ -582,6 +582,15 @@ enum Commands {
         /// Relevant implementation scope. Repeatable.
         #[arg(long)]
         scope: Vec<String>,
+        /// Research depth: shallow, standard, or deep
+        #[arg(long, default_value = "standard")]
+        depth: String,
+        /// Record eval checkpoint metadata
+        #[arg(long)]
+        evals: bool,
+        /// Eval checkpoint interval
+        #[arg(long)]
+        evals_interval: Option<u32>,
         /// Output directory. Relative paths resolve from the workspace root.
         #[arg(long)]
         output_dir: Option<PathBuf>,
@@ -1449,9 +1458,21 @@ fn main() -> Result<()> {
             goal,
             icp,
             scope,
+            depth,
+            evals,
+            evals_interval,
             output_dir,
             cwd,
-        } => cmd_improve(&goal, icp, scope, output_dir, cwd),
+        } => cmd_improve(
+            &goal,
+            icp,
+            scope,
+            &depth,
+            evals,
+            evals_interval,
+            output_dir,
+            cwd,
+        ),
 
         Commands::Security {
             scope,
@@ -2221,6 +2242,44 @@ fn improve_categories() -> &'static [(&'static str, &'static str)] {
     ]
 }
 
+#[derive(Debug, Clone)]
+struct ImproveProfile {
+    depth: String,
+    category_limit: usize,
+    iteration_budget: u32,
+    evals: bool,
+    evals_interval: Option<u32>,
+}
+
+fn parse_improve_depth(value: &str) -> Result<(&'static str, usize, u32)> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "shallow" | "quick" => Ok(("shallow", 3, 10)),
+        "standard" | "normal" => Ok(("standard", 5, 20)),
+        "deep" | "comprehensive" => Ok(("deep", 5, 40)),
+        other => anyhow::bail!("Invalid improve depth {other:?}; use shallow, standard, or deep"),
+    }
+}
+
+fn resolve_improve_profile(
+    depth: &str,
+    evals: bool,
+    evals_interval: Option<u32>,
+) -> Result<ImproveProfile> {
+    validate_chain_evals_flags("improve", evals, evals_interval)?;
+    let (depth, category_limit, iteration_budget) = parse_improve_depth(depth)?;
+    Ok(ImproveProfile {
+        depth: depth.to_string(),
+        category_limit,
+        iteration_budget,
+        evals,
+        evals_interval,
+    })
+}
+
+fn improve_active_categories(profile: &ImproveProfile) -> &'static [(&'static str, &'static str)] {
+    &improve_categories()[..profile.category_limit]
+}
+
 fn improve_seed_title(goal: &str, category: &str) -> String {
     match category {
         "ICP Challenges" => format!("Reduce the highest-friction step in {goal}"),
@@ -2232,7 +2291,12 @@ fn improve_seed_title(goal: &str, category: &str) -> String {
     }
 }
 
-fn render_improve_research_markdown(goal: &str, icp: &str, scope: &[String]) -> String {
+fn render_improve_research_markdown(
+    goal: &str,
+    icp: &str,
+    scope: &[String],
+    profile: &ImproveProfile,
+) -> String {
     let mut out = String::new();
     let scope_items = if scope.is_empty() {
         vec!["DECISION NEEDED: identify implementation scope.".to_string()]
@@ -2261,9 +2325,31 @@ fn render_improve_research_markdown(goal: &str, icp: &str, scope: &[String]) -> 
     writeln!(out).unwrap();
     writeln!(out, "{scope_lines}").unwrap();
     writeln!(out).unwrap();
+    writeln!(out, "## Research Profile").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "- Depth: {}", profile.depth).unwrap();
+    writeln!(
+        out,
+        "- Categories active: {} of {}",
+        improve_active_categories(profile).len(),
+        improve_categories().len()
+    )
+    .unwrap();
+    writeln!(out, "- Iteration budget: {}", profile.iteration_budget).unwrap();
+    writeln!(out, "- Evals enabled: {}", profile.evals).unwrap();
+    writeln!(
+        out,
+        "- Evals interval: {}",
+        profile
+            .evals_interval
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "none".to_string())
+    )
+    .unwrap();
+    writeln!(out).unwrap();
     writeln!(out, "## Findings").unwrap();
     writeln!(out).unwrap();
-    for (category, focus) in improve_categories() {
+    for (category, focus) in improve_active_categories(profile) {
         writeln!(out, "### {category}").unwrap();
         writeln!(out).unwrap();
         writeln!(out, "- Research focus: {focus}").unwrap();
@@ -2284,11 +2370,20 @@ fn render_improve_research_markdown(goal: &str, icp: &str, scope: &[String]) -> 
     out
 }
 
-fn render_improve_plan_markdown(goal: &str, icp: &str) -> String {
+fn render_improve_plan_markdown(goal: &str, icp: &str, profile: &ImproveProfile) -> String {
     let mut out = String::new();
     writeln!(out, "# Improvement Plan: {goal}").unwrap();
     writeln!(out).unwrap();
     writeln!(out, "ICP: {icp}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "Depth: {} ({} categories, {} iteration budget)",
+        profile.depth,
+        improve_active_categories(profile).len(),
+        profile.iteration_budget
+    )
+    .unwrap();
     writeln!(out).unwrap();
     writeln!(out, "## Tiered Ranking").unwrap();
     writeln!(out).unwrap();
@@ -2298,7 +2393,7 @@ fn render_improve_plan_markdown(goal: &str, icp: &str) -> String {
     )
     .unwrap();
     writeln!(out, "|---|---|---|---|---|").unwrap();
-    for (index, (category, _focus)) in improve_categories().iter().enumerate() {
+    for (index, (category, _focus)) in improve_active_categories(profile).iter().enumerate() {
         let tier = match index {
             0 | 3 => "Must-have",
             1 | 2 => "Nice-to-have",
@@ -2327,22 +2422,40 @@ fn render_improve_plan_markdown(goal: &str, icp: &str) -> String {
     out
 }
 
-fn render_improve_summary_markdown(goal: &str, icp: &str, output_dir: &Path) -> String {
+fn render_improve_summary_markdown(
+    goal: &str,
+    icp: &str,
+    output_dir: &Path,
+    profile: &ImproveProfile,
+) -> String {
     format!(
         "# Improve Summary: {goal}\n\n\
          - ICP: {icp}\n\
+         - Depth: {}\n\
          - Categories covered: {}\n\
+         - Categories available: {}\n\
          - Seed insights: {}\n\
+         - Iteration budget: {}\n\
+         - Evals enabled: {}\n\
+         - Evals interval: {}\n\
          - Saturation status: not evaluated\n\
          - Output directory: {}\n\n\
          Next: add citations/confidence, select top improvements, then run `autoresearch prd` for selected items.\n",
+        profile.depth,
+        improve_active_categories(profile).len(),
         improve_categories().len(),
-        improve_categories().len(),
+        improve_active_categories(profile).len(),
+        profile.iteration_budget,
+        profile.evals,
+        profile
+            .evals_interval
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "none".to_string()),
         output_dir.display()
     )
 }
 
-fn render_improve_results_tsv(goal: &str) -> String {
+fn render_improve_results_tsv(goal: &str, profile: &ImproveProfile) -> String {
     let mut out = String::new();
     let timestamp = chrono::Utc::now().to_rfc3339();
     writeln!(out, "# metric_direction: higher_is_better").unwrap();
@@ -2351,7 +2464,7 @@ fn render_improve_results_tsv(goal: &str) -> String {
         "iteration\ttimestamp\tcategory\tidea\ticp_pass\ttier\tscore\tdescription"
     )
     .unwrap();
-    for (index, (category, focus)) in improve_categories().iter().enumerate() {
+    for (index, (category, focus)) in improve_active_categories(profile).iter().enumerate() {
         let tier = match index {
             0 | 3 => "must_have",
             1 | 2 => "nice_to_have",
@@ -2382,9 +2495,13 @@ fn cmd_improve(
     goal: &str,
     icp: Option<String>,
     scope: Vec<String>,
+    depth: &str,
+    evals: bool,
+    evals_interval: Option<u32>,
     output_dir: Option<PathBuf>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
+    let profile = resolve_improve_profile(depth, evals, evals_interval)?;
     let workspace = resolve_workspace_root(cwd);
     let icp = icp
         .as_deref()
@@ -2399,21 +2516,21 @@ fn cmd_improve(
 
     write_text_file(
         &output_dir.join("research-findings.md"),
-        &render_improve_research_markdown(goal, icp, &scope),
+        &render_improve_research_markdown(goal, icp, &scope, &profile),
     )?;
     write_text_file(
         &output_dir.join("improvement-plan.md"),
-        &render_improve_plan_markdown(goal, icp),
+        &render_improve_plan_markdown(goal, icp, &profile),
     )?;
     write_text_file(
         &output_dir.join("summary.md"),
-        &render_improve_summary_markdown(goal, icp, &output_dir),
+        &render_improve_summary_markdown(goal, icp, &output_dir, &profile),
     )?;
     write_text_file(
         &output_dir.join("improve-results.tsv"),
-        &render_improve_results_tsv(goal),
+        &render_improve_results_tsv(goal, &profile),
     )?;
-    let findings = improve_categories()
+    let findings = improve_active_categories(&profile)
         .iter()
         .map(|(category, _)| {
             serde_json::json!({
@@ -2435,8 +2552,13 @@ fn cmd_improve(
             "goal": goal,
             "icp": icp,
             "scope": scope,
-            "categories_explored": improve_categories().len(),
-            "insights_total": improve_categories().len(),
+            "depth": profile.depth.as_str(),
+            "categories_explored": improve_active_categories(&profile).len(),
+            "categories_available": improve_categories().len(),
+            "insights_total": improve_active_categories(&profile).len(),
+            "iteration_budget": profile.iteration_budget,
+            "evals": profile.evals,
+            "evals_interval": profile.evals_interval,
             "prds_generated": 0,
         }
     });
@@ -2447,8 +2569,13 @@ fn cmd_improve(
             "status": "written",
             "output_dir": output_dir.display().to_string(),
             "goal": goal,
-            "categories": improve_categories().len(),
-            "insights": improve_categories().len(),
+            "depth": profile.depth.as_str(),
+            "categories": improve_active_categories(&profile).len(),
+            "categories_available": improve_categories().len(),
+            "insights": improve_active_categories(&profile).len(),
+            "iteration_budget": profile.iteration_budget,
+            "evals": profile.evals,
+            "evals_interval": profile.evals_interval,
             "prds_generated": 0,
         })
     );

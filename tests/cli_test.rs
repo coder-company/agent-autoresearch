@@ -539,6 +539,53 @@ fn test_improve_writes_research_artifact_bundle() {
 }
 
 #[test]
+fn test_improve_depth_and_evals_are_recorded() {
+    let dir = TempDir::new().unwrap();
+    let output_dir = dir.path().join("improve/onboarding-shallow");
+
+    cmd()
+        .args([
+            "improve",
+            "--goal",
+            "Improve onboarding activation",
+            "--icp",
+            "Developer tools teams adopting autonomous agents",
+            "--scope",
+            "src/onboarding/**",
+            "--depth",
+            "shallow",
+            "--evals",
+            "--evals-interval",
+            "4",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"depth\":\"shallow\""))
+        .stdout(predicate::str::contains("\"categories\":3"))
+        .stdout(predicate::str::contains("\"evals\":true"));
+
+    let findings = std::fs::read_to_string(output_dir.join("research-findings.md")).unwrap();
+    let summary = std::fs::read_to_string(output_dir.join("summary.md")).unwrap();
+    let tsv = std::fs::read_to_string(output_dir.join("improve-results.tsv")).unwrap();
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+
+    assert!(findings.contains("- Depth: shallow"));
+    assert!(findings.contains("Categories active: 3 of 5"));
+    assert!(!findings.contains("Revenue Growth"));
+    assert!(summary.contains("Categories covered: 3"));
+    assert!(summary.contains("Evals interval: 4"));
+    assert!(tsv.contains("Market Trends"));
+    assert!(!tsv.contains("UX Patterns"));
+    assert!(handoff.contains("\"depth\": \"shallow\""));
+    assert!(handoff.contains("\"iteration_budget\": 10"));
+    assert!(handoff.contains("\"evals_interval\": 4"));
+}
+
+#[test]
 fn test_scenario_writes_twelve_dimension_artifact() {
     let dir = TempDir::new().unwrap();
     let output = dir.path().join("scenario/checkout-scenarios.md");

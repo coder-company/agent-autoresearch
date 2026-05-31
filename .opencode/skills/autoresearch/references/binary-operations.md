@@ -11,7 +11,7 @@ autoresearch init --companion-repo-scope ../frontend='src/**/*.ts' ...
 autoresearch plan --goal "reduce any types" --format json
 autoresearch debug --symptom "API returns 500" --scope "src/**/*.rs"
 autoresearch fix --target "npx tsc --noEmit" --scope "src/**/*.ts" --category type
-autoresearch improve --goal "Improve onboarding activation" --icp "Developer tools teams"
+autoresearch improve --goal "Improve onboarding activation" --icp "Developer tools teams" --depth deep --evals
 autoresearch prd --title "Improve onboarding" --problem "New users stall before first run"
 autoresearch security --scope "src/**/*.rs" --focus auth
 autoresearch ship --target "Release v1.2.0" --type code-release --dry-run
@@ -34,6 +34,7 @@ Native artifact generators default to ignored `autoresearch-results/<mode>/` pat
 `fix` writes a repair-plan artifact bundle under `autoresearch-results/fix` with priority order, fix-results TSV, and handoff JSON.
 `fix --from-debug` imports the latest debug handoff scope, symptom, and finding count before writing the repair-plan bundle.
 `improve` writes a product-improvement artifact bundle with research findings, ranked plan, summary, improve-results TSV, and handoff JSON.
+`improve --depth <level> --evals` records active category count, iteration budget, and checkpoint metadata in the research bundle.
 `prd` writes a focused improve-mode markdown artifact with DECISION NEEDED markers, acceptance criteria, risks, success metrics, and a ready-to-run autoresearch config block.
 `security` writes a STRIDE + OWASP audit artifact bundle: overview, threat model, attack surface map, coverage, findings, recommendations, results TSV, and handoff JSON.
 `security --fail-on <severity> --fix` records the CI gate threshold, confirmed finding count, and downstream fix target metadata.
