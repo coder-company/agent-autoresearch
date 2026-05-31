@@ -1645,7 +1645,9 @@ fn test_progress_lower_direction_trend_improves_on_decrease() {
         .args(["progress", "--cwd", root])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Trend: improving"));
+        .stdout(predicate::str::contains("Trend: improving"))
+        .stdout(predicate::str::contains("Metric history:"))
+        .stdout(predicate::str::contains("lower is better"));
 }
 
 #[test]
@@ -1677,7 +1679,9 @@ fn test_progress_accepts_timestamp_and_guard_metric_columns() {
         .args(["progress", "--cwd", root])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Trend: improving"));
+        .stdout(predicate::str::contains("Trend: improving"))
+        .stdout(predicate::str::contains("Metric history:"))
+        .stdout(predicate::str::contains("higher is better"));
 }
 
 #[test]

@@ -135,6 +135,9 @@ require_grep 'autoresearch health --strict' .agents/skills/autoresearch/SKILL.md
 require_grep 'autoresearch status --summary' README.md
 require_grep 'autoresearch status --summary' docs/GUIDE.md
 require_grep 'autoresearch status --summary' SKILL.md
+require_grep 'Metric history sparkline' README.md
+require_grep 'terminal metric history sparkline' docs/GUIDE.md
+require_grep '\[x\] Metric history graphing \(sparklines in terminal\)' docs/development-roadmap.md
 require_grep 'autoresearch watch --lines 20 --format jsonl' SKILL.md
 require_grep 'autoresearch watch --lines 20 --format jsonl' skills/autoresearch/SKILL.md
 require_grep 'autoresearch watch --websocket' README.md

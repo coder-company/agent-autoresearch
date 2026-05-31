@@ -50,6 +50,7 @@ autoresearch completions zsh > ~/.zfunc/_autoresearch
 
 Use `autoresearch runtime run` for supervised background Codex sessions and `autoresearch runtime status` / `autoresearch runtime stop` for control.
 Use `autoresearch status --summary` for compact monitor-friendly counters.
+Use `autoresearch progress` for the current metric, trend, counters, escalation state, and terminal metric history sparkline.
 Use `autoresearch watch --format <tsv|jsonl>` for human-readable tails or machine-readable JSON Lines.
 Use `autoresearch watch --websocket --websocket-addr <host:port>` to serve snapshot and row update payloads to real-time dashboards. Add `--once` to print the initial WebSocket snapshot envelope without starting a server.
 Use `autoresearch lessons --add <strategy> --context <note>` to append reusable lessons without editing `lessons.md` by hand.

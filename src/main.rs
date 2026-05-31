@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser, Subcommand};
+use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as FmtWrite;
@@ -5109,6 +5110,31 @@ fn metric_is_better(candidate: Decimal, current_best: Decimal, direction: Direct
     }
 }
 
+fn metric_history_sparkline(metrics: &[Decimal]) -> Option<String> {
+    const LEVELS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
+
+    let min = metrics.iter().copied().min()?;
+    let max = metrics.iter().copied().max()?;
+    if min == max {
+        return Some(std::iter::repeat(LEVELS[0]).take(metrics.len()).collect());
+    }
+
+    let span = max - min;
+    let max_index = Decimal::from((LEVELS.len() - 1) as u32);
+    let sparkline = metrics
+        .iter()
+        .map(|metric| {
+            let index = ((*metric - min) * max_index / span)
+                .round()
+                .to_usize()
+                .unwrap_or(0)
+                .min(LEVELS.len() - 1);
+            LEVELS[index]
+        })
+        .collect();
+    Some(sparkline)
+}
+
 // ── Progress ─────────────────────────────────────────────────────────
 
 fn cmd_progress(cwd: Option<PathBuf>) -> Result<()> {
@@ -5133,13 +5159,23 @@ fn cmd_progress(cwd: Option<PathBuf>) -> Result<()> {
 
     // Compute trend from last 5 keep metrics in TSV
     let tsv_path = results_dir.join("results.tsv");
+    let mut metric_history = None;
     let trend = if tsv_path.exists() {
         let content = std::fs::read_to_string(&tsv_path)?;
-        let keep_metrics: Vec<Decimal> = parse_results_tsv(&content)?
-            .into_iter()
+        let rows = parse_results_tsv(&content)?;
+        let keep_metrics: Vec<Decimal> = rows
+            .iter()
             .filter(|row| is_keep_status(&row.status))
             .map(|row| row.metric)
             .collect();
+        let retained_metrics: Vec<Decimal> = rows
+            .iter()
+            .filter(|row| {
+                row.status == "baseline" || row.status == "drift" || is_keep_status(&row.status)
+            })
+            .map(|row| row.metric)
+            .collect();
+        metric_history = metric_history_sparkline(&retained_metrics);
         let last5: Vec<&Decimal> = keep_metrics.iter().rev().take(5).collect();
         if last5.len() < 2 {
             "insufficient_data"
@@ -5169,6 +5205,13 @@ fn cmd_progress(cwd: Option<PathBuf>) -> Result<()> {
         "Trend: {} | Consecutive discards: {}",
         trend, state.consecutive_discards
     );
+    if let Some(metric_history) = metric_history {
+        let direction_label = match state.direction {
+            Direction::Higher => "higher is better",
+            Direction::Lower => "lower is better",
+        };
+        println!("Metric history: {} ({})", metric_history, direction_label);
+    }
     println!("Escalation: {}", escalation_label);
     println!("---");
     Ok(())
