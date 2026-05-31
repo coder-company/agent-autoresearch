@@ -739,7 +739,7 @@ enum Commands {
         /// Optional guard command that must remain passing
         #[arg(long)]
         guard: Option<String>,
-        /// Error category to prioritize: crash, test, type, lint, warning
+        /// Error category to prioritize: crash, test, type, lint, build, warning
         #[arg(long)]
         category: Option<String>,
         /// Comma-separated downstream command targets to record in handoff.json
@@ -3778,9 +3778,14 @@ fn parse_fix_category(value: Option<&str>) -> Result<Option<ErrorCategory>> {
             Ok(Some(ErrorCategory::TypeError))
         }
         "lint" | "linter" | "lint_error" | "lint-error" => Ok(Some(ErrorCategory::LintError)),
+        "build" | "builds" | "build_error" | "build-error" | "package" | "packaging" => {
+            Ok(Some(ErrorCategory::BuildError))
+        }
         "warning" | "warnings" => Ok(Some(ErrorCategory::Warning)),
         other => {
-            anyhow::bail!("Invalid fix category {other:?}; use crash, test, type, lint, or warning")
+            anyhow::bail!(
+                "Invalid fix category {other:?}; use crash, test, type, lint, build, or warning"
+            )
         }
     }
 }

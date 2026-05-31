@@ -1218,6 +1218,36 @@ fn test_fix_from_debug_imports_latest_handoff_scope() {
 }
 
 #[test]
+fn test_fix_accepts_build_category() {
+    let dir = TempDir::new().unwrap();
+    let output_dir = dir.path().join("autoresearch-results/fix/build-errors");
+
+    cmd()
+        .args([
+            "fix",
+            "--target",
+            "npm run build",
+            "--scope",
+            "src/**/*.ts",
+            "--category",
+            "build",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"category\":\"build error\""));
+
+    let plan = std::fs::read_to_string(output_dir.join("repair-plan.md")).unwrap();
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+
+    assert!(plan.contains("build error (selected)"));
+    assert!(handoff.contains("\"category\": \"build error\""));
+}
+
+#[test]
 fn test_fix_chain_and_evals_are_recorded() {
     let dir = TempDir::new().unwrap();
     let output_dir = dir.path().join("autoresearch-results/fix/lint-errors");

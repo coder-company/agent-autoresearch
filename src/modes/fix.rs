@@ -22,8 +22,10 @@ pub enum ErrorCategory {
     TypeError = 2,
     /// Lint errors.
     LintError = 3,
+    /// Build/package errors.
+    BuildError = 4,
     /// Build warnings (lowest priority).
-    Warning = 4,
+    Warning = 5,
 }
 
 impl ErrorCategory {
@@ -34,6 +36,7 @@ impl ErrorCategory {
             Self::TestFailure,
             Self::TypeError,
             Self::LintError,
+            Self::BuildError,
             Self::Warning,
         ]
     }
@@ -45,6 +48,7 @@ impl ErrorCategory {
             Self::TestFailure => "test failure",
             Self::TypeError => "type error",
             Self::LintError => "lint error",
+            Self::BuildError => "build error",
             Self::Warning => "warning",
         }
     }
