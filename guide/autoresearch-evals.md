@@ -127,6 +127,7 @@ If plateau detected for 3+ consecutive checkpoints → recommends early stop.
 - Console: 30-50 line structured report
 - `--format md` → writes `evals-summary.md` next to the input TSV
 - `--format json` → writes `evals-summary.json` with structured data
+- Anomalies → reports plateaus, failure streaks, guard failures, and declining trends when present
 - `--compare <path>` → includes cross-run deltas and a winner
 - `--chain <targets>` → writes `handoff.json` next to the input TSV for downstream commands
 

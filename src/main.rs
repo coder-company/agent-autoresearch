@@ -7587,6 +7587,15 @@ fn cmd_evals(
     let go_no_go = evals_go_no_go(recommendation);
     let next_step = evals_next_step(recommendation);
     let plateau_detected = longest_plateau >= plateau_window;
+    let anomalies = evals_anomalies(
+        plateau_detected,
+        longest_plateau,
+        plateau_window,
+        trend,
+        guard_failures,
+        guard_failed_improvements,
+        longest_failure_streak,
+    );
     let summary_dir = tsv_path.parent().unwrap_or_else(|| Path::new("."));
     let comparison = if let Some(compare_path) = compare {
         let compare_content = std::fs::read_to_string(compare_path)
@@ -7610,32 +7619,10 @@ fn cmd_evals(
         let next_target = next_chain_target_value(&chain_targets);
         let workspace = std::env::current_dir()?;
         let (primary_repo, repo_targets) = handoff_context_values(summary_dir)?;
-        let mut findings = Vec::new();
-
-        if plateau_detected {
-            findings.push(serde_json::json!({
-                "type": "plateau",
-                "severity": "medium",
-                "message": format!(
-                    "Plateau detected: {longest_plateau} consecutive non-keep iterations"
-                ),
-                "plateau_window": plateau_window,
-            }));
-        }
-        if trend == "declining" {
-            findings.push(serde_json::json!({
-                "type": "trend",
-                "severity": "medium",
-                "message": "Recent kept metrics are declining",
-            }));
-        }
-        if guard_failures > 0 {
-            findings.push(serde_json::json!({
-                "type": "guard_failures",
-                "severity": "high",
-                "message": format!("{guard_failures} guard failure(s) recorded"),
-            }));
-        }
+        let mut findings: Vec<serde_json::Value> = anomalies
+            .iter()
+            .map(|anomaly| serde_json::json!(anomaly))
+            .collect();
         if findings.is_empty() {
             findings.push(serde_json::json!({
                 "type": "recommendation",
@@ -7680,6 +7667,7 @@ fn cmd_evals(
                 "go_no_go": go_no_go,
                 "next_step": next_step,
                 "comparison": &comparison,
+                "anomalies": &anomalies,
             },
             "findings": findings,
             "config": {
@@ -7727,6 +7715,7 @@ fn cmd_evals(
                 "unknown_columns": &unknown_columns,
                 "parallel_workers": &parallel_workers,
                 "comparison": &comparison,
+                "anomalies": &anomalies,
                 "top_improvements": top_keeps.iter().take(5).map(|(d, desc)| {
                     serde_json::json!({"delta": d.to_string(), "description": desc})
                 }).collect::<Vec<_>>(),
@@ -7802,6 +7791,7 @@ fn cmd_evals(
                 top_keeps: &top_keeps,
                 top_regressions: &top_regressions,
                 comparison: comparison.as_ref(),
+                anomalies: &anomalies,
                 chain_targets: &chain_targets,
                 handoff_path: handoff_path.as_deref(),
             });
@@ -7837,6 +7827,7 @@ fn cmd_evals(
                 top_keeps: &top_keeps,
                 top_regressions: &top_regressions,
                 comparison: comparison.as_ref(),
+                anomalies: &anomalies,
                 chain_targets: &chain_targets,
                 handoff_path: handoff_path.as_deref(),
             });
@@ -8003,8 +7994,16 @@ struct EvalsReport<'a> {
     top_regressions: &'a [(Decimal, &'a str)],
     parallel_workers: &'a ParallelWorkerStats,
     comparison: Option<&'a EvalsComparison>,
+    anomalies: &'a [EvalsAnomaly],
     chain_targets: &'a [String],
     handoff_path: Option<&'a Path>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct EvalsAnomaly {
+    kind: &'static str,
+    severity: &'static str,
+    message: String,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -8277,6 +8276,20 @@ fn render_evals_markdown(report: EvalsReport<'_>) -> String {
         writeln!(out).unwrap();
     }
 
+    if !report.anomalies.is_empty() {
+        writeln!(out, "### Anomalies").unwrap();
+        writeln!(out).unwrap();
+        for anomaly in report.anomalies {
+            writeln!(
+                out,
+                "- **{}** ({}) - {}",
+                anomaly.kind, anomaly.severity, anomaly.message
+            )
+            .unwrap();
+        }
+        writeln!(out).unwrap();
+    }
+
     writeln!(out, "### Recommendations").unwrap();
     writeln!(out).unwrap();
     if report.longest_plateau >= report.plateau_window {
@@ -8354,6 +8367,60 @@ fn format_optional_percent(value: Option<&str>) -> String {
     value
         .map(|pct| format!("{pct}%"))
         .unwrap_or_else(|| "n/a".to_string())
+}
+
+fn evals_anomalies(
+    plateau_detected: bool,
+    longest_plateau: u32,
+    plateau_window: u32,
+    trend: &str,
+    guard_failures: usize,
+    guard_failed_improvements: usize,
+    longest_failure_streak: u32,
+) -> Vec<EvalsAnomaly> {
+    let mut anomalies = Vec::new();
+
+    if plateau_detected {
+        anomalies.push(EvalsAnomaly {
+            kind: "plateau",
+            severity: "medium",
+            message: format!(
+                "{longest_plateau} consecutive non-keep iterations met the plateau window of {plateau_window}"
+            ),
+        });
+    }
+    if longest_failure_streak >= 3 {
+        anomalies.push(EvalsAnomaly {
+            kind: "failure_streak",
+            severity: "medium",
+            message: format!("{longest_failure_streak} consecutive discard/crash iterations"),
+        });
+    }
+    if guard_failures > 0 {
+        anomalies.push(EvalsAnomaly {
+            kind: "guard_failures",
+            severity: "high",
+            message: format!("{guard_failures} guard failure(s) recorded"),
+        });
+    }
+    if guard_failed_improvements > 0 {
+        anomalies.push(EvalsAnomaly {
+            kind: "guard_failed_improvements",
+            severity: "high",
+            message: format!(
+                "{guard_failed_improvements} metric improvement(s) were rejected by guard failures"
+            ),
+        });
+    }
+    if trend == "declining" {
+        anomalies.push(EvalsAnomaly {
+            kind: "declining_trend",
+            severity: "medium",
+            message: "Recent kept metrics are declining".to_string(),
+        });
+    }
+
+    anomalies
 }
 
 fn evals_comparison(

@@ -86,6 +86,7 @@ Unknown columns: report presence but skip analysis. Forward-compatible with futu
 - Console: structured report (30-50 lines)
 - If `--format md` → write `evals-summary.md` in same directory as input TSV
 - If `--format json` → write `evals-summary.json` with structured data
+- All outputs include structured anomaly detection for plateaus, failure streaks, guard failures, and declining trends when present
 - If `--recommend` → include go/no-go and next-step guidance in the selected output
 - If `--plateau-window N` → use N consecutive non-keep iterations for plateau detection
 - If `--compare <path>` → include winner, improvement delta, efficiency delta, and plateau delta

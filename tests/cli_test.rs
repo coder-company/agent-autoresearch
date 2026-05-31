@@ -3338,6 +3338,8 @@ fn test_evals_plateau_window_controls_recommendation() {
         .success()
         .stdout(predicate::str::contains("\"plateau_window\": 2"))
         .stdout(predicate::str::contains("\"plateau_detected\": true"))
+        .stdout(predicate::str::contains("\"anomalies\""))
+        .stdout(predicate::str::contains("\"kind\": \"plateau\""))
         .stdout(predicate::str::contains(
             "\"recommendation\": \"change_strategy\"",
         ))
