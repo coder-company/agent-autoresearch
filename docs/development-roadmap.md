@@ -58,6 +58,7 @@
 - [x] Native plan command for repo-aware launch config suggestions
 - [x] Native improve artifact bundle for research findings, ranked plan, TSV, summary, and handoff
 - [x] Native PRD generator for selected improve-mode ideas
+- [x] Native security generator for STRIDE + OWASP audit bundles
 - [x] Native scenario generator for 12-dimension edge-case artifacts
 - [x] Native predict generator for five-persona review artifacts
 - [x] Native reason generator for adversarial candidate debate artifacts

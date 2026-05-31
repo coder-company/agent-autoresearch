@@ -204,6 +204,7 @@ fn test_api_manifest_lists_nested_commands_and_flags() {
         .stdout(predicate::str::contains("\"runtime\""))
         .stdout(predicate::str::contains("\"start\""))
         .stdout(predicate::str::contains("\"improve\""))
+        .stdout(predicate::str::contains("\"security\""))
         .stdout(predicate::str::contains("\"plan\""))
         .stdout(predicate::str::contains("\"prd\""))
         .stdout(predicate::str::contains("\"scenario\""))
@@ -566,6 +567,48 @@ fn test_scenario_writes_twelve_dimension_artifact() {
     assert!(scenario.contains("Resource Exhaustion"));
     assert!(scenario.contains("Threat"));
     assert!(scenario.contains("src/checkout/**"));
+}
+
+#[test]
+fn test_security_writes_audit_artifact_bundle() {
+    let dir = TempDir::new().unwrap();
+    std::fs::create_dir_all(dir.path().join("src/auth")).unwrap();
+    std::fs::write(dir.path().join("src/auth/mod.rs"), "pub fn login() {}\n").unwrap();
+    let output_dir = dir.path().join("security/auth-audit");
+
+    cmd()
+        .args([
+            "security",
+            "--focus",
+            "auth",
+            "--scope",
+            "src/**/*.rs",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\":\"written\""))
+        .stdout(predicate::str::contains("\"owasp_categories\":10"))
+        .stdout(predicate::str::contains("\"stride_categories\":6"));
+
+    let overview = std::fs::read_to_string(output_dir.join("overview.md")).unwrap();
+    let threat_model = std::fs::read_to_string(output_dir.join("threat-model.md")).unwrap();
+    let coverage = std::fs::read_to_string(output_dir.join("coverage.md")).unwrap();
+    let findings = std::fs::read_to_string(output_dir.join("findings.md")).unwrap();
+    let tsv = std::fs::read_to_string(output_dir.join("security-audit-results.tsv")).unwrap();
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+
+    assert!(overview.contains("# Security Audit Overview"));
+    assert!(overview.contains("src/auth/mod.rs"));
+    assert!(threat_model.contains("STRIDE Threat Model"));
+    assert!(coverage.contains("A01: Broken Access Control"));
+    assert!(coverage.contains("Elevation of Privilege"));
+    assert!(findings.contains("Severity Labels"));
+    assert!(tsv.contains("finding\tseverity\towasp\tstride"));
+    assert!(handoff.contains("\"source\": \"security\""));
 }
 
 #[test]

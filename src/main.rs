@@ -37,6 +37,7 @@ use autoresearch::modes::predict::Persona;
 use autoresearch::modes::probe::ProbePersona;
 use autoresearch::modes::reason::{ReasonDomain, ReasoningMode};
 use autoresearch::modes::scenario::{Dimension, ScenarioFormat};
+use autoresearch::modes::security::{OwaspCategory, Severity, StrideCategory};
 
 const RUNTIME_HARD_INVARIANTS_DOC: &str = include_str!("../references/runtime-hard-invariants.md");
 const CORE_PRINCIPLES_DOC: &str = include_str!("../references/core-principles.md");
@@ -578,6 +579,22 @@ enum Commands {
         /// Relevant implementation scope. Repeatable.
         #[arg(long)]
         scope: Vec<String>,
+        /// Output directory. Relative paths resolve from the workspace root.
+        #[arg(long)]
+        output_dir: Option<PathBuf>,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
+    /// Generate a STRIDE + OWASP security audit artifact bundle
+    Security {
+        /// File globs to audit. Repeatable.
+        #[arg(long)]
+        scope: Vec<String>,
+        /// Optional focus area such as auth, API, data handling, or CI
+        #[arg(long)]
+        focus: Option<String>,
         /// Output directory. Relative paths resolve from the workspace root.
         #[arg(long)]
         output_dir: Option<PathBuf>,
@@ -1276,6 +1293,13 @@ fn main() -> Result<()> {
             output_dir,
             cwd,
         } => cmd_improve(&goal, icp, scope, output_dir, cwd),
+
+        Commands::Security {
+            scope,
+            focus,
+            output_dir,
+            cwd,
+        } => cmd_security(scope, focus, output_dir, cwd),
 
         Commands::Scenario {
             target,
@@ -2139,6 +2163,303 @@ fn cmd_improve(
             "categories": improve_categories().len(),
             "insights": improve_categories().len(),
             "prds_generated": 0,
+        })
+    );
+    Ok(())
+}
+
+fn security_severities() -> &'static [Severity] {
+    &[
+        Severity::Critical,
+        Severity::High,
+        Severity::Medium,
+        Severity::Low,
+        Severity::Info,
+    ]
+}
+
+fn render_security_overview(focus: &str, scope: &[String], files: &[String]) -> String {
+    let mut out = String::new();
+    let scope_lines = if scope.is_empty() {
+        "- DECISION NEEDED: identify audit scope.".to_string()
+    } else {
+        scope
+            .iter()
+            .map(|item| format!("- {item}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    writeln!(out, "# Security Audit Overview").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "- Focus: {focus}").unwrap();
+    writeln!(out, "- Files scanned: {}", files.len()).unwrap();
+    writeln!(out, "- OWASP categories: {}", OwaspCategory::all().len()).unwrap();
+    writeln!(out, "- STRIDE categories: {}", StrideCategory::all().len()).unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Scope").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "{scope_lines}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## File Inventory").unwrap();
+    writeln!(out).unwrap();
+    if files.is_empty() {
+        writeln!(out, "- DECISION NEEDED: no files matched audit scope.").unwrap();
+    } else {
+        for file in files.iter().take(25) {
+            writeln!(out, "- {file}").unwrap();
+        }
+        if files.len() > 25 {
+            writeln!(out, "- ... {} more", files.len() - 25).unwrap();
+        }
+    }
+    out
+}
+
+fn render_security_threat_model(focus: &str) -> String {
+    let mut out = String::new();
+    writeln!(out, "# STRIDE Threat Model").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "Focus: {focus}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "| STRIDE | Audit Prompt |").unwrap();
+    writeln!(out, "|---|---|").unwrap();
+    for category in StrideCategory::all() {
+        writeln!(
+            out,
+            "| {} | Identify code paths where {focus} may permit {}. |",
+            category.label(),
+            category.label().to_ascii_lowercase()
+        )
+        .unwrap();
+    }
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "Every confirmed threat needs file:line evidence, attack scenario, impact, confidence, and mitigation."
+    )
+    .unwrap();
+    out
+}
+
+fn render_security_attack_surface(files: &[String]) -> String {
+    let mut out = String::new();
+    writeln!(out, "# Attack Surface Map").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "| Surface | Evidence Source | Review Question |").unwrap();
+    writeln!(out, "|---|---|---|").unwrap();
+    let sources = if files.is_empty() {
+        vec!["DECISION NEEDED".to_string()]
+    } else {
+        files.iter().take(10).cloned().collect()
+    };
+    for file in sources {
+        writeln!(
+            out,
+            "| Entry point or data flow | {file} | What untrusted input, secret, permission, or dependency crosses this path? |"
+        )
+        .unwrap();
+    }
+    out
+}
+
+fn render_security_coverage() -> String {
+    let mut out = String::new();
+    writeln!(out, "# Security Coverage").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## OWASP Top 10").unwrap();
+    writeln!(out).unwrap();
+    for category in OwaspCategory::all() {
+        writeln!(out, "- [ ] {}", category.label()).unwrap();
+    }
+    writeln!(out).unwrap();
+    writeln!(out, "## STRIDE").unwrap();
+    writeln!(out).unwrap();
+    for category in StrideCategory::all() {
+        writeln!(out, "- [ ] {}", category.label()).unwrap();
+    }
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "Composite score = (owasp_covered / 10) * 50 + (stride_covered / 6) * 30 + min(findings, 20)."
+    )
+    .unwrap();
+    out
+}
+
+fn render_security_findings() -> String {
+    let mut out = String::new();
+    writeln!(out, "# Security Findings").unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "| Severity | Title | OWASP | STRIDE | Evidence | Mitigation |"
+    )
+    .unwrap();
+    writeln!(out, "|---|---|---|---|---|---|").unwrap();
+    writeln!(
+        out,
+        "| INFO | DECISION NEEDED: complete evidence-backed audit | - | - | no confirmed file:line yet | run the audit loop and fill confirmed findings |"
+    )
+    .unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Severity Labels").unwrap();
+    writeln!(out).unwrap();
+    for severity in security_severities() {
+        writeln!(out, "- {}", severity.label()).unwrap();
+    }
+    out
+}
+
+fn render_security_recommendations() -> String {
+    let mut out = String::new();
+    writeln!(out, "# Security Recommendations").unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "- Prioritize unauthenticated remote exploit paths first."
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "- Require file:line evidence before promoting a theoretical risk to a finding."
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "- Chain confirmed Critical or High findings into `autoresearch fix` with a focused verify command."
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "- DECISION NEEDED: choose `--fail-on` severity for CI or release gating."
+    )
+    .unwrap();
+    out
+}
+
+fn render_security_dependency_audit(files: &[String]) -> String {
+    let mut out = String::new();
+    writeln!(out, "# Dependency Audit").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "Review manifests and lockfiles before closeout.").unwrap();
+    writeln!(out).unwrap();
+    for file in files
+        .iter()
+        .filter(|file| {
+            file.ends_with("Cargo.toml")
+                || file.ends_with("Cargo.lock")
+                || file.ends_with("package.json")
+                || file.ends_with("package-lock.json")
+                || file.ends_with("pnpm-lock.yaml")
+                || file.ends_with("requirements.txt")
+                || file.ends_with("pyproject.toml")
+        })
+        .take(20)
+    {
+        writeln!(out, "- {file}").unwrap();
+    }
+    writeln!(
+        out,
+        "- DECISION NEEDED: run the ecosystem-specific dependency scanner."
+    )
+    .unwrap();
+    out
+}
+
+fn render_security_results_tsv() -> String {
+    let mut out = String::new();
+    let timestamp = chrono::Utc::now().to_rfc3339();
+    writeln!(out, "# metric_direction: higher_is_better").unwrap();
+    writeln!(
+        out,
+        "iteration\ttimestamp\tfinding\tseverity\towasp\tstride\tevidence\tfile_line"
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "0\t{timestamp}\tbaseline security artifact bundle\tinfo\t-\t-\tpending audit\t-"
+    )
+    .unwrap();
+    out
+}
+
+fn cmd_security(
+    scope: Vec<String>,
+    focus: Option<String>,
+    output_dir: Option<PathBuf>,
+    cwd: Option<PathBuf>,
+) -> Result<()> {
+    let workspace = resolve_workspace_root(cwd);
+    let focus = focus
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("general");
+    let scan_scope = if scope.is_empty() {
+        vec!["**/*".to_string()]
+    } else {
+        scope.clone()
+    };
+    let files = collect_learn_files(&workspace, &scan_scope);
+    let output_dir = output_dir
+        .unwrap_or_else(|| PathBuf::from("security").join(format!("security-{}", slugify(focus))));
+    let output_dir = resolve_workspace_path(&workspace, output_dir);
+    std::fs::create_dir_all(&output_dir)
+        .with_context(|| format!("failed to create {}", output_dir.display()))?;
+
+    write_text_file(
+        &output_dir.join("overview.md"),
+        &render_security_overview(focus, &scope, &files),
+    )?;
+    write_text_file(
+        &output_dir.join("threat-model.md"),
+        &render_security_threat_model(focus),
+    )?;
+    write_text_file(
+        &output_dir.join("attack-surface-map.md"),
+        &render_security_attack_surface(&files),
+    )?;
+    let coverage = render_security_coverage();
+    write_text_file(&output_dir.join("coverage.md"), &coverage)?;
+    write_text_file(&output_dir.join("owasp-coverage.md"), &coverage)?;
+    write_text_file(&output_dir.join("findings.md"), &render_security_findings())?;
+    write_text_file(
+        &output_dir.join("recommendations.md"),
+        &render_security_recommendations(),
+    )?;
+    write_text_file(
+        &output_dir.join("dependency-audit.md"),
+        &render_security_dependency_audit(&files),
+    )?;
+    write_text_file(
+        &output_dir.join("security-audit-results.tsv"),
+        &render_security_results_tsv(),
+    )?;
+    let handoff = serde_json::json!({
+        "version": "2.1.0",
+        "source": "security",
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "status": "COMPLETE",
+        "results_tsv": output_dir.join("security-audit-results.tsv").display().to_string(),
+        "findings": [],
+        "config": {
+            "scope": scope,
+            "focus": focus,
+            "owasp_categories": OwaspCategory::all().len(),
+            "stride_categories": StrideCategory::all().len(),
+            "files_scanned": files.len(),
+        }
+    });
+    write_json_file(&output_dir.join("handoff.json"), &handoff)?;
+    println!(
+        "{}",
+        serde_json::json!({
+            "status": "written",
+            "output_dir": output_dir.display().to_string(),
+            "focus": focus,
+            "owasp_categories": OwaspCategory::all().len(),
+            "stride_categories": StrideCategory::all().len(),
+            "files_scanned": files.len(),
         })
     );
     Ok(())

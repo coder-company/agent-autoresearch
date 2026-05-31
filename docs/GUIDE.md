@@ -25,6 +25,7 @@ autoresearch verify --command "cat metric.txt" --repeat 3 --aggregate median
 autoresearch plan --goal "reduce any types" --format json
 autoresearch improve --goal "Improve onboarding activation" --icp "Developer tools teams"
 autoresearch prd --title "Improve onboarding" --problem "New users stall before first run"
+autoresearch security --scope "src/**/*.rs" --focus auth
 autoresearch scenario --target "Checkout flow" --format test-scenarios --scope "src/checkout/**"
 autoresearch predict --proposal "Add cache warming to search results" --scope "src/search/**"
 autoresearch reason --question "Should we replace the storage layer" --mode debate --domain software
@@ -87,6 +88,7 @@ Use `autoresearch config validate` to parse defaults, validate options, and scre
 Use `autoresearch plan --goal <goal> --format json` to get a launch-ready suggested scope, metric, direction, verify, guard, and iteration count from detected repo tooling.
 Use `autoresearch improve --goal <product-area> --icp <persona>` to write an improve-mode artifact bundle: research findings, ranked plan, summary, TSV, and handoff JSON.
 Use `autoresearch prd --title <title> --problem <problem>` to write a focused improve-mode PRD with DECISION NEEDED markers, acceptance criteria, risks, success metrics, and an autoresearch config block.
+Use `autoresearch security --scope <glob> --focus <area>` to write a STRIDE + OWASP audit bundle with overview, threat model, attack surface, coverage, findings, recommendations, TSV, and handoff JSON.
 Use `autoresearch scenario --target <feature> --format <test-scenarios|threat-scenarios|use-cases|user-stories>` to write a 12-dimension scenario matrix for tests, threat modeling, or debug follow-up.
 Use `autoresearch predict --proposal <change>` to write a five-persona review covering architecture, security, performance, UX, and adversarial risks.
 Use `autoresearch reason --question <decision>` to write an adversarial debate artifact with candidate solutions, blind judge rubric, and convergence criteria.
