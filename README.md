@@ -222,6 +222,7 @@ Covered in detail in the [guide](guide/):
 - **Scenario exploration controls** — `autoresearch scenario --domain web --depth deep --iterations 16 --evals --chain debug` records domain, exploration budget, checkpoint metadata, and downstream handoff
 - **Predict artifact generation** — `autoresearch predict --proposal ...` writes a five-persona pre-implementation review
 - **Predict review controls** — `autoresearch predict --depth deep --adversarial --fail-on high` records review profile and CI gate metadata
+- **Predict-to-improve handoff** — `autoresearch predict --proposal ... --improve` passes expert findings into product improvement research
 - **Reason artifact generation** — `autoresearch reason --question ...` writes an adversarial candidate debate with a blind-judge rubric
 - **Reason judge controls** — `autoresearch reason --iterations 11 --judges 7 --convergence 4 --temperature 0.2` records budget, panel, convergence, synthesis, and generation hints
 - **Probe artifact generation** — `autoresearch probe --subject ...` writes eight-persona requirement questions and constraint slots

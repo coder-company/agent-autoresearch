@@ -1,7 +1,7 @@
 ---
 name: autoresearch_predict
 description: "5 expert personas debate proposed changes before implementation"
-argument-hint: "[Scope: <glob>] [Goal: <text>] [--depth shallow|standard|deep] [--adversarial] [--debug] [--chain <targets>]"
+argument-hint: "[Scope: <glob>] [Goal: <text>] [--depth shallow|standard|deep] [--adversarial] [--debug] [--improve] [--chain <targets>]"
 ---
 
 EXECUTE IMMEDIATELY.
@@ -19,6 +19,7 @@ Extract from $ARGUMENTS:
 - `--fail-on <severity>` — CI gate: exit non-zero if findings at/above threshold
 - `--incremental` — reuse existing knowledge files, update only changed files
 - `--debug` — shorthand for `--chain debug`
+- `--improve` — shorthand for `--chain improve`
 - `--chain`, `--<subcommand>`
 
 Remaining text not matching flags = goal description.
@@ -29,7 +30,7 @@ question (single batch):
   Q1 (Scope): "Which files to analyze?" — suggested globs + entire codebase
   Q2 (Goal): "What should personas focus on?" — code quality, security, performance, architecture, all
   Q3 (Depth): "How deep?" — shallow (3 personas, 1 round), standard (5, 2 — recommended), deep (8, 3)
-  Q4 (Chain): "After analysis, chain to?" — debug, security, fix, ship, scenario, no chain
+  Q4 (Chain): "After analysis, chain to?" — debug, improve, security, fix, ship, scenario, no chain
 If all provided → skip.
 
 ## Phase 1: Reconnaissance

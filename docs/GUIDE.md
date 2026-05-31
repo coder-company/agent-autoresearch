@@ -31,6 +31,7 @@ autoresearch security --scope "src/**/*.rs" --focus auth
 autoresearch ship --target "Release v1.2.0" --type code-release --dry-run
 autoresearch scenario --target "Checkout flow" --domain web --format test-scenarios --scope "src/checkout/**"
 autoresearch predict --proposal "Add cache warming to search results" --scope "src/search/**"
+autoresearch predict --proposal "Find product improvements for onboarding" --scope "src/**" --improve
 autoresearch reason --question "Should we replace the storage layer" --mode debate --domain software
 autoresearch probe --subject "Payment retry workflow" --scope "src/payments/**"
 autoresearch learn --mode summarize --scope "src/**/*.rs"
@@ -113,6 +114,7 @@ Use `autoresearch scenario --target <feature> --domain web --depth deep --iterat
 Use `autoresearch predict --proposal <change>` to write a five-persona review covering architecture, security, performance, UX, and adversarial risks.
 Use `autoresearch predict --proposal <change> --depth deep --adversarial --fail-on high` to record review profile and CI gate metadata.
 Use `autoresearch predict --proposal <change> --debug` to record the review as handoff context for downstream investigation.
+Use `autoresearch predict --proposal <product-area> --improve` to pass expert findings into product improvement research.
 Use `autoresearch reason --question <decision>` to write an adversarial debate artifact with candidate solutions, blind judge rubric, and convergence criteria.
 Use `autoresearch reason --question <decision> --predict` to pass the selected debate context into downstream review.
 Use `autoresearch reason --question <decision> --iterations 11 --judges 7 --convergence 4 --temperature 0.2` to record debate budget, judge panel, convergence, synthesis, and generation hints.

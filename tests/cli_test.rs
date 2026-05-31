@@ -1877,6 +1877,35 @@ fn test_predict_debug_flag_records_debug_handoff() {
 }
 
 #[test]
+fn test_predict_improve_flag_records_improve_handoff() {
+    let dir = TempDir::new().unwrap();
+    let output = dir
+        .path()
+        .join("autoresearch-results/predict/product-review.md");
+
+    cmd()
+        .args([
+            "predict",
+            "--proposal",
+            "Find product improvements for onboarding",
+            "--improve",
+            "--output",
+            output.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("handoff.json"));
+
+    let handoff = std::fs::read_to_string(output.parent().unwrap().join("handoff.json")).unwrap();
+    assert!(handoff.contains("\"source_command\": \"predict\""));
+    assert!(handoff.contains("\"chain\": ["));
+    assert!(handoff.contains("\"improve\""));
+    assert!(handoff.contains("\"next_target\": \"improve\""));
+}
+
+#[test]
 fn test_predict_accepts_protocol_goal_alias() {
     let dir = TempDir::new().unwrap();
 

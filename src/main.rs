@@ -879,6 +879,9 @@ enum Commands {
         /// Chain into debug mode after writing the prediction review
         #[arg(long)]
         debug: bool,
+        /// Chain into improve mode after writing the prediction review
+        #[arg(long)]
+        improve: bool,
         /// Comma-separated downstream command targets to record in handoff.json
         #[arg(long)]
         chain: Option<String>,
@@ -1846,6 +1849,7 @@ fn main() -> Result<()> {
             fail_on,
             incremental,
             debug,
+            improve,
             chain,
             evals,
             evals_interval,
@@ -1862,6 +1866,7 @@ fn main() -> Result<()> {
             fail_on,
             incremental,
             debug,
+            improve,
             chain,
             evals,
             evals_interval,
@@ -4749,6 +4754,7 @@ fn cmd_predict(
     fail_on: Option<String>,
     incremental: bool,
     debug: bool,
+    improve: bool,
     chain: Option<String>,
     evals: bool,
     evals_interval: Option<u32>,
@@ -4765,8 +4771,14 @@ fn cmd_predict(
         fail_on,
         incremental,
     )?;
-    let forced_targets = if debug { &["debug"][..] } else { &[][..] };
-    let chain_targets = chain_targets_with_forced(chain.as_deref(), forced_targets)?;
+    let mut forced_targets = Vec::new();
+    if debug {
+        forced_targets.push("debug");
+    }
+    if improve {
+        forced_targets.push("improve");
+    }
+    let chain_targets = chain_targets_with_forced(chain.as_deref(), &forced_targets)?;
     let workspace = resolve_workspace_root(cwd);
     let output = output.unwrap_or_else(|| {
         default_artifact_path("predict", format!("predict-{}.md", slugify(proposal)))

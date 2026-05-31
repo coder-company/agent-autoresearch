@@ -108,6 +108,7 @@ autoresearch-results/predict/predict-250527-1430/
 | `--budget N` | Max findings across all personas (default 40) |
 | `--fail-on <severity>` | CI gate: exit non-zero above threshold |
 | `--incremental` | Only analyze changed files |
+| `--improve` | Shorthand for `--chain improve` |
 | `--chain <targets>` | Chain to debug, fix, security, etc. |
 
 ## Tips
@@ -116,4 +117,5 @@ autoresearch-results/predict/predict-250527-1430/
 - Use `--adversarial` specifically for security-sensitive code
 - Findings include file:line references — they're actionable, not vague
 - Chain `predict → debug → fix` for a full analysis-to-fix pipeline
+- Use `--improve` when findings should seed product improvement research
 - `--budget 20` keeps output focused; `--budget 60` is exhaustive
