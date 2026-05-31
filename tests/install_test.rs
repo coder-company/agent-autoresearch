@@ -44,6 +44,32 @@ fn codex_plugin_installer_uses_local_marketplace_package() {
 }
 
 #[test]
+fn vscode_installer_copies_extension_package() {
+    let script = include_str!("../install.sh");
+
+    assert!(script.contains("--vscode"));
+    assert!(script.contains("INSTALL_VSCODE=1"));
+    assert!(script.contains("--vscode-dir"));
+    assert!(script.contains("ensure_safe_vscode_extension_dir()"));
+    assert!(script.contains("$REPO_DIR/integrations/vscode/package.json"));
+    assert!(script.contains("cp -R \"$REPO_DIR/integrations/vscode/.\" \"$extension_dir/\""));
+    assert!(script.contains("Reload VS Code, then run: Autoresearch: Show Status"));
+    assert!(script.contains("install_vscode_extension"));
+}
+
+#[test]
+fn vscode_installer_guards_before_replacing_extension_dir() {
+    let script = include_str!("../install.sh");
+    let guard = script
+        .find("ensure_safe_vscode_extension_dir \"$extension_root\"")
+        .unwrap();
+    let remove = script.find("rm -rf \"$extension_dir\"").unwrap();
+
+    assert!(guard < remove);
+    assert!(script.contains("\"/\"|\"$HOME\"|\"$HOME/.vscode\""));
+}
+
+#[test]
 fn installer_supports_local_and_global_copy_targets() {
     let script = include_str!("../install.sh");
 
@@ -60,6 +86,7 @@ fn installer_supports_local_and_global_copy_targets() {
     assert!(script.contains("target_dir=\"$LAUNCH_DIR/.codex/skills/autoresearch\""));
     assert!(script.contains("cargo build --manifest-path \"$REPO_DIR/Cargo.toml\" --release"));
     assert!(!script.contains("\n    cd \"$REPO_DIR\"\n\n    cargo build --release"));
+    assert!(script.contains("INSTALL_VSCODE=1"));
 }
 
 #[test]

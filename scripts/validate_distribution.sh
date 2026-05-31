@@ -369,9 +369,13 @@ require_grep '\[x\] GitHub Action for autoresearch in CI' docs/development-roadm
 require_grep '"command": "autoresearch\.showDashboard"' integrations/vscode/package.json
 require_grep 'autoresearch dashboard --once' integrations/vscode/README.md
 require_grep 'dashboard", "--once"' integrations/vscode/extension.js
+require_grep '\-\-vscode' install.sh
+require_grep '\-\-vscode-dir' install.sh
+require_grep 'integrations/vscode/\.' install.sh
+require_grep '\./install\.sh --yes --vscode' docs/INSTALL.md
 require_grep 'integrations/vscode' README.md
 require_grep 'integrations/vscode' docs/GUIDE.md
-require_grep '\[x\] VS Code extension for run visualization' docs/development-roadmap.md
+require_grep '\[x\] VS Code extension for run visualization with source installer support' docs/development-roadmap.md
 require_grep 'src = "docs"' book.toml
 require_grep '\[Installation\]\(INSTALL\.md\)' docs/SUMMARY.md
 require_grep 'actions/deploy-pages@v4' .github/workflows/docs.yml

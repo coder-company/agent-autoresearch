@@ -116,6 +116,14 @@ For a project-local OpenCode install, run:
 
 That installs to `./.opencode` in the current project. Use `--global` for the default user-wide target, or `--opencode-dir` for an explicit OpenCode config root. The installer refuses empty, home, and parent config paths before replacing `skills/autoresearch`.
 
+## VS Code
+
+```bash
+./install.sh --yes --vscode
+```
+
+That copies `integrations/vscode` into your VS Code extensions directory and keeps the installed extension delegated to the `autoresearch` binary on `PATH`. Use `--vscode-dir` for an explicit extensions directory.
+
 ## From Source
 
 ```bash

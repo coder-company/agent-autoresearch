@@ -24,8 +24,10 @@ INSTALL_CLAUDE=0
 INSTALL_OPENCODE=0
 INSTALL_CODEX=0
 INSTALL_CODEX_PLUGIN=0
+INSTALL_VSCODE=0
 OPENCODE_DIR=""
 CODEX_SKILL_DIR=""
+VSCODE_EXTENSION_DIR=""
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -93,12 +95,17 @@ parse_args() {
                 COMPONENT_FLAGS_SET=1
                 INSTALL_CODEX_PLUGIN=1
                 ;;
+            --vscode)
+                COMPONENT_FLAGS_SET=1
+                INSTALL_VSCODE=1
+                ;;
             --all)
                 COMPONENT_FLAGS_SET=1
                 INSTALL_CLAUDE=1
                 INSTALL_OPENCODE=1
                 INSTALL_CODEX=1
                 INSTALL_CODEX_PLUGIN=1
+                INSTALL_VSCODE=1
                 ;;
             --opencode-dir)
                 shift
@@ -117,6 +124,15 @@ parse_args() {
             --codex-dir=*)
                 CODEX_SKILL_DIR="${1#*=}"
                 CODEX_SKILL_DIR="${CODEX_SKILL_DIR/#\~/$HOME}"
+                ;;
+            --vscode-dir)
+                shift
+                [[ $# -gt 0 ]] || { err "--vscode-dir requires a path"; exit 1; }
+                VSCODE_EXTENSION_DIR="${1/#\~/$HOME}"
+                ;;
+            --vscode-dir=*)
+                VSCODE_EXTENSION_DIR="${1#*=}"
+                VSCODE_EXTENSION_DIR="${VSCODE_EXTENSION_DIR/#\~/$HOME}"
                 ;;
             *)
                 err "Unknown argument: $1"
@@ -182,6 +198,22 @@ ensure_safe_opencode_dir() {
     case "$dir" in
         "/"|"$HOME"|"$HOME/.config"|"$HOME/.opencode/skills"|"$HOME/.config/opencode/skills")
             err "Refusing unsafe OpenCode config path: $dir"
+            return 1
+            ;;
+    esac
+}
+
+ensure_safe_vscode_extension_dir() {
+    local dir="${1%/}"
+
+    if [[ -z "$dir" ]]; then
+        err "Refusing empty VS Code extensions path."
+        return 1
+    fi
+
+    case "$dir" in
+        "/"|"$HOME"|"$HOME/.vscode"|"$HOME/.vscode-insiders"|"$HOME/.config"|"$HOME/Library")
+            err "Refusing unsafe VS Code extensions path: $dir"
             return 1
             ;;
     esac
@@ -480,6 +512,60 @@ install_codex_plugin_package() {
     fi
 }
 
+# ── VS Code Extension ─────────────────────────────────────────────────
+
+install_vscode_extension() {
+    header "VS Code Extension"
+
+    if [[ ! -f "$REPO_DIR/integrations/vscode/package.json" ]]; then
+        err "Missing integrations/vscode/package.json — cannot install VS Code extension."
+        return 1
+    fi
+    if [[ ! -f "$REPO_DIR/integrations/vscode/extension.js" ]]; then
+        err "Missing integrations/vscode/extension.js — cannot install VS Code extension."
+        return 1
+    fi
+
+    if component_enabled "VSCODE" "  Install VS Code extension? [Y/n] "; then
+            local target_root
+            if [[ -n "$VSCODE_EXTENSION_DIR" ]]; then
+                target_root="$VSCODE_EXTENSION_DIR"
+            elif [[ -n "${VSCODE_EXTENSIONS:-}" ]]; then
+                target_root="$VSCODE_EXTENSIONS"
+            else
+                target_root="$HOME/.vscode/extensions"
+            fi
+
+            local extension_root="$target_root"
+            if [[ "$ASSUME_YES" -eq 0 ]]; then
+                read -rp "  VS Code extensions path [$target_root]: " extension_root
+                extension_root="${extension_root:-$target_root}"
+            fi
+
+            ensure_safe_vscode_extension_dir "$extension_root"
+
+            local package_json="$REPO_DIR/integrations/vscode/package.json"
+            local publisher name version
+            publisher=$(sed -n 's/^[[:space:]]*"publisher"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$package_json" | head -n1)
+            name=$(sed -n 's/^[[:space:]]*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$package_json" | head -n1)
+            version=$(sed -n 's/^[[:space:]]*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$package_json" | head -n1)
+            publisher="${publisher:-coder-company}"
+            name="${name:-autoresearch}"
+            version="${version:-0.0.0}"
+
+            local extension_dir="$extension_root/$publisher.$name-$version"
+            mkdir -p "$extension_root"
+            rm -rf "$extension_dir"
+            mkdir -p "$extension_dir"
+            cp -R "$REPO_DIR/integrations/vscode/." "$extension_dir/"
+
+            success "VS Code extension installed to $extension_dir"
+            echo "  Reload VS Code, then run: Autoresearch: Show Status"
+    else
+        info "Skipping VS Code extension install."
+    fi
+}
+
 # ── Help ──────────────────────────────────────────────────────────────
 
 show_help() {
@@ -497,9 +583,11 @@ show_help() {
     echo "  --opencode                Install OpenCode assets"
     echo "  --codex                   Install Codex skill"
     echo "  --codex-plugin            Install local Codex plugin package"
+    echo "  --vscode                  Install VS Code extension package"
     echo "  --all                     Install all optional agent assets"
     echo "  --opencode-dir PATH       Override OpenCode config directory"
     echo "  --codex-dir PATH          Override Codex skill target directory"
+    echo "  --vscode-dir PATH         Override VS Code extensions directory"
     echo "  -h, --help                Show this help"
     echo ""
     echo "Without component flags, the installer runs as an interactive guided installer that:"
@@ -511,6 +599,7 @@ show_help() {
     echo "  6. Optionally installs OpenCode assets"
     echo "  7. Optionally installs Codex skill"
     echo "  8. Optionally installs Codex plugin package"
+    echo "  9. Optionally installs VS Code extension"
     echo ""
     echo "Requirements: bash, git, curl (for rustup install)"
     exit 0
@@ -534,6 +623,7 @@ main() {
     install_opencode_assets
     install_codex_skill
     install_codex_plugin_package
+    install_vscode_extension
 
     echo ""
     header "Done!"

@@ -72,7 +72,7 @@ Each improvement stacks. Each failure reverts. Everything is logged.
 >
 > **OpenCode users:** clone the repo and run `./install.sh --yes --opencode`. Add `--local` when running the installer from a target project to install into `./.opencode`. Commands install as `/autoresearch` and `/autoresearch_debug`, `/autoresearch_fix`, etc., with a hidden `docs-manager` helper agent for documentation updates.
 >
-> **From source:** `git clone` + `./install.sh --yes --all`, or run `./install.sh` for the guided installer. See [Getting Started](guide/getting-started.md).
+> **From source:** `git clone` + `./install.sh --yes --all`, or run `./install.sh` for the guided installer. Add `--vscode` to install the editor extension from `integrations/vscode`. See [Getting Started](guide/getting-started.md).
 
 ## How It Works
 
@@ -204,7 +204,7 @@ Covered in detail in the [guide](guide/):
 - **Pre-built release binaries** — tag builds publish checksummed Linux, macOS, and Windows archives through GitHub Releases
 - **Package-manager metadata** — `cargo-binstall` archive metadata and a Homebrew formula template track the release assets
 - **GitHub Action runner** — `.github/actions/autoresearch` wraps `exec` mode for checked-in CI optimization loops
-- **VS Code extension package** — `integrations/vscode` exposes status, dashboard, and watch commands by delegating to the binary
+- **VS Code extension package** — `./install.sh --yes --vscode` installs `integrations/vscode`, which exposes status, dashboard, and watch commands by delegating to the binary
 - **Documentation site** — `book.toml` and `docs/SUMMARY.md` build the full docs set as an mdBook site for GitHub Pages
 - **Workspace scope expansion** — `autoresearch scope expand --format json` resolves primary and companion repo globs and annotates package roots for monorepos
 - **Cross-repo execution** — `autoresearch workspace exec --rollback-on-failure` runs one screened command across all repo targets and restores attempted repos on failure

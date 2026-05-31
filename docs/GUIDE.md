@@ -83,7 +83,7 @@ Use `autoresearch guard-presets --format json` to suggest per-repo guard command
 Use `autoresearch lessons --workspace-context --last 5` from any managed repo to show the shared workspace lessons path and repo targets.
 Use `autoresearch plugin list` and `autoresearch plugin validate --path <file>` to load local TOML mode plugin manifests with command safety screening.
 Use `autoresearch plugin marketplace` to validate `.autoresearch/plugins/marketplace.toml` and every referenced community mode manifest before installing or sharing it.
-Use `integrations/vscode` to install the lightweight VS Code package that opens `status --summary`, `dashboard --once`, and `watch --format jsonl` from editor commands.
+Use `./install.sh --yes --vscode` to install the lightweight VS Code package from `integrations/vscode`; it opens `status --summary`, `dashboard --once`, and `watch --format jsonl` from editor commands.
 Use `.github/actions/autoresearch` in GitHub Actions to run `exec` mode with a checked-in goal, scope, metric, and verify command.
 
 ```yaml
