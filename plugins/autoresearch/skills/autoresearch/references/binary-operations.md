@@ -32,6 +32,7 @@ Native artifact generators default to ignored `autoresearch-results/<mode>/` pat
 `debug` writes a hypothesis-driven investigation bundle with summary, findings, eliminated hypotheses, debug-results TSV, and handoff JSON.
 `debug --fix` records `fix` as the next handoff target. `debug --chain <targets>` records comma-separated downstream targets plus eval propagation metadata when requested.
 `fix` writes a repair-plan artifact bundle under `autoresearch-results/fix` with priority order, fix-results TSV, and handoff JSON.
+`fix --from-debug` imports the latest debug handoff scope, symptom, and finding count before writing the repair-plan bundle.
 `improve` writes a product-improvement artifact bundle with research findings, ranked plan, summary, improve-results TSV, and handoff JSON.
 `prd` writes a focused improve-mode markdown artifact with DECISION NEEDED markers, acceptance criteria, risks, success metrics, and a ready-to-run autoresearch config block.
 `security` writes a STRIDE + OWASP audit artifact bundle: overview, threat model, attack surface map, coverage, findings, recommendations, results TSV, and handoff JSON.

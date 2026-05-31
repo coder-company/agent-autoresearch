@@ -181,6 +181,8 @@ require_grep '`autoresearch debug` writes' COMPARISON.md
 require_grep 'autoresearch fix --target' README.md
 require_grep 'autoresearch fix --target' docs/GUIDE.md
 require_grep 'autoresearch fix --target' references/binary-operations.md
+require_grep 'fix --from-debug' README.md
+require_grep 'fix --from-debug' references/binary-operations.md
 require_grep 'Native fix generator' docs/development-roadmap.md
 require_grep '`autoresearch fix` writes' COMPARISON.md
 require_grep 'autoresearch improve --goal' README.md

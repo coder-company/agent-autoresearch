@@ -662,11 +662,14 @@ enum Commands {
     /// Generate an error-repair plan artifact bundle
     Fix {
         /// Verify/target command that counts remaining errors
-        #[arg(long)]
-        target: String,
+        #[arg(long, required_unless_present = "from_debug")]
+        target: Option<String>,
         /// File globs that may be edited. Repeatable.
         #[arg(long)]
         scope: Vec<String>,
+        /// Import scope and context from the latest debug handoff
+        #[arg(long)]
+        from_debug: bool,
         /// Optional guard command that must remain passing
         #[arg(long)]
         guard: Option<String>,
@@ -1447,11 +1450,12 @@ fn main() -> Result<()> {
         Commands::Fix {
             target,
             scope,
+            from_debug,
             guard,
             category,
             output_dir,
             cwd,
-        } => cmd_fix(&target, scope, guard, category, output_dir, cwd),
+        } => cmd_fix(target, scope, from_debug, guard, category, output_dir, cwd),
 
         Commands::Scenario {
             target,
@@ -3082,9 +3086,127 @@ fn render_fix_results_tsv(target: &str) -> String {
     )
 }
 
-fn cmd_fix(
-    target: &str,
+#[derive(Debug, Clone)]
+struct DebugHandoffInput {
+    path: PathBuf,
+    symptom: Option<String>,
     scope: Vec<String>,
+    findings_count: usize,
+}
+
+fn collect_debug_handoff_candidates(dir: &Path, candidates: &mut Vec<PathBuf>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if entry.file_type().is_ok_and(|file_type| file_type.is_dir()) {
+            collect_debug_handoff_candidates(&path, candidates);
+        } else if path.file_name().is_some_and(|name| name == "handoff.json") {
+            candidates.push(path);
+        }
+    }
+}
+
+fn latest_debug_handoff_path(workspace: &Path) -> Option<PathBuf> {
+    let mut candidates = Vec::new();
+    for root in [
+        workspace.join("autoresearch-results/debug"),
+        workspace.join("debug"),
+        workspace.join("autoresearch"),
+    ] {
+        collect_debug_handoff_candidates(&root, &mut candidates);
+    }
+    candidates.into_iter().max_by_key(|path| {
+        std::fs::metadata(path)
+            .and_then(|metadata| metadata.modified())
+            .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
+    })
+}
+
+fn string_array_from_value(value: Option<&serde_json::Value>) -> Vec<String> {
+    value
+        .and_then(serde_json::Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(serde_json::Value::as_str)
+                .map(ToOwned::to_owned)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn load_latest_debug_handoff(workspace: &Path) -> Result<DebugHandoffInput> {
+    let path = latest_debug_handoff_path(workspace)
+        .context("fix --from-debug could not find a debug handoff.json")?;
+    let handoff: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(&path)
+            .with_context(|| format!("failed to read {}", path.display()))?,
+    )
+    .with_context(|| format!("invalid debug handoff JSON at {}", path.display()))?;
+    let source = handoff
+        .get("source")
+        .and_then(serde_json::Value::as_str)
+        .or_else(|| {
+            handoff
+                .get("source_command")
+                .and_then(serde_json::Value::as_str)
+        });
+    if source != Some("debug") {
+        anyhow::bail!("latest handoff is not from debug: {}", path.display());
+    }
+    let config = handoff.get("config");
+    let symptom = config
+        .and_then(|value| value.get("symptom"))
+        .and_then(serde_json::Value::as_str)
+        .map(ToOwned::to_owned)
+        .or_else(|| {
+            handoff
+                .get("goal")
+                .and_then(serde_json::Value::as_str)
+                .map(ToOwned::to_owned)
+        });
+    let scope = string_array_from_value(config.and_then(|value| value.get("scope")))
+        .into_iter()
+        .chain(string_array_from_value(handoff.get("scope")))
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect();
+    let findings_count = handoff
+        .get("findings")
+        .and_then(serde_json::Value::as_array)
+        .map(Vec::len)
+        .unwrap_or(0);
+    Ok(DebugHandoffInput {
+        path,
+        symptom,
+        scope,
+        findings_count,
+    })
+}
+
+fn append_debug_import_section(out: &mut String, debug: Option<&DebugHandoffInput>) {
+    let Some(debug) = debug else {
+        return;
+    };
+    writeln!(out).unwrap();
+    writeln!(out, "## Imported Debug Handoff").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "- Path: `{}`", debug.path.display()).unwrap();
+    writeln!(
+        out,
+        "- Symptom: {}",
+        debug.symptom.as_deref().unwrap_or("DECISION NEEDED")
+    )
+    .unwrap();
+    writeln!(out, "- Findings imported: {}", debug.findings_count).unwrap();
+}
+
+fn cmd_fix(
+    target: Option<String>,
+    scope: Vec<String>,
+    from_debug: bool,
     guard: Option<String>,
     category: Option<String>,
     output_dir: Option<PathBuf>,
@@ -3092,25 +3214,48 @@ fn cmd_fix(
 ) -> Result<()> {
     let category = parse_fix_category(category.as_deref())?;
     let workspace = resolve_workspace_root(cwd);
+    let debug_handoff = if from_debug {
+        Some(load_latest_debug_handoff(&workspace)?)
+    } else {
+        None
+    };
+    let target = target
+        .filter(|value| !value.trim().is_empty())
+        .or_else(|| {
+            debug_handoff.as_ref().map(|debug| {
+                format!(
+                    "debug findings from {}",
+                    debug.symptom.as_deref().unwrap_or("latest debug handoff")
+                )
+            })
+        })
+        .context("fix requires --target unless --from-debug is used")?;
+    let scope = if scope.is_empty() {
+        debug_handoff
+            .as_ref()
+            .map(|debug| debug.scope.clone())
+            .unwrap_or_default()
+    } else {
+        scope
+    };
     let output_dir = output_dir.unwrap_or_else(|| {
         PathBuf::from("autoresearch-results")
             .join("fix")
-            .join(format!("fix-{}", slugify(target)))
+            .join(format!("fix-{}", slugify(&target)))
     });
     let output_dir = resolve_workspace_path(&workspace, output_dir);
     std::fs::create_dir_all(&output_dir)
         .with_context(|| format!("failed to create {}", output_dir.display()))?;
-    write_text_file(
-        &output_dir.join("summary.md"),
-        &render_fix_summary(target, &scope, guard.as_deref(), category),
-    )?;
+    let mut summary = render_fix_summary(&target, &scope, guard.as_deref(), category);
+    append_debug_import_section(&mut summary, debug_handoff.as_ref());
+    write_text_file(&output_dir.join("summary.md"), &summary)?;
     write_text_file(
         &output_dir.join("repair-plan.md"),
-        &render_fix_plan(target, category),
+        &render_fix_plan(&target, category),
     )?;
     write_text_file(
         &output_dir.join("fix-results.tsv"),
-        &render_fix_results_tsv(target),
+        &render_fix_results_tsv(&target),
     )?;
     let handoff = serde_json::json!({
         "version": "2.1.0",
@@ -3120,10 +3265,13 @@ fn cmd_fix(
         "results_tsv": output_dir.join("fix-results.tsv").display().to_string(),
         "findings": [],
         "config": {
-            "target": target,
+            "target": target.clone(),
             "scope": scope,
             "guard": guard,
             "category": category.map(|value| value.label()),
+            "from_debug": from_debug,
+            "debug_handoff_path": debug_handoff.as_ref().map(|debug| debug.path.display().to_string()),
+            "debug_symptom": debug_handoff.as_ref().and_then(|debug| debug.symptom.clone()),
         }
     });
     write_json_file(&output_dir.join("handoff.json"), &handoff)?;
@@ -3134,6 +3282,7 @@ fn cmd_fix(
             "output_dir": output_dir.display().to_string(),
             "target": target,
             "category": category.map(|value| value.label()).unwrap_or("auto"),
+            "from_debug": from_debug,
         })
     );
     Ok(())

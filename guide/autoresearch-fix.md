@@ -79,7 +79,7 @@ Within each category, easiest first (single-file fixes before cross-file):
 ## Output
 
 ```
-autoresearch/fix-250527-1430/
+autoresearch-results/fix/fix-250527-1430/
 ├── fix-results.tsv     # Every fix attempt
 └── handoff.json        # Remaining errors for chaining
 ```

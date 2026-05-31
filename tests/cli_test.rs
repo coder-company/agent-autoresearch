@@ -766,6 +766,63 @@ fn test_fix_writes_repair_plan_artifact_bundle() {
 }
 
 #[test]
+fn test_fix_from_debug_imports_latest_handoff_scope() {
+    let dir = TempDir::new().unwrap();
+    let debug_dir = dir.path().join("autoresearch-results/debug/debug-api-500");
+    std::fs::create_dir_all(&debug_dir).unwrap();
+    std::fs::write(
+        debug_dir.join("handoff.json"),
+        r#"{
+  "version": "2.1.0",
+  "source": "debug",
+  "source_command": "debug",
+  "status": "COMPLETE",
+  "findings": [{"title": "API panic"}],
+  "config": {
+    "symptom": "API returns 500",
+    "scope": ["src/api/**"],
+    "technique": "trace"
+  }
+}
+"#,
+    )
+    .unwrap();
+    let output_dir = dir.path().join("autoresearch-results/fix/from-debug");
+
+    cmd()
+        .args([
+            "fix",
+            "--from-debug",
+            "--guard",
+            "cargo test",
+            "--category",
+            "test",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"from_debug\":true"))
+        .stdout(predicate::str::contains(
+            "debug findings from API returns 500",
+        ));
+
+    let summary = std::fs::read_to_string(output_dir.join("summary.md")).unwrap();
+    let plan = std::fs::read_to_string(output_dir.join("repair-plan.md")).unwrap();
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+
+    assert!(summary.contains("Imported Debug Handoff"));
+    assert!(summary.contains("API returns 500"));
+    assert!(summary.contains("src/api/**"));
+    assert!(plan.contains("debug findings from API returns 500"));
+    assert!(handoff.contains("\"from_debug\": true"));
+    assert!(handoff.contains("\"debug_handoff_path\":"));
+    assert!(handoff.contains("\"debug_symptom\": \"API returns 500\""));
+}
+
+#[test]
 fn test_native_artifact_defaults_stay_under_ignored_results_root() {
     let dir = TempDir::new().unwrap();
     let cwd = dir.path().to_str().unwrap();
