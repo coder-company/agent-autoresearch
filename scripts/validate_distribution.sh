@@ -164,6 +164,7 @@ require_grep 'Native `reanchor` command' COMPARISON.md
 require_grep 'autoresearch plan --goal' README.md
 require_grep 'autoresearch plan --goal' docs/GUIDE.md
 require_grep 'autoresearch plan --goal' references/binary-operations.md
+require_grep 'plan --chain <targets>' references/binary-operations.md
 require_grep 'Native plan command' docs/development-roadmap.md
 require_grep 'native `autoresearch plan --goal`' COMPARISON.md
 require_grep 'autoresearch-results/<mode>/' README.md

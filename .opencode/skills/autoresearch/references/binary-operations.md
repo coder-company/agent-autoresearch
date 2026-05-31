@@ -8,7 +8,7 @@ Use the `autoresearch` binary for stateful or mechanical work. Do not hand-edit 
 autoresearch init --verify "<cmd>" --direction <higher|lower>
 autoresearch init --environment-summary auto --verify "<cmd>" --direction <higher|lower>
 autoresearch init --companion-repo-scope ../frontend='src/**/*.ts' ...
-autoresearch plan --goal "reduce any types" --format json
+autoresearch plan --goal "reduce any types" --format json --chain debug
 autoresearch debug --symptom "API returns 500" --scope "src/**/*.rs" --depth deep --severity high
 autoresearch fix --target "npx tsc --noEmit" --scope "src/**/*.ts" --category type --chain learn --evals
 autoresearch improve --goal "Improve onboarding activation" --icp "Developer tools teams" --depth deep --seeds 5 --evals
@@ -28,6 +28,7 @@ autoresearch scope expand --format json
 
 `init` creates `autoresearch-results/results.tsv`, `state.json`, `context.json`, and repo-local `.codex-autoresearch/pointer.json` files. For multi-repo runs, every companion repo needs a clean worktree and its own `--companion-repo-scope PATH=SCOPE`.
 `plan` scans repo tooling and returns a suggested scope, metric, direction, verify, guard, and iteration count without starting a run.
+`plan --chain <targets>` writes `autoresearch-results/plan/handoff.json` with the derived config for downstream commands.
 Native artifact generators default to ignored `autoresearch-results/<mode>/` paths. Use explicit output flags only for intentional non-default locations.
 `debug` writes a hypothesis-driven investigation bundle with summary, findings, eliminated hypotheses, debug-results TSV, and handoff JSON.
 `debug --fix` records `fix` as the next handoff target. `debug --chain <targets>` records comma-separated downstream targets plus eval propagation metadata when requested.

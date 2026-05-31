@@ -538,6 +538,9 @@ enum Commands {
         /// Output format: json or text
         #[arg(long, default_value = "json")]
         format: String,
+        /// Comma-separated downstream command targets to record in handoff.json
+        #[arg(long)]
+        chain: Option<String>,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -1543,7 +1546,12 @@ fn main() -> Result<()> {
 
         Commands::Exec { iterations, cwd } => cmd_exec(iterations, cwd),
 
-        Commands::Plan { goal, format, cwd } => cmd_plan(goal, &format, cwd),
+        Commands::Plan {
+            goal,
+            format,
+            chain,
+            cwd,
+        } => cmd_plan(goal, &format, chain, cwd),
 
         Commands::Prd {
             title,
@@ -2222,9 +2230,15 @@ fn render_plan_text(plan: &serde_json::Value) -> String {
     out
 }
 
-fn cmd_plan(goal: Option<String>, format: &str, cwd: Option<PathBuf>) -> Result<()> {
+fn cmd_plan(
+    goal: Option<String>,
+    format: &str,
+    chain: Option<String>,
+    cwd: Option<PathBuf>,
+) -> Result<()> {
     let workspace = resolve_workspace_root(cwd);
     let goal = goal.unwrap_or_default();
+    let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
     let detected_files = scan_repo_files(&workspace, PLAN_SCAN_PATTERNS);
     let indicator_patterns = PATTERN_INDICATORS
         .iter()
@@ -2245,12 +2259,44 @@ fn cmd_plan(goal: Option<String>, format: &str, cwd: Option<PathBuf>) -> Result<
         })
         .collect::<Vec<_>>();
     let recommended = plan_recommendation(&goal, &detected_files);
+    let handoff_path = if !chain_targets.is_empty() {
+        let handoff_path =
+            resolve_workspace_path(&workspace, default_artifact_path("plan", "handoff.json"));
+        if let Some(parent) = handoff_path.parent() {
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("failed to create {}", parent.display()))?;
+        }
+        let next_target = next_chain_target_value(&chain_targets);
+        let handoff = serde_json::json!({
+            "version": "2.1.0",
+            "source": "plan",
+            "source_command": "plan",
+            "timestamp": chrono::Utc::now().to_rfc3339(),
+            "status": "COMPLETE",
+            "handoff_path": handoff_path.display().to_string(),
+            "findings": [],
+            "config": {
+                "goal": goal.clone(),
+                "recommended": recommended.clone(),
+                "metric_hints": metric_hints.clone(),
+                "detected_files": detected_files.clone(),
+            },
+            "chain": chain_targets.clone(),
+            "next_target": next_target,
+            "chain_continue": should_continue_handoff_chain("COMPLETE"),
+        });
+        write_json_file(&handoff_path, &handoff)?;
+        Some(handoff_path)
+    } else {
+        None
+    };
     let out = serde_json::json!({
         "goal": goal,
         "workspace": workspace.display().to_string(),
         "detected_files": detected_files,
         "recommended": recommended,
         "metric_hints": metric_hints,
+        "handoff_path": handoff_path.as_ref().map(|path| path.display().to_string()),
     });
 
     match format {

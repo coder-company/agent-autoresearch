@@ -29,7 +29,7 @@ The idea was simple enough that several people generalized it:
 | Long-session drift | Manual restart | Protocol text | Protocol fingerprint check | **Native `reanchor` command + compaction hook** |
 | Remembers across runs | No | Yes (lessons.md) | Yes (cross-run learning) | **Yes (lessons.md)** |
 | Health preflight | No | Markdown checklist | Helper scripts | **Native `autoresearch health` for git/artifact/disk/verify/guard/context** |
-| Goal planning | Manual prompt | `/autoresearch:plan` | Wizard guidance | **`/autoresearch:plan` + native `autoresearch plan --goal` suggestions** |
+| Goal planning | Manual prompt | `/autoresearch:plan` | Wizard guidance | **`/autoresearch:plan` + native `autoresearch plan --goal` suggestions and handoffs** |
 | Debug output | Manual notes | Hypothesis investigation reports | Protocol guidance | **`autoresearch debug` writes investigation bundles with depth, severity, TSV, and handoff** |
 | Fix output | Manual repair loop | Error-crushing protocol | Protocol guidance | **`autoresearch fix` writes repair-plan bundles under `autoresearch-results/fix` with chain/eval metadata** |
 | Improve research | Manual notes | Research findings + plans | Protocol guidance | **`autoresearch improve` writes findings, plan, TSV, summary, handoff, depth, seed, discovery, and eval metadata** |

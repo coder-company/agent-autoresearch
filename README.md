@@ -199,6 +199,7 @@ Covered in detail in the [guide](guide/):
 - **Man pages** — `autoresearch manpages --output-dir man/man1` writes a local `autoresearch.1` page for packages and offline docs
 - **Project defaults** — `.autoresearch.toml` stores repeatable init settings such as goal, scope, metric, verify, guard, and iteration cap
 - **Native planning** — `autoresearch plan --goal "..." --format json` suggests scope, metric, direction, verify, guard, and iteration count from repo tooling
+- **Plan chain handoff** — `autoresearch plan --goal "..." --chain debug` writes the derived config into a downstream handoff
 - **Ignored artifact defaults** — native artifact generators write under `autoresearch-results/<mode>/` unless you pass an explicit output path
 - **Debug artifact generation** — `autoresearch debug --symptom ... --scope ...` writes hypothesis, findings, eliminated, TSV, and handoff artifacts
 - **Debug investigation controls** — `autoresearch debug --depth deep --severity high` records investigation budget and severity filter metadata

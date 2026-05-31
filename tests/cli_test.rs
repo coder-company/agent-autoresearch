@@ -463,6 +463,41 @@ fn test_plan_recommends_rust_test_metric() {
 }
 
 #[test]
+fn test_plan_chain_writes_handoff() {
+    let dir = TempDir::new().unwrap();
+    std::fs::write(
+        dir.path().join("Cargo.toml"),
+        "[package]\nname = \"fixture\"\nversion = \"0.1.0\"\n",
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "plan",
+            "--goal",
+            "fix failing tests",
+            "--format",
+            "json",
+            "--chain",
+            "debug",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("handoff.json"));
+
+    let handoff =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/plan/handoff.json")).unwrap();
+    assert!(handoff.contains("\"source_command\": \"plan\""));
+    assert!(handoff.contains("\"chain\": ["));
+    assert!(handoff.contains("\"debug\""));
+    assert!(handoff.contains("\"next_target\": \"debug\""));
+    assert!(handoff.contains("\"chain_continue\": true"));
+    assert!(handoff.contains("\"recommended\":"));
+}
+
+#[test]
 fn test_prd_writes_improvement_artifact() {
     let dir = TempDir::new().unwrap();
     let output = dir.path().join("docs/prd-onboarding.md");
