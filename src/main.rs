@@ -566,6 +566,25 @@ enum Commands {
         cwd: Option<PathBuf>,
     },
 
+    /// Generate improve-mode research artifacts for a product area
+    Improve {
+        /// Product, feature, or workflow to improve
+        #[arg(long)]
+        goal: String,
+        /// Ideal customer profile or target user
+        #[arg(long)]
+        icp: Option<String>,
+        /// Relevant implementation scope. Repeatable.
+        #[arg(long)]
+        scope: Vec<String>,
+        /// Output directory. Relative paths resolve from the workspace root.
+        #[arg(long)]
+        output_dir: Option<PathBuf>,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
     /// Generate a 12-dimension scenario exploration artifact
     Scenario {
         /// Feature, workflow, or system to explore
@@ -1233,6 +1252,14 @@ fn main() -> Result<()> {
             cwd,
         } => cmd_prd(&title, &problem, icp, solution, metric, scope, output, cwd),
 
+        Commands::Improve {
+            goal,
+            icp,
+            scope,
+            output_dir,
+            cwd,
+        } => cmd_improve(&goal, icp, scope, output_dir, cwd),
+
         Commands::Scenario {
             target,
             format,
@@ -1837,6 +1864,298 @@ fn cmd_prd(
             "status": "written",
             "path": output.display().to_string(),
             "title": title,
+        })
+    );
+    Ok(())
+}
+
+fn improve_categories() -> &'static [(&'static str, &'static str)] {
+    &[
+        (
+            "ICP Challenges",
+            "Pain points, unmet needs, and workflow friction for the target persona",
+        ),
+        (
+            "Competitor Gaps",
+            "Weaknesses, missing features, and technical differentiators",
+        ),
+        (
+            "Market Trends",
+            "Emerging expectations, timing signals, and standards shifts",
+        ),
+        (
+            "UX Patterns",
+            "Interaction improvements, onboarding, accessibility, and retention",
+        ),
+        (
+            "Revenue Growth",
+            "Monetization, expansion, acquisition, and packaging opportunities",
+        ),
+    ]
+}
+
+fn improve_seed_title(goal: &str, category: &str) -> String {
+    match category {
+        "ICP Challenges" => format!("Reduce the highest-friction step in {goal}"),
+        "Competitor Gaps" => format!("Expose a differentiator competitors miss in {goal}"),
+        "Market Trends" => format!("Align {goal} with a new buyer expectation"),
+        "UX Patterns" => format!("Make the first successful {goal} path measurable"),
+        "Revenue Growth" => format!("Tie {goal} to expansion or activation value"),
+        _ => format!("Improve {goal}"),
+    }
+}
+
+fn render_improve_research_markdown(goal: &str, icp: &str, scope: &[String]) -> String {
+    let mut out = String::new();
+    let scope_items = if scope.is_empty() {
+        vec!["DECISION NEEDED: identify implementation scope.".to_string()]
+    } else {
+        scope.to_vec()
+    };
+    let scope_lines = scope_items
+        .iter()
+        .map(|item| format!("- {item}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    writeln!(out, "# Improve Research Findings: {goal}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "> Auto-generated seed research artifacts. Add citations and confidence upgrades as external research is completed."
+    )
+    .unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## ICP").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "{icp}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Scope").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "{scope_lines}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Findings").unwrap();
+    writeln!(out).unwrap();
+    for (category, focus) in improve_categories() {
+        writeln!(out, "### {category}").unwrap();
+        writeln!(out).unwrap();
+        writeln!(out, "- Research focus: {focus}").unwrap();
+        writeln!(
+            out,
+            "- Seed insight: {}",
+            improve_seed_title(goal, category)
+        )
+        .unwrap();
+        writeln!(
+            out,
+            "- Confidence: LOW until backed by code or web evidence"
+        )
+        .unwrap();
+        writeln!(out, "- Classification: new").unwrap();
+        writeln!(out).unwrap();
+    }
+    out
+}
+
+fn render_improve_plan_markdown(goal: &str, icp: &str) -> String {
+    let mut out = String::new();
+    writeln!(out, "# Improvement Plan: {goal}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "ICP: {icp}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Tiered Ranking").unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "| Tier | Improvement | Rationale | Confidence | Next Artifact |"
+    )
+    .unwrap();
+    writeln!(out, "|---|---|---|---|---|").unwrap();
+    for (index, (category, _focus)) in improve_categories().iter().enumerate() {
+        let tier = match index {
+            0 | 3 => "Must-have",
+            1 | 2 => "Nice-to-have",
+            _ => "Moonshot",
+        };
+        let title = improve_seed_title(goal, category);
+        writeln!(
+            out,
+            "| {tier} | {title} | Serves the stated ICP and maps to {category}. | LOW | `autoresearch prd --title \"{title}\" --problem \"DECISION NEEDED\"` |"
+        )
+        .unwrap();
+    }
+    writeln!(out).unwrap();
+    writeln!(out, "## Selection Rule").unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "Prioritize Must-have items that can be verified mechanically within the current scope."
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "DECISION NEEDED: choose which improvements become PRDs."
+    )
+    .unwrap();
+    out
+}
+
+fn render_improve_summary_markdown(goal: &str, icp: &str, output_dir: &Path) -> String {
+    format!(
+        "# Improve Summary: {goal}\n\n\
+         - ICP: {icp}\n\
+         - Categories covered: {}\n\
+         - Seed insights: {}\n\
+         - Saturation status: not evaluated\n\
+         - Output directory: {}\n\n\
+         Next: add citations/confidence, select top improvements, then run `autoresearch prd` for selected items.\n",
+        improve_categories().len(),
+        improve_categories().len(),
+        output_dir.display()
+    )
+}
+
+fn render_improve_results_tsv(goal: &str) -> String {
+    let mut out = String::new();
+    let timestamp = chrono::Utc::now().to_rfc3339();
+    writeln!(out, "# metric_direction: higher_is_better").unwrap();
+    writeln!(
+        out,
+        "iteration\ttimestamp\tcategory\tidea\ticp_pass\ttier\tscore\tdescription"
+    )
+    .unwrap();
+    for (index, (category, focus)) in improve_categories().iter().enumerate() {
+        let tier = match index {
+            0 | 3 => "must_have",
+            1 | 2 => "nice_to_have",
+            _ => "moonshot",
+        };
+        let score = match tier {
+            "must_have" => 81,
+            "nice_to_have" => 64,
+            _ => 45,
+        };
+        writeln!(
+            out,
+            "{}\t{}\t{}\t{}\ttrue\t{}\t{}\t{}",
+            index + 1,
+            timestamp,
+            category,
+            improve_seed_title(goal, category),
+            tier,
+            score,
+            focus
+        )
+        .unwrap();
+    }
+    out
+}
+
+fn cmd_improve(
+    goal: &str,
+    icp: Option<String>,
+    scope: Vec<String>,
+    output_dir: Option<PathBuf>,
+    cwd: Option<PathBuf>,
+) -> Result<()> {
+    let workspace = resolve_workspace_root(cwd);
+    let icp = icp
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("DECISION NEEDED: define the target ICP.");
+    let output_dir = output_dir
+        .unwrap_or_else(|| PathBuf::from("improve").join(format!("improve-{}", slugify(goal))));
+    let output_dir = resolve_workspace_path(&workspace, output_dir);
+    std::fs::create_dir_all(&output_dir)
+        .with_context(|| format!("failed to create {}", output_dir.display()))?;
+
+    std::fs::write(
+        output_dir.join("research-findings.md"),
+        render_improve_research_markdown(goal, icp, &scope),
+    )
+    .with_context(|| {
+        format!(
+            "failed to write {}",
+            output_dir.join("research-findings.md").display()
+        )
+    })?;
+    std::fs::write(
+        output_dir.join("improvement-plan.md"),
+        render_improve_plan_markdown(goal, icp),
+    )
+    .with_context(|| {
+        format!(
+            "failed to write {}",
+            output_dir.join("improvement-plan.md").display()
+        )
+    })?;
+    std::fs::write(
+        output_dir.join("summary.md"),
+        render_improve_summary_markdown(goal, icp, &output_dir),
+    )
+    .with_context(|| {
+        format!(
+            "failed to write {}",
+            output_dir.join("summary.md").display()
+        )
+    })?;
+    std::fs::write(
+        output_dir.join("improve-results.tsv"),
+        render_improve_results_tsv(goal),
+    )
+    .with_context(|| {
+        format!(
+            "failed to write {}",
+            output_dir.join("improve-results.tsv").display()
+        )
+    })?;
+    let findings = improve_categories()
+        .iter()
+        .map(|(category, _)| {
+            serde_json::json!({
+                "category": category,
+                "title": improve_seed_title(goal, category),
+                "confidence": "LOW",
+                "prd_path": null,
+            })
+        })
+        .collect::<Vec<_>>();
+    let handoff = serde_json::json!({
+        "version": "2.1.0",
+        "source": "improve",
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "status": "COMPLETE",
+        "results_tsv": output_dir.join("improve-results.tsv").display().to_string(),
+        "findings": findings,
+        "config": {
+            "goal": goal,
+            "icp": icp,
+            "scope": scope,
+            "categories_explored": improve_categories().len(),
+            "insights_total": improve_categories().len(),
+            "prds_generated": 0,
+        }
+    });
+    std::fs::write(
+        output_dir.join("handoff.json"),
+        serde_json::to_string_pretty(&handoff)?,
+    )
+    .with_context(|| {
+        format!(
+            "failed to write {}",
+            output_dir.join("handoff.json").display()
+        )
+    })?;
+    println!(
+        "{}",
+        serde_json::json!({
+            "status": "written",
+            "output_dir": output_dir.display().to_string(),
+            "goal": goal,
+            "categories": improve_categories().len(),
+            "insights": improve_categories().len(),
+            "prds_generated": 0,
         })
     );
     Ok(())

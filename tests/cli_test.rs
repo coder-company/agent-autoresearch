@@ -203,6 +203,7 @@ fn test_api_manifest_lists_nested_commands_and_flags() {
         .stdout(predicate::str::contains("\"stability\": \"stable\""))
         .stdout(predicate::str::contains("\"runtime\""))
         .stdout(predicate::str::contains("\"start\""))
+        .stdout(predicate::str::contains("\"improve\""))
         .stdout(predicate::str::contains("\"plan\""))
         .stdout(predicate::str::contains("\"prd\""))
         .stdout(predicate::str::contains("\"scenario\""))
@@ -492,6 +493,44 @@ fn test_prd_writes_improvement_artifact() {
     assert!(prd.contains("activation_rate"));
     assert!(prd.contains("src/onboarding/**"));
     assert!(prd.contains("Ready-To-Run Autoresearch Config"));
+}
+
+#[test]
+fn test_improve_writes_research_artifact_bundle() {
+    let dir = TempDir::new().unwrap();
+    let output_dir = dir.path().join("improve/onboarding");
+
+    cmd()
+        .args([
+            "improve",
+            "--goal",
+            "Improve onboarding activation",
+            "--icp",
+            "Developer tools teams adopting autonomous agents",
+            "--scope",
+            "src/onboarding/**",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\":\"written\""))
+        .stdout(predicate::str::contains("\"categories\":5"));
+
+    let findings = std::fs::read_to_string(output_dir.join("research-findings.md")).unwrap();
+    let plan = std::fs::read_to_string(output_dir.join("improvement-plan.md")).unwrap();
+    let summary = std::fs::read_to_string(output_dir.join("summary.md")).unwrap();
+    let tsv = std::fs::read_to_string(output_dir.join("improve-results.tsv")).unwrap();
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+
+    assert!(findings.contains("# Improve Research Findings: Improve onboarding activation"));
+    assert!(findings.contains("ICP Challenges"));
+    assert!(plan.contains("Tiered Ranking"));
+    assert!(summary.contains("Categories covered: 5"));
+    assert!(tsv.contains("iteration\ttimestamp\tcategory\tidea"));
+    assert!(handoff.contains("\"source\": \"improve\""));
 }
 
 #[test]

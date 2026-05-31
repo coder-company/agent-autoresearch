@@ -9,6 +9,7 @@ autoresearch init --verify "<cmd>" --direction <higher|lower>
 autoresearch init --environment-summary auto --verify "<cmd>" --direction <higher|lower>
 autoresearch init --companion-repo-scope ../frontend='src/**/*.ts' ...
 autoresearch plan --goal "reduce any types" --format json
+autoresearch improve --goal "Improve onboarding activation" --icp "Developer tools teams"
 autoresearch prd --title "Improve onboarding" --problem "New users stall before first run"
 autoresearch scenario --target "Checkout flow" --format threat-scenarios --scope "src/checkout/**"
 autoresearch predict --proposal "Add cache warming to search results" --scope "src/search/**"
@@ -22,6 +23,7 @@ autoresearch scope expand --format json
 
 `init` creates `autoresearch-results/results.tsv`, `state.json`, `context.json`, and repo-local `.codex-autoresearch/pointer.json` files. For multi-repo runs, every companion repo needs a clean worktree and its own `--companion-repo-scope PATH=SCOPE`.
 `plan` scans repo tooling and returns a suggested scope, metric, direction, verify, guard, and iteration count without starting a run.
+`improve` writes a product-improvement artifact bundle with research findings, ranked plan, summary, improve-results TSV, and handoff JSON.
 `prd` writes a focused improve-mode markdown artifact with DECISION NEEDED markers, acceptance criteria, risks, success metrics, and a ready-to-run autoresearch config block.
 `scenario` writes a markdown artifact covering all 12 scenario dimensions for the requested target, format, focus, and implementation scope.
 `predict` writes a five-persona pre-implementation review with architecture, security, performance, UX, and adversarial findings.
