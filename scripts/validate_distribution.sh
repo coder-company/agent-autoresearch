@@ -139,6 +139,10 @@ require_grep 'timeout-seconds' docs/GUIDE.md
 require_grep 'autoresearch parallel run' guide/advanced-patterns.md
 require_grep 'timeout-seconds' references/parallel-experiments-protocol.md
 require_grep 'autoresearch parallel cleanup' references/parallel-experiments-protocol.md
+require_grep 'autoresearch completions' README.md
+require_grep 'autoresearch completions' docs/GUIDE.md
+require_grep 'autoresearch completions zsh' docs/INSTALL.md
+require_grep 'Shell completions \(bash, zsh, fish, elvish, PowerShell\)' docs/development-roadmap.md
 require_grep '\$autoresearch exec' guide/autoresearch-codex.md
 require_grep 'Claude Code, Codex, and OpenCode' README.md
 require_grep '13 command protocols · 11 native hooks · background runtime · parallel verified closeout' README.md

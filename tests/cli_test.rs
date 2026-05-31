@@ -26,7 +26,11 @@ fn write_fake_codex(dir: &TempDir, body: &str) -> std::path::PathBuf {
 
 #[test]
 fn test_help_exits_zero() {
-    cmd().arg("--help").assert().success();
+    cmd()
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("completions"));
 }
 
 #[test]
@@ -36,6 +40,25 @@ fn test_version_shows_version() {
         .assert()
         .success()
         .stdout(predicate::str::contains("0.1.0"));
+}
+
+#[test]
+fn test_completions_generates_zsh_script() {
+    cmd()
+        .args(["completions", "zsh"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("#compdef autoresearch"))
+        .stdout(predicate::str::contains("_autoresearch"));
+}
+
+#[test]
+fn test_completions_rejects_unknown_shell() {
+    cmd()
+        .args(["completions", "csh"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("invalid value"));
 }
 
 // ── Screen Command ───────────────────────────────────────────────────

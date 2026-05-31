@@ -55,7 +55,7 @@
 - [ ] Plugin system — loadable mode definitions (TOML or YAML)
 - [ ] Plugin marketplace — community-contributed modes
 - [ ] Configuration file (`.autoresearch.toml`) for project-level defaults
-- [ ] Shell completions (bash, zsh, fish)
+- [x] Shell completions (bash, zsh, fish, elvish, PowerShell)
 - [ ] Man pages generation
 - [ ] Pre-built binaries for Linux (x86_64, aarch64), macOS (x86_64, aarch64), Windows
 - [ ] Homebrew formula and cargo-binstall support

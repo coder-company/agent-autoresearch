@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 use rust_decimal::Decimal;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as FmtWrite;
@@ -333,6 +333,13 @@ enum Commands {
         #[arg(long)]
         cwd: Option<PathBuf>,
     },
+
+    /// Generate shell completions for bash, zsh, fish, elvish, or PowerShell
+    Completions {
+        /// Shell to generate completions for
+        #[arg(value_enum)]
+        shell: clap_complete::Shell,
+    },
 }
 
 #[derive(Subcommand)]
@@ -627,7 +634,16 @@ fn main() -> Result<()> {
         ),
 
         Commands::Exec { iterations, cwd } => cmd_exec(iterations, cwd),
+
+        Commands::Completions { shell } => cmd_completions(shell),
     }
+}
+
+fn cmd_completions(shell: clap_complete::Shell) -> Result<()> {
+    let mut command = Cli::command();
+    let mut stdout = std::io::stdout();
+    clap_complete::generate(shell, &mut command, "autoresearch", &mut stdout);
+    Ok(())
 }
 
 // ── Init ──────────────────────────────────────────────────────────────

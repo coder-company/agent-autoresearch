@@ -115,6 +115,7 @@ Use `./install.sh` without flags for the guided installer.
 ```bash
 autoresearch --help
 autoresearch screen --command "npm test"
+autoresearch completions zsh >/tmp/_autoresearch
 ```
 
 For repository contributors:

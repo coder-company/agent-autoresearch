@@ -30,9 +30,11 @@ autoresearch parallel template --workers 3 --output autoresearch-results/paralle
 autoresearch parallel closeout --batch-file autoresearch-results/parallel-workers.json
 autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.json
 autoresearch evals --format json
+autoresearch completions zsh > ~/.zfunc/_autoresearch
 ```
 
 Use `autoresearch runtime run` for supervised background Codex sessions and `autoresearch runtime status` / `autoresearch runtime stop` for control.
+Use `autoresearch completions <bash|zsh|fish|elvish|powershell>` to generate shell completions.
 
 ## Run Artifacts
 
