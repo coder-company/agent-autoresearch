@@ -59,6 +59,7 @@
 - [x] Native PRD generator for selected improve-mode ideas
 - [x] Native scenario generator for 12-dimension edge-case artifacts
 - [x] Native predict generator for five-persona review artifacts
+- [x] Native reason generator for adversarial candidate debate artifacts
 - [x] Adaptive eval checkpoint command for long-running loops
 - [x] Native protocol re-anchor command for long-running Codex sessions
 - [x] Plugin system — loadable mode definitions (TOML or YAML)

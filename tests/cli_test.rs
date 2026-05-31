@@ -207,6 +207,7 @@ fn test_api_manifest_lists_nested_commands_and_flags() {
         .stdout(predicate::str::contains("\"prd\""))
         .stdout(predicate::str::contains("\"scenario\""))
         .stdout(predicate::str::contains("\"predict\""))
+        .stdout(predicate::str::contains("\"reason\""))
         .stdout(predicate::str::contains("\"env\""))
         .stdout(predicate::str::contains("\"checkpoint\""))
         .stdout(predicate::str::contains("\"reanchor\""))
@@ -555,6 +556,40 @@ fn test_predict_writes_five_persona_artifact() {
     assert!(report.contains("Performance Engineer"));
     assert!(report.contains("Devil's Advocate"));
     assert!(report.contains("src/search/**"));
+}
+
+#[test]
+fn test_reason_writes_adversarial_debate_artifact() {
+    let dir = TempDir::new().unwrap();
+    let output = dir.path().join("reason/storage-decision.md");
+
+    cmd()
+        .args([
+            "reason",
+            "--question",
+            "Should we replace the storage layer",
+            "--mode",
+            "debate",
+            "--domain",
+            "software",
+            "--scope",
+            "src/storage/**",
+            "--output",
+            output.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\":\"written\""))
+        .stdout(predicate::str::contains("\"candidates\":3"));
+
+    let report = std::fs::read_to_string(output).unwrap();
+    assert!(report.contains("# Reason Debate: Should we replace the storage layer"));
+    assert!(report.contains("Blind Judge Rubric"));
+    assert!(report.contains("Candidate A"));
+    assert!(report.contains("Convergence threshold"));
+    assert!(report.contains("src/storage/**"));
 }
 
 #[test]

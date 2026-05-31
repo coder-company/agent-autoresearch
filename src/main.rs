@@ -33,6 +33,7 @@ use autoresearch::hooks;
 use autoresearch::modes::evals::{parse_results_tsv, ParsedRow};
 use autoresearch::modes::plan::{scan_repo_files, suggest_metrics, PATTERN_INDICATORS};
 use autoresearch::modes::predict::Persona;
+use autoresearch::modes::reason::{ReasonDomain, ReasoningMode};
 use autoresearch::modes::scenario::{Dimension, ScenarioFormat};
 
 const RUNTIME_HARD_INVARIANTS_DOC: &str = include_str!("../references/runtime-hard-invariants.md");
@@ -591,6 +592,28 @@ enum Commands {
         /// Proposal, change, or design decision to analyze
         #[arg(long)]
         proposal: String,
+        /// Relevant implementation scope. Repeatable.
+        #[arg(long)]
+        scope: Vec<String>,
+        /// Output path. Relative paths resolve from the workspace root.
+        #[arg(long)]
+        output: Option<PathBuf>,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
+    /// Generate an adversarial reasoning debate artifact
+    Reason {
+        /// Question, decision, or problem to debate
+        #[arg(long)]
+        question: String,
+        /// Reasoning mode: convergent, creative, or debate
+        #[arg(long, default_value = "debate")]
+        mode: String,
+        /// Domain: software, product, business, security, research, or content
+        #[arg(long, default_value = "software")]
+        domain: String,
         /// Relevant implementation scope. Repeatable.
         #[arg(long)]
         scope: Vec<String>,
@@ -1208,6 +1231,15 @@ fn main() -> Result<()> {
             output,
             cwd,
         } => cmd_predict(&proposal, scope, output, cwd),
+
+        Commands::Reason {
+            question,
+            mode,
+            domain,
+            scope,
+            output,
+            cwd,
+        } => cmd_reason(&question, &mode, &domain, scope, output, cwd),
 
         Commands::Completions { shell } => cmd_completions(shell),
         Commands::Manpages { output_dir } => cmd_manpages(&output_dir),
@@ -2086,6 +2118,219 @@ fn cmd_predict(
             "proposal": proposal,
             "personas": Persona::all().len(),
             "risk_level": "medium",
+        })
+    );
+    Ok(())
+}
+
+fn parse_reasoning_mode(value: &str) -> Result<ReasoningMode> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "convergent" | "converge" => Ok(ReasoningMode::Convergent),
+        "creative" | "divergent" => Ok(ReasoningMode::Creative),
+        "debate" | "adversarial" => Ok(ReasoningMode::Debate),
+        other => {
+            anyhow::bail!("Invalid reason mode {other:?}; use convergent, creative, or debate")
+        }
+    }
+}
+
+fn reasoning_mode_label(mode: ReasoningMode) -> &'static str {
+    match mode {
+        ReasoningMode::Convergent => "Convergent",
+        ReasoningMode::Creative => "Creative",
+        ReasoningMode::Debate => "Debate",
+    }
+}
+
+fn parse_reason_domain(value: &str) -> Result<ReasonDomain> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "software" | "engineering" => Ok(ReasonDomain::Software),
+        "product" => Ok(ReasonDomain::Product),
+        "business" => Ok(ReasonDomain::Business),
+        "security" => Ok(ReasonDomain::Security),
+        "research" => Ok(ReasonDomain::Research),
+        "content" | "writing" => Ok(ReasonDomain::Content),
+        other => anyhow::bail!(
+            "Invalid reason domain {other:?}; use software, product, business, security, research, or content"
+        ),
+    }
+}
+
+fn reason_candidate_rows(
+    question: &str,
+    mode: ReasoningMode,
+) -> Vec<(&'static str, String, &'static str)> {
+    match mode {
+        ReasoningMode::Creative => vec![
+            (
+                "A",
+                format!("Explore a high-upside alternative for {question}"),
+                "Maximizes differentiation but needs tighter risk controls.",
+            ),
+            (
+                "B",
+                format!("Combine two smaller mechanisms before committing to {question}"),
+                "Balances novelty with reversibility.",
+            ),
+            (
+                "C",
+                format!("Prototype the riskiest assumption behind {question}"),
+                "Finds unknowns early, but may not ship user value immediately.",
+            ),
+        ],
+        ReasoningMode::Convergent => vec![
+            (
+                "A",
+                format!("Pick the smallest measurable path for {question}"),
+                "Best when speed and evidence matter more than breadth.",
+            ),
+            (
+                "B",
+                format!(
+                    "Delay implementation until the metric and guard for {question} are explicit"
+                ),
+                "Reduces churn, but may slow momentum.",
+            ),
+            (
+                "C",
+                format!("Run a parallel compare before choosing how to handle {question}"),
+                "Costs more upfront, but produces direct evidence.",
+            ),
+        ],
+        ReasoningMode::Debate => vec![
+            (
+                "A",
+                format!("Conservative implementation of {question}"),
+                "Lowest blast radius, strongest rollback story.",
+            ),
+            (
+                "B",
+                format!("Parallel experiment for competing approaches to {question}"),
+                "Higher evidence quality, more setup cost.",
+            ),
+            (
+                "C",
+                format!("Broad redesign around {question}"),
+                "Potentially highest payoff, highest integration risk.",
+            ),
+        ],
+    }
+}
+
+fn render_reason_markdown(
+    question: &str,
+    mode: ReasoningMode,
+    domain: ReasonDomain,
+    scope: &[String],
+) -> String {
+    let mut out = String::new();
+    let scope_items = if scope.is_empty() {
+        vec!["DECISION NEEDED: identify implementation scope.".to_string()]
+    } else {
+        scope.to_vec()
+    };
+    let scope_lines = scope_items
+        .iter()
+        .map(|item| format!("- {item}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    writeln!(out, "# Reason Debate: {question}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "> Auto-generated adversarial reasoning artifact. Use it before implementation when the right answer is uncertain."
+    )
+    .unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Setup").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "- Mode: {}", reasoning_mode_label(mode)).unwrap();
+    writeln!(out, "- Domain: {}", domain.label()).unwrap();
+    writeln!(out, "- Panel size: 5 blind judges").unwrap();
+    writeln!(out, "- Convergence threshold: 2 matching winning rounds").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Scope").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "{scope_lines}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Candidate Solutions").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "| Candidate | Approach | Main Tradeoff |").unwrap();
+    writeln!(out, "|---|---|---|").unwrap();
+    for (id, title, tradeoff) in reason_candidate_rows(question, mode) {
+        writeln!(out, "| {id} | {title} | {tradeoff} |").unwrap();
+    }
+    writeln!(out).unwrap();
+    writeln!(out, "## Blind Judge Rubric").unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "- Correctness: can the answer satisfy the stated problem?"
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "- Verifiability: can an autoresearch metric prove progress?"
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "- Reversibility: can a failed trial be rolled back cleanly?"
+    )
+    .unwrap();
+    writeln!(out, "- Risk: what breaks if the candidate is wrong?").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Initial Verdict").unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "DECISION NEEDED: run at least one human or agent judge round before selecting a winner."
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "Default recommendation: choose Candidate A unless evidence justifies the added cost of B or C."
+    )
+    .unwrap();
+    out
+}
+
+fn cmd_reason(
+    question: &str,
+    mode: &str,
+    domain: &str,
+    scope: Vec<String>,
+    output: Option<PathBuf>,
+    cwd: Option<PathBuf>,
+) -> Result<()> {
+    let mode = parse_reasoning_mode(mode)?;
+    let domain = parse_reason_domain(domain)?;
+    let workspace = resolve_workspace_root(cwd);
+    let output = output.unwrap_or_else(|| {
+        PathBuf::from("reason").join(format!("reason-{}.md", slugify(question)))
+    });
+    let output = resolve_workspace_path(&workspace, output);
+    if let Some(parent) = output
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create {}", parent.display()))?;
+    }
+
+    let markdown = render_reason_markdown(question, mode, domain, &scope);
+    std::fs::write(&output, markdown)
+        .with_context(|| format!("failed to write {}", output.display()))?;
+    println!(
+        "{}",
+        serde_json::json!({
+            "status": "written",
+            "path": output.display().to_string(),
+            "question": question,
+            "mode": reasoning_mode_label(mode).to_ascii_lowercase(),
+            "domain": domain.label(),
+            "candidates": 3,
         })
     );
     Ok(())
