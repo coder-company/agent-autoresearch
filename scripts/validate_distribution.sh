@@ -247,7 +247,8 @@ require_grep 'autoresearch probe --subject' docs/GUIDE.md
 require_grep 'autoresearch probe --subject' references/binary-operations.md
 require_grep 'probe --mode autonomous' README.md
 require_grep 'probe --mode autonomous --depth <level> --iterations <n> --adversarial' references/binary-operations.md
-require_grep 'probe --chain' references/binary-operations.md
+require_grep 'probe --plan' references/binary-operations.md
+require_grep 'shorthand for `--chain plan`' commands/autoresearch/probe.md
 require_grep 'Native probe generator' docs/development-roadmap.md
 require_grep '`autoresearch probe` writes' COMPARISON.md
 require_grep 'autoresearch learn --mode' README.md

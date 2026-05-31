@@ -2206,6 +2206,35 @@ fn test_probe_chain_writes_handoff_sidecar() {
 }
 
 #[test]
+fn test_probe_plan_flag_records_plan_handoff() {
+    let dir = TempDir::new().unwrap();
+    let output = dir
+        .path()
+        .join("autoresearch-results/probe/payment-probe.md");
+
+    cmd()
+        .args([
+            "probe",
+            "--subject",
+            "Payment retry workflow",
+            "--plan",
+            "--output",
+            output.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("handoff.json"));
+
+    let handoff = std::fs::read_to_string(output.parent().unwrap().join("handoff.json")).unwrap();
+    assert!(handoff.contains("\"source_command\": \"probe\""));
+    assert!(handoff.contains("\"chain\": ["));
+    assert!(handoff.contains("\"plan\""));
+    assert!(handoff.contains("\"next_target\": \"plan\""));
+}
+
+#[test]
 fn test_probe_accepts_protocol_topic_alias() {
     let dir = TempDir::new().unwrap();
 

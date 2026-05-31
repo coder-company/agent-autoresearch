@@ -944,6 +944,9 @@ enum Commands {
         /// Net-new constraint threshold for saturation
         #[arg(long)]
         saturation_threshold: Option<u8>,
+        /// Chain into plan mode after writing probe constraints
+        #[arg(long)]
+        plan: bool,
         /// Comma-separated downstream command targets to record in handoff.json
         #[arg(long)]
         chain: Option<String>,
@@ -1855,6 +1858,7 @@ fn main() -> Result<()> {
             personas,
             adversarial,
             saturation_threshold,
+            plan,
             chain,
             evals,
             evals_interval,
@@ -1869,6 +1873,7 @@ fn main() -> Result<()> {
             personas,
             adversarial,
             saturation_threshold,
+            plan,
             chain,
             evals,
             evals_interval,
@@ -5293,6 +5298,7 @@ fn cmd_probe(
     personas: Option<u8>,
     adversarial: bool,
     saturation_threshold: Option<u8>,
+    plan: bool,
     chain: Option<String>,
     evals: bool,
     evals_interval: Option<u32>,
@@ -5308,7 +5314,8 @@ fn cmd_probe(
         adversarial,
         saturation_threshold,
     )?;
-    let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
+    let forced_targets = if plan { &["plan"][..] } else { &[][..] };
+    let chain_targets = chain_targets_with_forced(chain.as_deref(), forced_targets)?;
     let workspace = resolve_workspace_root(cwd);
     let output = output.unwrap_or_else(|| {
         default_artifact_path("probe", format!("probe-{}.md", slugify(subject)))
