@@ -18,7 +18,7 @@ autoresearch ship --target "Release v1.2.0" --type code-release --dry-run --moni
 autoresearch scenario --target "Checkout flow" --domain web --format threat-scenarios --scope "src/checkout/**" --iterations 16 --chain debug
 autoresearch predict --proposal "Add cache warming to search results" --scope "src/search/**"
 autoresearch reason --question "Should we replace the storage layer" --mode debate --domain software --judges 7 --convergence 4
-autoresearch probe --subject "Payment retry workflow" --scope "src/payments/**"
+autoresearch probe --subject "Payment retry workflow" --scope "src/payments/**" --iterations 9
 autoresearch learn --mode summarize --scope "src/**/*.rs" --depth comprehensive --iterations 14 --evals
 autoresearch health --strict
 autoresearch env --format json
@@ -54,7 +54,7 @@ Native artifact generators default to ignored `autoresearch-results/<mode>/` pat
 `reason --chain <targets>` writes a sidecar handoff with debate context and comma-separated downstream targets.
 `reason --judges <n> --convergence <n> --judge-personas <list> --temperature <value>` records panel size, stopping threshold, synthesis behavior, and generation hints.
 `probe` writes eight persona-driven requirement questions, constraint slots, and the saturation rule used to decide when enough constraints have been found.
-`probe --mode autonomous --depth <level> --adversarial` records interrogation profile, persona count, rounds, and saturation threshold metadata.
+`probe --mode autonomous --depth <level> --iterations <n> --adversarial` records interrogation profile, persona count, rounds, and saturation threshold metadata.
 `probe --chain <targets>` writes a sidecar handoff with constraint context and comma-separated downstream targets.
 `learn --depth <level> --iterations <n>` writes documentation summary artifacts with depth, iteration budget, validation report, learn-results TSV, and handoff JSON.
 `learn --file <path> --depth <level> --topics <list> --no-fix --chain <targets>` records documentation profile, validation behavior, and downstream handoff metadata.

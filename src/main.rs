@@ -914,6 +914,9 @@ enum Commands {
         /// Probe depth: shallow, standard, or deep
         #[arg(long, default_value = "standard")]
         depth: String,
+        /// Override the depth-derived interrogation round budget
+        #[arg(long)]
+        iterations: Option<u32>,
         /// Number of active personas, 3-8
         #[arg(long)]
         personas: Option<u8>,
@@ -1815,6 +1818,7 @@ fn main() -> Result<()> {
             scope,
             mode,
             depth,
+            iterations,
             personas,
             adversarial,
             saturation_threshold,
@@ -1828,6 +1832,7 @@ fn main() -> Result<()> {
             scope,
             mode,
             depth,
+            iterations,
             personas,
             adversarial,
             saturation_threshold,
@@ -5085,7 +5090,7 @@ fn probe_persona_question(persona: ProbePersona, subject: &str) -> String {
 struct ProbeProfile {
     mode: String,
     depth: String,
-    rounds: u8,
+    rounds: u32,
     personas: u8,
     adversarial: bool,
     saturation_threshold: u8,
@@ -5099,7 +5104,7 @@ fn parse_probe_mode(value: &str) -> Result<&'static str> {
     }
 }
 
-fn parse_probe_depth(value: &str) -> Result<(&'static str, u8)> {
+fn parse_probe_depth(value: &str) -> Result<(&'static str, u32)> {
     match value.trim().to_ascii_lowercase().as_str() {
         "shallow" | "quick" => Ok(("shallow", 5)),
         "standard" | "normal" => Ok(("standard", 15)),
@@ -5111,12 +5116,16 @@ fn parse_probe_depth(value: &str) -> Result<(&'static str, u8)> {
 fn resolve_probe_profile(
     mode: &str,
     depth: &str,
+    iterations: Option<u32>,
     personas: Option<u8>,
     adversarial: bool,
     saturation_threshold: Option<u8>,
 ) -> Result<ProbeProfile> {
     let mode = parse_probe_mode(mode)?;
     let (depth, rounds) = parse_probe_depth(depth)?;
+    if iterations == Some(0) {
+        anyhow::bail!("probe iterations must be greater than zero");
+    }
     let personas = personas.unwrap_or(6);
     if !(3..=8).contains(&personas) {
         anyhow::bail!("probe personas must be between 3 and 8");
@@ -5128,7 +5137,7 @@ fn resolve_probe_profile(
     Ok(ProbeProfile {
         mode: mode.to_string(),
         depth: depth.to_string(),
-        rounds,
+        rounds: iterations.unwrap_or(rounds),
         personas,
         adversarial,
         saturation_threshold,
@@ -5215,6 +5224,7 @@ fn cmd_probe(
     scope: Vec<String>,
     mode: String,
     depth: String,
+    iterations: Option<u32>,
     personas: Option<u8>,
     adversarial: bool,
     saturation_threshold: Option<u8>,
@@ -5225,8 +5235,14 @@ fn cmd_probe(
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     validate_chain_evals_flags("probe", evals, evals_interval)?;
-    let profile =
-        resolve_probe_profile(&mode, &depth, personas, adversarial, saturation_threshold)?;
+    let profile = resolve_probe_profile(
+        &mode,
+        &depth,
+        iterations,
+        personas,
+        adversarial,
+        saturation_threshold,
+    )?;
     let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
     let workspace = resolve_workspace_root(cwd);
     let output = output.unwrap_or_else(|| {

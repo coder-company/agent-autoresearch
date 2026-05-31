@@ -1985,6 +1985,41 @@ fn test_probe_options_are_recorded() {
 }
 
 #[test]
+fn test_probe_iterations_override_depth_rounds() {
+    let dir = TempDir::new().unwrap();
+    let output = dir
+        .path()
+        .join("autoresearch-results/probe/custom-budget.md");
+
+    cmd()
+        .args([
+            "probe",
+            "--subject",
+            "Payment retry workflow",
+            "--depth",
+            "deep",
+            "--iterations",
+            "9",
+            "--chain",
+            "plan",
+            "--output",
+            output.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"rounds\":9"));
+
+    let report = std::fs::read_to_string(&output).unwrap();
+    let handoff = std::fs::read_to_string(output.parent().unwrap().join("handoff.json")).unwrap();
+
+    assert!(report.contains("- Depth: deep"));
+    assert!(report.contains("- Rounds: 9"));
+    assert!(handoff.contains("\"rounds\": 9"));
+}
+
+#[test]
 fn test_probe_chain_writes_handoff_sidecar() {
     let dir = TempDir::new().unwrap();
     let output = dir
