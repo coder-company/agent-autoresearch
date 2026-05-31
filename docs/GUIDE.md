@@ -55,6 +55,7 @@ autoresearch parallel compare --a "simplify parser" --b "cache scan results"
 autoresearch parallel closeout --batch-file autoresearch-results/parallel-workers.json --merge-strategy cherry-pick
 autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.json
 autoresearch evals --file autoresearch-results/results.tsv --format json --recommend --plateau-window 5 --chain ship
+autoresearch evals --file autoresearch-results/results.tsv --compare autoresearch-results/previous-results.tsv --format json
 autoresearch api --format json
 autoresearch mcp serve
 autoresearch mcp call --server-command "autoresearch mcp serve" --tool autoresearch_status
@@ -84,6 +85,7 @@ Use `autoresearch search --from-state` with `--provider-command` or `AUTORESEARC
 Use `autoresearch parallel closeout --merge-strategy <cherry-pick|fast-forward|squash|rebase>` to select how the retained worker commit is merged.
 Use `autoresearch parallel compare --a <hypothesis> --b <hypothesis>` to prepare a two-arm A/B batch that reuses `parallel run` and verified `parallel closeout`.
 Use `autoresearch evals --file <path> --format json --recommend --plateau-window 5 --chain ship` after parallel closeout to include worker improvement counts, a sign-test summary, CI-friendly next-step guidance, and downstream handoff metadata.
+Use `autoresearch evals --file <path> --compare <other-results.tsv> --format json` to compare run improvement, efficiency, and plateau length before choosing the next strategy.
 Use `autoresearch completions <bash|zsh|fish|elvish|powershell>` to generate shell completions.
 Use `autoresearch manpages --output-dir man/man1` to generate a local `autoresearch.1` manual page.
 Use `autoresearch config template --output .autoresearch.toml` to write a starter project defaults file.

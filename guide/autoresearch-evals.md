@@ -55,6 +55,16 @@ Scans `autoresearch-results/` and `autoresearch/*/` for TSV files.
 
 Writes `handoff.json` beside the TSV with the recommendation, findings, and next target.
 
+### Compare Runs
+
+```
+/autoresearch:evals --file autoresearch-results/results.tsv
+--compare autoresearch-results/previous-results.tsv
+--format json
+```
+
+Reports the winning run plus improvement, efficiency, and plateau deltas.
+
 ## What It Reports
 
 ```
@@ -117,6 +127,7 @@ If plateau detected for 3+ consecutive checkpoints → recommends early stop.
 - Console: 30-50 line structured report
 - `--format md` → writes `evals-summary.md` next to the input TSV
 - `--format json` → writes `evals-summary.json` with structured data
+- `--compare <path>` → includes cross-run deltas and a winner
 - `--chain <targets>` → writes `handoff.json` next to the input TSV for downstream commands
 
 ## Backward Compatibility

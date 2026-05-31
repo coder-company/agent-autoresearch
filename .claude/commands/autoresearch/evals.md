@@ -1,7 +1,7 @@
 ---
 name: autoresearch:evals
 description: "Analyze iteration results: trends, plateaus, regressions, recommendations"
-argument-hint: "[path/to/results.tsv] [--file <path>] [--format text|json|md] [--recommend] [--plateau-window N] [--chain <targets>]"
+argument-hint: "[path/to/results.tsv] [--file <path>] [--format text|json|md] [--recommend] [--plateau-window N] [--compare <path>] [--chain <targets>]"
 ---
 
 EXECUTE IMMEDIATELY.
@@ -13,6 +13,7 @@ Extract from $ARGUMENTS:
 - `--format` — output format: text (default console), json, md (markdown file)
 - `--recommend` — include explicit go/no-go decision and next-step guidance
 - `--plateau-window N` — consecutive non-keep iterations that define a plateau (default 5)
+- `--compare <path>` — compare improvement, efficiency, and plateau length against another results TSV
 - `--chain <targets>` — write handoff.json for downstream command(s) after analysis
 
 ## Input Discovery
@@ -87,6 +88,7 @@ Unknown columns: report presence but skip analysis. Forward-compatible with futu
 - If `--format json` → write `evals-summary.json` with structured data
 - If `--recommend` → include go/no-go and next-step guidance in the selected output
 - If `--plateau-window N` → use N consecutive non-keep iterations for plateau detection
+- If `--compare <path>` → include winner, improvement delta, efficiency delta, and plateau delta
 - If `--chain <targets>` → write `handoff.json` next to the input TSV with recommendation, findings, and next target
 
 ## Mid-Loop Checkpoint Protocol (for --evals flag in other commands)

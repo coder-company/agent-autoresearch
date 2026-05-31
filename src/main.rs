@@ -276,6 +276,9 @@ enum Commands {
         /// Chain evals output to downstream command(s)
         #[arg(long)]
         chain: Option<String>,
+        /// Compare against another results TSV
+        #[arg(long, value_name = "PATH")]
+        compare: Option<PathBuf>,
         /// Output format: text, json, or md
         #[arg(long, default_value = "text")]
         format: String,
@@ -1469,6 +1472,7 @@ fn main() -> Result<()> {
             recommend,
             plateau_window,
             chain,
+            compare,
             format,
         } => {
             if path.is_some() && file.is_some() {
@@ -1480,6 +1484,7 @@ fn main() -> Result<()> {
                 recommend,
                 plateau_window,
                 chain.as_deref(),
+                compare.as_deref(),
             )
         }
 
@@ -7395,6 +7400,7 @@ fn cmd_evals(
     recommend: bool,
     plateau_window: u32,
     chain: Option<&str>,
+    compare: Option<&Path>,
 ) -> Result<()> {
     if plateau_window == 0 {
         anyhow::bail!("evals plateau window must be greater than zero");
@@ -7582,6 +7588,20 @@ fn cmd_evals(
     let next_step = evals_next_step(recommendation);
     let plateau_detected = longest_plateau >= plateau_window;
     let summary_dir = tsv_path.parent().unwrap_or_else(|| Path::new("."));
+    let comparison = if let Some(compare_path) = compare {
+        let compare_content = std::fs::read_to_string(compare_path)
+            .with_context(|| format!("Cannot read {}", compare_path.display()))?;
+        Some(evals_comparison(
+            compare_path,
+            &compare_content,
+            direction,
+            improvement,
+            efficiency,
+            longest_plateau,
+        )?)
+    } else {
+        None
+    };
     let chain_targets = parse_handoff_chain_targets(chain)?;
     let handoff_path = if chain_targets.is_empty() {
         None
@@ -7659,6 +7679,7 @@ fn cmd_evals(
                 "recommendation": recommendation,
                 "go_no_go": go_no_go,
                 "next_step": next_step,
+                "comparison": &comparison,
             },
             "findings": findings,
             "config": {
@@ -7666,6 +7687,7 @@ fn cmd_evals(
                 "recommend": recommend,
                 "plateau_window": plateau_window,
                 "unknown_columns": &unknown_columns,
+                "comparison": &comparison,
             },
             "chain": chain_targets.clone(),
             "next_target": next_target,
@@ -7704,6 +7726,7 @@ fn cmd_evals(
                 "recommendation": recommendation,
                 "unknown_columns": &unknown_columns,
                 "parallel_workers": &parallel_workers,
+                "comparison": &comparison,
                 "top_improvements": top_keeps.iter().take(5).map(|(d, desc)| {
                     serde_json::json!({"delta": d.to_string(), "description": desc})
                 }).collect::<Vec<_>>(),
@@ -7778,6 +7801,7 @@ fn cmd_evals(
                 parallel_workers: &parallel_workers,
                 top_keeps: &top_keeps,
                 top_regressions: &top_regressions,
+                comparison: comparison.as_ref(),
                 chain_targets: &chain_targets,
                 handoff_path: handoff_path.as_deref(),
             });
@@ -7812,6 +7836,7 @@ fn cmd_evals(
                 parallel_workers: &parallel_workers,
                 top_keeps: &top_keeps,
                 top_regressions: &top_regressions,
+                comparison: comparison.as_ref(),
                 chain_targets: &chain_targets,
                 handoff_path: handoff_path.as_deref(),
             });
@@ -7868,6 +7893,7 @@ fn cmd_checkpoint(cwd: Option<PathBuf>, interval: Option<u32>, format: &str) -> 
         format,
         false,
         5,
+        None,
         None,
     )
 }
@@ -7976,8 +8002,26 @@ struct EvalsReport<'a> {
     top_keeps: &'a [(Decimal, &'a str)],
     top_regressions: &'a [(Decimal, &'a str)],
     parallel_workers: &'a ParallelWorkerStats,
+    comparison: Option<&'a EvalsComparison>,
     chain_targets: &'a [String],
     handoff_path: Option<&'a Path>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct EvalsComparison {
+    compared_path: String,
+    compared_iterations: usize,
+    compared_keeps: usize,
+    compared_baseline: String,
+    compared_final: String,
+    compared_improvement: String,
+    compared_improvement_pct: Option<String>,
+    compared_efficiency_pct: u32,
+    compared_longest_plateau: u32,
+    winner: &'static str,
+    improvement_delta: String,
+    efficiency_delta: i32,
+    plateau_delta: i32,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -8215,6 +8259,24 @@ fn render_evals_markdown(report: EvalsReport<'_>) -> String {
         writeln!(out).unwrap();
     }
 
+    if let Some(comparison) = report.comparison {
+        writeln!(out, "### Comparison").unwrap();
+        writeln!(out).unwrap();
+        writeln!(out, "- Compared run: {}", comparison.compared_path).unwrap();
+        writeln!(out, "- Winner: {}", comparison.winner).unwrap();
+        writeln!(
+            out,
+            "- Compared improvement: {} ({})",
+            comparison.compared_improvement,
+            format_optional_percent(comparison.compared_improvement_pct.as_deref())
+        )
+        .unwrap();
+        writeln!(out, "- Improvement delta: {}", comparison.improvement_delta).unwrap();
+        writeln!(out, "- Efficiency delta: {}%", comparison.efficiency_delta).unwrap();
+        writeln!(out, "- Plateau delta: {}", comparison.plateau_delta).unwrap();
+        writeln!(out).unwrap();
+    }
+
     writeln!(out, "### Recommendations").unwrap();
     writeln!(out).unwrap();
     if report.longest_plateau >= report.plateau_window {
@@ -8292,6 +8354,98 @@ fn format_optional_percent(value: Option<&str>) -> String {
     value
         .map(|pct| format!("{pct}%"))
         .unwrap_or_else(|| "n/a".to_string())
+}
+
+fn evals_comparison(
+    compared_path: &Path,
+    compared_content: &str,
+    expected_direction: &str,
+    primary_improvement: Decimal,
+    primary_efficiency: u32,
+    primary_longest_plateau: u32,
+) -> Result<EvalsComparison> {
+    let compared_direction = evals_direction(compared_content)?;
+    if compared_direction != expected_direction {
+        anyhow::bail!(
+            "evals compare direction mismatch: primary is {expected_direction}, comparison is {compared_direction}"
+        );
+    }
+
+    let compared_metrics = parse_results_tsv(compared_content)?;
+    if compared_metrics.is_empty() {
+        anyhow::bail!("No main data rows in comparison results TSV.");
+    }
+
+    let compared_total = compared_metrics.len();
+    let compared_has_baseline = compared_metrics
+        .first()
+        .is_some_and(|row| row.iteration == 0 || row.status == "baseline");
+    let compared_iterations = compared_total.saturating_sub(usize::from(compared_has_baseline));
+    let compared_keeps = compared_metrics
+        .iter()
+        .filter(|row| is_keep_status(&row.status))
+        .count();
+    let compared_baseline = compared_metrics
+        .first()
+        .map(|row| row.metric)
+        .unwrap_or_default();
+    let compared_final = compared_metrics
+        .last()
+        .map(|row| row.metric)
+        .unwrap_or_default();
+    let compared_improvement = if expected_direction == "higher" {
+        compared_final - compared_baseline
+    } else {
+        compared_baseline - compared_final
+    };
+    let compared_improvement_pct = (compared_baseline != Decimal::ZERO).then(|| {
+        ((compared_improvement / compared_baseline.abs()) * Decimal::from(100))
+            .round_dp(2)
+            .to_string()
+    });
+    let compared_efficiency = if compared_iterations > 0 {
+        (compared_keeps as f64 / compared_iterations as f64 * 100.0).round() as u32
+    } else {
+        0
+    };
+    let compared_longest_plateau = longest_evals_plateau(&compared_metrics);
+    let winner = if primary_improvement > compared_improvement {
+        "primary"
+    } else if primary_improvement < compared_improvement {
+        "comparison"
+    } else {
+        "tie"
+    };
+
+    Ok(EvalsComparison {
+        compared_path: compared_path.display().to_string(),
+        compared_iterations,
+        compared_keeps,
+        compared_baseline: compared_baseline.to_string(),
+        compared_final: compared_final.to_string(),
+        compared_improvement: compared_improvement.to_string(),
+        compared_improvement_pct,
+        compared_efficiency_pct: compared_efficiency,
+        compared_longest_plateau,
+        winner,
+        improvement_delta: (primary_improvement - compared_improvement).to_string(),
+        efficiency_delta: primary_efficiency as i32 - compared_efficiency as i32,
+        plateau_delta: primary_longest_plateau as i32 - compared_longest_plateau as i32,
+    })
+}
+
+fn longest_evals_plateau(metrics: &[ParsedRow]) -> u32 {
+    let mut longest_plateau = 0u32;
+    let mut current_plateau = 0u32;
+    for row in metrics {
+        if !is_keep_status(&row.status) && row.status != "baseline" {
+            current_plateau += 1;
+            longest_plateau = longest_plateau.max(current_plateau);
+        } else {
+            current_plateau = 0;
+        }
+    }
+    longest_plateau
 }
 
 fn evals_recommendation(

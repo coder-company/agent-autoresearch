@@ -3387,6 +3387,50 @@ fn test_evals_chain_writes_handoff() {
 }
 
 #[test]
+fn test_evals_compare_reports_winner() {
+    let dir = TempDir::new().unwrap();
+    let primary_path = dir.path().join("primary-results.tsv");
+    let compared_path = dir.path().join("compared-results.tsv");
+
+    let mut primary = std::fs::File::create(&primary_path).unwrap();
+    writeln!(primary, "# metric_direction: higher").unwrap();
+    writeln!(
+        primary,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(primary, "0\tabc1234\t50\t0\t-\tbaseline\tinitial state").unwrap();
+    writeln!(primary, "1\tbcd2345\t60\t+10\tpass\tkeep\tlarge win").unwrap();
+
+    let mut compared = std::fs::File::create(&compared_path).unwrap();
+    writeln!(compared, "# metric_direction: higher").unwrap();
+    writeln!(
+        compared,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(compared, "0\tabc1234\t50\t0\t-\tbaseline\tinitial state").unwrap();
+    writeln!(compared, "1\tcde3456\t55\t+5\tpass\tkeep\tsmaller win").unwrap();
+
+    cmd()
+        .args([
+            "evals",
+            "--file",
+            primary_path.to_str().unwrap(),
+            "--compare",
+            compared_path.to_str().unwrap(),
+            "--format",
+            "json",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"comparison\""))
+        .stdout(predicate::str::contains("\"winner\": \"primary\""))
+        .stdout(predicate::str::contains("\"improvement_delta\": \"5\""))
+        .stdout(predicate::str::contains("\"compared_improvement\": \"5\""));
+}
+
+#[test]
 fn test_evals_reports_parallel_worker_significance() {
     let dir = TempDir::new().unwrap();
     let tsv_path = dir.path().join("results.tsv");
