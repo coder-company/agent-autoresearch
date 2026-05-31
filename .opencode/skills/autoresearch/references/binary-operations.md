@@ -82,7 +82,7 @@ autoresearch watch --lines 20 --format jsonl
 autoresearch watch --websocket --websocket-addr 127.0.0.1:8765
 autoresearch checkpoint --format json
 autoresearch reanchor --format json
-autoresearch evals --format json
+autoresearch evals --file autoresearch-results/results.tsv --format json
 autoresearch cost --per-iteration-usd 0.25 --format json
 ```
 

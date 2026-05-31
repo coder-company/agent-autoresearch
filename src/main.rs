@@ -264,6 +264,9 @@ enum Commands {
     Evals {
         /// Path to results.tsv (auto-detected if omitted)
         path: Option<PathBuf>,
+        /// Path to results.tsv (alias for the positional path)
+        #[arg(long, value_name = "PATH")]
+        file: Option<PathBuf>,
         /// Output format: text, json, or md
         #[arg(long, default_value = "text")]
         format: String,
@@ -1427,7 +1430,12 @@ fn main() -> Result<()> {
             cwd,
         ),
 
-        Commands::Evals { path, format } => cmd_evals(path, &format),
+        Commands::Evals { path, file, format } => {
+            if path.is_some() && file.is_some() {
+                anyhow::bail!("evals accepts either a positional path or --file, not both");
+            }
+            cmd_evals(path.or(file), &format)
+        }
 
         Commands::Checkpoint {
             interval,

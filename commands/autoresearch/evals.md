@@ -9,7 +9,7 @@ EXECUTE IMMEDIATELY.
 ## Parse Arguments
 
 Extract from $ARGUMENTS:
-- Positional path to a specific TSV file
+- Positional path or `--file <path>` to a specific TSV file
 - `--format` — output format: text (default console), json, md (markdown file)
 
 ## Input Discovery

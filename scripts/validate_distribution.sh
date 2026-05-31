@@ -253,6 +253,8 @@ require_grep 'learn --depth <level> --iterations <n>' references/binary-operatio
 require_grep 'learn --file <path> --depth <level>' references/binary-operations.md
 require_grep 'Native learn generator' docs/development-roadmap.md
 require_grep '`autoresearch learn` writes' COMPARISON.md
+require_grep 'autoresearch evals --file' docs/GUIDE.md
+require_grep 'autoresearch evals --file' references/binary-operations.md
 require_grep 'autoresearch cost --per-iteration-usd' README.md
 require_grep 'autoresearch cost --per-iteration-usd' docs/GUIDE.md
 require_grep '\[x\] Cost tracking — estimate token/API spend per iteration' docs/development-roadmap.md
