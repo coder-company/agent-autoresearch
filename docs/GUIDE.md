@@ -69,6 +69,20 @@ Use `autoresearch guard-presets --format json` to suggest per-repo guard command
 Use `autoresearch lessons --workspace-context --last 5` from any managed repo to show the shared workspace lessons path and repo targets.
 Use `autoresearch plugin list` and `autoresearch plugin validate --path <file>` to load local TOML mode plugin manifests with command safety screening.
 Use `autoresearch plugin marketplace` to validate `.autoresearch/plugins/marketplace.toml` and every referenced community mode manifest before installing or sharing it.
+Use `.github/actions/autoresearch` in GitHub Actions to run `exec` mode with a checked-in goal, scope, metric, and verify command.
+
+```yaml
+steps:
+  - uses: actions/checkout@v4
+  - uses: ./.github/actions/autoresearch
+    with:
+      goal: Reduce lint failures
+      scope: '["src/**/*.rs", "tests/**/*.rs"]'
+      metric: lint failure count
+      verify: cargo clippy --all-targets --all-features -- -D warnings 2>&1 | tail -1
+      direction: lower
+      iterations: "3"
+```
 
 ## Project Defaults
 

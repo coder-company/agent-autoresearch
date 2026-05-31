@@ -76,6 +76,7 @@ required_paths=(
     .github/workflows/ci.yml
     .github/workflows/docs.yml
     .github/workflows/release.yml
+    .github/actions/autoresearch/action.yml
     book.toml
     docs/SUMMARY.md
     docs/README.md
@@ -329,6 +330,12 @@ require_grep 'Homebrew formula and cargo-binstall support' docs/development-road
 require_grep 'Pre-built binaries for Linux \(x86_64, aarch64\), macOS \(x86_64, aarch64\), Windows' docs/development-roadmap.md
 require_grep 'Tagged releases publish `\.tar\.gz` archives' docs/INSTALL.md
 require_grep 'cargo binstall autoresearch' docs/INSTALL.md
+require_grep 'using: composite' .github/actions/autoresearch/action.yml
+require_grep 'cargo build --locked --manifest-path "\$GITHUB_ACTION_PATH/\.\./\.\./Cargo\.toml" --release' .github/actions/autoresearch/action.yml
+require_grep 'exec --iterations "\$INPUT_ITERATIONS" --cwd "\$INPUT_CWD"' .github/actions/autoresearch/action.yml
+require_grep '\.github/actions/autoresearch' README.md
+require_grep '\.github/actions/autoresearch' docs/GUIDE.md
+require_grep '\[x\] GitHub Action for autoresearch in CI' docs/development-roadmap.md
 require_grep 'src = "docs"' book.toml
 require_grep '\[Installation\]\(INSTALL\.md\)' docs/SUMMARY.md
 require_grep 'actions/deploy-pages@v4' .github/workflows/docs.yml

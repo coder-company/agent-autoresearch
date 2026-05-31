@@ -196,6 +196,7 @@ Covered in detail in the [guide](guide/):
 - **MCP integration** — `autoresearch mcp serve` exposes read-only tools, and `autoresearch mcp call` invokes external stdio MCP tools from scripts
 - **Pre-built release binaries** — tag builds publish checksummed Linux, macOS, and Windows archives through GitHub Releases
 - **Package-manager metadata** — `cargo-binstall` archive metadata and a Homebrew formula template track the release assets
+- **GitHub Action runner** — `.github/actions/autoresearch` wraps `exec` mode for checked-in CI optimization loops
 - **Documentation site** — `book.toml` and `docs/SUMMARY.md` build the full docs set as an mdBook site for GitHub Pages
 - **Workspace scope expansion** — `autoresearch scope expand --format json` resolves primary and companion repo globs and annotates package roots for monorepos
 - **Cross-repo execution** — `autoresearch workspace exec --rollback-on-failure` runs one screened command across all repo targets and restores attempted repos on failure

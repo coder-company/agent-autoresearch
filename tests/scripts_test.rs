@@ -319,3 +319,20 @@ fn release_workflow_builds_prebuilt_binary_matrix() {
     assert!(workflow.contains("sha256sum"));
     assert!(workflow.contains("shasum -a 256"));
 }
+
+#[test]
+fn github_action_packages_autoresearch_exec() {
+    let root = repo_root();
+    let action =
+        std::fs::read_to_string(root.join(".github/actions/autoresearch/action.yml")).unwrap();
+
+    assert!(action.contains("using: composite"));
+    assert!(action.contains(
+        "cargo build --locked --manifest-path \"$GITHUB_ACTION_PATH/../../Cargo.toml\" --release"
+    ));
+    assert!(action
+        .contains("AUTORESEARCH_BIN: ${{ github.action_path }}/../../target/release/autoresearch"));
+    assert!(action.contains("\"goal\": os.environ[\"INPUT_GOAL\"]"));
+    assert!(action.contains("\"scope\": scope"));
+    assert!(action.contains("exec --iterations \"$INPUT_ITERATIONS\" --cwd \"$INPUT_CWD\""));
+}

@@ -60,11 +60,11 @@
 - [x] Pre-built binaries for Linux (x86_64, aarch64), macOS (x86_64, aarch64), Windows
 - [x] Homebrew formula and cargo-binstall support
 - [x] Comprehensive documentation site
+- [x] GitHub Action for autoresearch in CI
 
 ## Future Ideas (unscheduled)
 
 - Interactive TUI dashboard for monitoring runs
-- GitHub Action for autoresearch in CI
 - VS Code extension for run visualization
 - Metric history graphing (sparklines in terminal)
 - A/B experiment mode — compare two approaches head-to-head
