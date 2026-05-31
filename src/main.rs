@@ -248,6 +248,9 @@ enum Commands {
         /// Verify command to check; defaults to state.json config when present
         #[arg(long)]
         verify: Option<String>,
+        /// Exit non-zero when warnings are present
+        #[arg(long)]
+        strict: bool,
         /// Minimum free disk space in MB
         #[arg(long, default_value_t = 500)]
         min_free_mb: u64,
@@ -656,9 +659,10 @@ fn main() -> Result<()> {
 
         Commands::Health {
             verify,
+            strict,
             min_free_mb,
             cwd,
-        } => cmd_health(verify.as_deref(), min_free_mb, cwd),
+        } => cmd_health(verify.as_deref(), strict, min_free_mb, cwd),
 
         Commands::Runtime { command } => cmd_runtime(command),
 
@@ -2229,12 +2233,17 @@ fn cmd_status(cwd: Option<PathBuf>) -> Result<()> {
 
 // ── Health ────────────────────────────────────────────────────────────
 
-fn cmd_health(verify: Option<&str>, min_free_mb: u64, cwd: Option<PathBuf>) -> Result<()> {
+fn cmd_health(
+    verify: Option<&str>,
+    strict: bool,
+    min_free_mb: u64,
+    cwd: Option<PathBuf>,
+) -> Result<()> {
     let workspace = resolve_results_workspace(cwd);
     let report = health::run_health_check(&workspace, verify, min_free_mb)?;
-    let has_blockers = report.has_blockers();
+    let should_fail = report.has_blockers() || (strict && !report.warnings.is_empty());
     println!("{}", serde_json::to_string_pretty(&report)?);
-    if has_blockers {
+    if should_fail {
         std::process::exit(2);
     }
     Ok(())

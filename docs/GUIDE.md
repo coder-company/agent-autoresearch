@@ -23,6 +23,7 @@ autoresearch init --verify "cat metric.txt" --direction lower
 autoresearch verify --command "cat metric.txt"
 autoresearch decide --decision auto --metric 4 --commit abc1234 --description "improved"
 autoresearch progress
+autoresearch health --strict
 autoresearch watch --lines 20
 autoresearch parallel prepare --workers 3
 autoresearch parallel run --manifest autoresearch-results/parallel-manifest.json --timeout-seconds 1200

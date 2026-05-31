@@ -16,7 +16,7 @@ Autonomous goal-directed iteration. Modify → Verify → Keep/Discard → Repea
 3. Load `references/interaction-wizard.md` for every new interactive launch.
 4. Load `references/session-resume.md` if prior artifacts are detected.
 5. Use the bundled binary (`bin/autoresearch`) for all mechanical operations.
-6. Run `autoresearch health` before unattended/background launch or resume.
+6. Run `autoresearch health --strict` before unattended/background launch or resume when warnings should block launch.
 
 ## Core Loop
 
@@ -111,7 +111,7 @@ Optional:
 |---------|---------|
 | `autoresearch init --verify "..." --direction higher --acceptance-criteria "coverage >= 90"` | Measure baseline, create artifacts, save run config/context |
 | `autoresearch init --companion-repo-scope "../frontend=src/**/*.ts"` | Register a clean companion repo, persist it in context, and write its repo-local pointer |
-| `autoresearch health` | Preflight git/artifact/disk/verify/context state before launch or resume |
+| `autoresearch health --strict` | Preflight git/artifact/disk/verify/context state before launch or resume; fail on warnings |
 | `autoresearch verify --command "..."` | Run verify → JSON `{metric, metrics, exit_code, duration_ms}` |
 | `autoresearch verify --format metrics_json --key coverage --command "..."` | Parse structured metrics and select the optimization key |
 | `autoresearch guard --command "..."` | Run guard → JSON `{passed, duration_ms}` |

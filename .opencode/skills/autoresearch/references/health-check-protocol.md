@@ -6,11 +6,13 @@ The executable companions are:
 
 - `autoresearch status ...`
 - `autoresearch health ...`
+- `autoresearch health --strict`
 
 `autoresearch health` is the canonical lightweight integrity checker. It must:
 
 - treat corrupt or unreconstructable results/state combinations as blockers,
 - surface recoverable JSON/TSV divergence as warnings,
+- exit non-zero for warnings when `--strict` is supplied,
 - report git state, disk headroom, verify/guard command availability, and result/state row consistency as structured JSON.
 
 The extended checks below remain protocol-level review items. They may be orchestrated by the runtime or contributor gate, but `autoresearch health` must not claim to perform them unless the command actually does.

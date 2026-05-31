@@ -123,6 +123,8 @@ require_grep '\$autoresearch' .agents/skills/autoresearch/SKILL.md
 require_grep 'autoresearch runtime run' .agents/skills/autoresearch/SKILL.md
 require_grep 'exec-workflow\.md' .agents/skills/autoresearch/SKILL.md
 require_grep 'runtime-hard-invariants\.md' .agents/skills/autoresearch/SKILL.md
+require_grep 'autoresearch health --strict' SKILL.md
+require_grep 'autoresearch health --strict' .agents/skills/autoresearch/SKILL.md
 require_grep 'autoresearch watch' SKILL.md
 require_grep 'autoresearch watch' skills/autoresearch/SKILL.md
 require_grep 'autoresearch watch' guide/advanced-patterns.md
@@ -137,6 +139,7 @@ require_grep 'timeout-seconds' .agents/skills/autoresearch/SKILL.md
 require_grep 'merge-strategy' .agents/skills/autoresearch/SKILL.md
 require_grep 'autoresearch parallel cleanup' .agents/skills/autoresearch/SKILL.md
 require_grep 'autoresearch parallel prepare' docs/GUIDE.md
+require_grep 'autoresearch health --strict' docs/GUIDE.md
 require_grep 'merge-strategy' docs/GUIDE.md
 require_grep 'timeout-seconds' docs/GUIDE.md
 require_grep 'autoresearch parallel run' guide/advanced-patterns.md

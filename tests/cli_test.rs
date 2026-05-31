@@ -2462,6 +2462,58 @@ fn test_health_defaults_to_repo_root_results_from_subdir() {
 }
 
 #[test]
+fn test_health_strict_fails_on_warnings() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+    std::fs::write(dir.path().join("notes.txt"), "dirty\n").unwrap();
+
+    cmd()
+        .args([
+            "health",
+            "--verify",
+            "cat metric.txt",
+            "--min-free-mb",
+            "1",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"decision\": \"warn\""))
+        .stdout(predicate::str::contains("dirty_worktree"));
+
+    cmd()
+        .args([
+            "health",
+            "--verify",
+            "cat metric.txt",
+            "--strict",
+            "--min-free-mb",
+            "1",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .code(2)
+        .stdout(predicate::str::contains("\"decision\": \"warn\""))
+        .stdout(predicate::str::contains("dirty_worktree"));
+}
+
+#[test]
 fn test_health_blocks_missing_verify_command() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
