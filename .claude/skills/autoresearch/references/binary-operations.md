@@ -19,7 +19,7 @@ autoresearch scenario --target "Checkout flow" --format threat-scenarios --scope
 autoresearch predict --proposal "Add cache warming to search results" --scope "src/search/**"
 autoresearch reason --question "Should we replace the storage layer" --mode debate --domain software
 autoresearch probe --subject "Payment retry workflow" --scope "src/payments/**"
-autoresearch learn --mode summarize --scope "src/**/*.rs"
+autoresearch learn --mode summarize --scope "src/**/*.rs" --depth comprehensive --evals
 autoresearch health --strict
 autoresearch env --format json
 autoresearch guard-presets --format json
@@ -50,6 +50,7 @@ Native artifact generators default to ignored `autoresearch-results/<mode>/` pat
 `probe --mode autonomous --depth <level> --adversarial` records interrogation profile, persona count, rounds, and saturation threshold metadata.
 `probe --chain <targets>` writes a sidecar handoff with constraint context and comma-separated downstream targets.
 `learn` writes documentation summary artifacts: summary, validation report, learn-results TSV, and handoff JSON.
+`learn --file <path> --depth <level> --topics <list> --no-fix --chain <targets>` records documentation profile, validation behavior, and downstream handoff metadata.
 
 ## Verify, Decide, And Log
 

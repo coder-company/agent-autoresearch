@@ -240,6 +240,7 @@ require_grep '`autoresearch probe` writes' COMPARISON.md
 require_grep 'autoresearch learn --mode' README.md
 require_grep 'autoresearch learn --mode' docs/GUIDE.md
 require_grep 'autoresearch learn --mode' references/binary-operations.md
+require_grep 'learn --file <path> --depth <level>' references/binary-operations.md
 require_grep 'Native learn generator' docs/development-roadmap.md
 require_grep '`autoresearch learn` writes' COMPARISON.md
 require_grep 'autoresearch cost --per-iteration-usd' README.md

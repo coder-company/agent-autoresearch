@@ -1510,6 +1510,64 @@ fn test_learn_writes_documentation_summary_artifacts() {
 }
 
 #[test]
+fn test_learn_controls_are_recorded_in_handoff() {
+    let dir = TempDir::new().unwrap();
+    std::fs::create_dir_all(dir.path().join("docs")).unwrap();
+    std::fs::write(dir.path().join("docs/api.md"), "# API\n").unwrap();
+    let output_dir = dir.path().join("learn/check");
+
+    cmd()
+        .args([
+            "learn",
+            "--mode",
+            "check",
+            "--file",
+            "docs/api.md",
+            "--depth",
+            "overview",
+            "--scan",
+            "--topics",
+            "architecture,api",
+            "--no-fix",
+            "--format",
+            "rst",
+            "--chain",
+            "probe",
+            "--evals",
+            "--evals-interval",
+            "3",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"depth\":\"overview\""))
+        .stdout(predicate::str::contains("\"format\":\"rst\""))
+        .stdout(predicate::str::contains("\"auto_fix\":false"))
+        .stdout(predicate::str::contains("\"next_target\":\"probe\""));
+
+    let summary = std::fs::read_to_string(output_dir.join("summary.md")).unwrap();
+    let validation = std::fs::read_to_string(output_dir.join("validation-report.md")).unwrap();
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+
+    assert!(summary.contains("- Depth: overview"));
+    assert!(summary.contains("- Format: rst"));
+    assert!(summary.contains("- Topics: architecture, api"));
+    assert!(summary.contains("- Fresh scan requested: true"));
+    assert!(summary.contains("docs/api.md"));
+    assert!(validation.contains("- Auto-fix enabled: false"));
+    assert!(handoff.contains("\"source_command\": \"learn\""));
+    assert!(handoff.contains("\"depth\": \"overview\""));
+    assert!(handoff.contains("\"topics\": ["));
+    assert!(handoff.contains("\"architecture\""));
+    assert!(handoff.contains("\"next_target\": \"probe\""));
+    assert!(handoff.contains("\"propagate_evals\": true"));
+    assert!(handoff.contains("\"evals_interval\": 3"));
+}
+
+#[test]
 fn test_config_template_prints_toml() {
     cmd()
         .args(["config", "template"])

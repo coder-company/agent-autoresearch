@@ -40,7 +40,7 @@ The idea was simple enough that several people generalized it:
 | Predict output | No | Persona debate reports | Protocol guidance | **`autoresearch predict` writes five-persona review artifacts** |
 | Reason output | No | Adversarial reasoning reports | Protocol guidance | **`autoresearch reason` writes candidate debate artifacts** |
 | Probe output | No | Requirement interrogation reports | Protocol guidance | **`autoresearch probe` writes eight-persona constraint artifacts** |
-| Learn output | No | Documentation reports | Protocol guidance | **`autoresearch learn` writes summary, validation, TSV, and handoff artifacts** |
+| Learn output | No | Documentation reports | Protocol guidance | **`autoresearch learn` writes summary, validation, TSV, handoff, profile, and chain metadata** |
 | Background runs | No | No | Yes (daemon) | **Yes (`runtime run/start/status/supervise/stop`)** |
 | Parallel experiments | No | No | Yes | **Worktree workers + verified closeout + `parallel compare` A/B batches** |
 | Structured metrics | No | No | Limited | **`metrics_json`, primary key, acceptance and required-keep gates** |

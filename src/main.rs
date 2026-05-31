@@ -855,6 +855,33 @@ enum Commands {
         /// File globs to document or summarize. Repeatable.
         #[arg(long)]
         scope: Vec<String>,
+        /// Documentation depth: overview, standard, or comprehensive
+        #[arg(long, default_value = "standard")]
+        depth: String,
+        /// Specific file to document. Repeatable.
+        #[arg(long)]
+        file: Vec<String>,
+        /// Force a fresh codebase scout
+        #[arg(long)]
+        scan: bool,
+        /// Comma-separated focus topics such as architecture, API, database, or testing
+        #[arg(long)]
+        topics: Option<String>,
+        /// Validate only; do not auto-fix documentation issues
+        #[arg(long)]
+        no_fix: bool,
+        /// Documentation format preference: markdown, json, or rst
+        #[arg(long, default_value = "markdown")]
+        format: String,
+        /// Comma-separated downstream command targets to record in handoff.json
+        #[arg(long)]
+        chain: Option<String>,
+        /// Propagate eval checkpoints to downstream chain targets
+        #[arg(long)]
+        evals: bool,
+        /// Propagated eval checkpoint interval
+        #[arg(long)]
+        evals_interval: Option<u32>,
         /// Output directory. Relative paths resolve from the workspace root.
         #[arg(long)]
         output_dir: Option<PathBuf>,
@@ -1638,9 +1665,32 @@ fn main() -> Result<()> {
         Commands::Learn {
             mode,
             scope,
+            depth,
+            file,
+            scan,
+            topics,
+            no_fix,
+            format,
+            chain,
+            evals,
+            evals_interval,
             output_dir,
             cwd,
-        } => cmd_learn(&mode, scope, output_dir, cwd),
+        } => cmd_learn(
+            &mode,
+            scope,
+            &depth,
+            file,
+            scan,
+            topics,
+            no_fix,
+            &format,
+            chain,
+            evals,
+            evals_interval,
+            output_dir,
+            cwd,
+        ),
 
         Commands::Completions { shell } => cmd_completions(shell),
         Commands::Manpages { output_dir } => cmd_manpages(&output_dir),
@@ -2833,7 +2883,7 @@ fn cmd_security(
     } else {
         scope.clone()
     };
-    let files = collect_learn_files(&workspace, &scan_scope);
+    let files = collect_learn_files(&workspace, &scan_scope, &[], 50);
     let output_dir = output_dir.unwrap_or_else(|| {
         default_artifact_path("security", format!("security-{}", slugify(focus)))
     });
@@ -3199,7 +3249,7 @@ fn cmd_debug(
     } else {
         scope.clone()
     };
-    let files = collect_learn_files(&workspace, &scan_scope);
+    let files = collect_learn_files(&workspace, &scan_scope, &[], 50);
     let output_dir = output_dir
         .unwrap_or_else(|| default_artifact_path("debug", format!("debug-{}", slugify(symptom))));
     let output_dir = resolve_workspace_path(&workspace, output_dir);
@@ -4572,8 +4622,85 @@ fn learn_sub_mode_label(mode: LearnSubMode) -> &'static str {
     }
 }
 
-fn collect_learn_files(workspace: &Path, scope: &[String]) -> Vec<String> {
-    let patterns = if scope.is_empty() {
+#[derive(Debug, Clone)]
+struct LearnProfile {
+    depth: String,
+    scan_limit: usize,
+    inventory_limit: usize,
+    scan: bool,
+    topics: Vec<String>,
+    auto_fix: bool,
+    format: String,
+    evals: bool,
+    evals_interval: Option<u32>,
+}
+
+fn parse_learn_depth(value: &str) -> Result<(&'static str, usize)> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "overview" | "shallow" | "quick" => Ok(("overview", 10)),
+        "standard" | "normal" => Ok(("standard", 25)),
+        "comprehensive" | "deep" => Ok(("comprehensive", 50)),
+        other => {
+            anyhow::bail!("Invalid learn depth {other:?}; use overview, standard, or comprehensive")
+        }
+    }
+}
+
+fn parse_learn_format(value: &str) -> Result<&'static str> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "markdown" | "md" => Ok("markdown"),
+        "json" => Ok("json"),
+        "rst" | "restructuredtext" | "restructured-text" => Ok("rst"),
+        other => anyhow::bail!("Invalid learn format {other:?}; use markdown, json, or rst"),
+    }
+}
+
+fn parse_learn_topics(topics: Option<&str>) -> Vec<String> {
+    topics
+        .unwrap_or("all")
+        .split(',')
+        .map(str::trim)
+        .filter(|topic| !topic.is_empty())
+        .map(ToString::to_string)
+        .collect()
+}
+
+fn resolve_learn_profile(
+    depth: &str,
+    scan: bool,
+    topics: Option<&str>,
+    no_fix: bool,
+    format: &str,
+    evals: bool,
+    evals_interval: Option<u32>,
+) -> Result<LearnProfile> {
+    validate_chain_evals_flags("learn", evals, evals_interval)?;
+    let (depth, scan_limit) = parse_learn_depth(depth)?;
+    let format = parse_learn_format(format)?;
+    let mut topics = parse_learn_topics(topics);
+    if topics.is_empty() {
+        topics.push("all".to_string());
+    }
+    Ok(LearnProfile {
+        depth: depth.to_string(),
+        scan_limit,
+        inventory_limit: scan_limit.min(25),
+        scan,
+        topics,
+        auto_fix: !no_fix,
+        format: format.to_string(),
+        evals,
+        evals_interval,
+    })
+}
+
+fn collect_learn_files(
+    workspace: &Path,
+    scope: &[String],
+    explicit_files: &[String],
+    limit: usize,
+) -> Vec<String> {
+    let mut patterns = if scope.is_empty() && explicit_files.is_empty() {
         vec![
             "README.md".to_string(),
             "src/**/*".to_string(),
@@ -4582,14 +4709,18 @@ fn collect_learn_files(workspace: &Path, scope: &[String]) -> Vec<String> {
     } else {
         scope.to_vec()
     };
+    patterns.extend(explicit_files.iter().cloned());
     let mut files = BTreeSet::new();
     for pattern in patterns {
+        if files.len() >= limit {
+            break;
+        }
         let full = format!("{}/{}", workspace.display(), pattern);
         if let Ok(entries) = glob::glob(&full) {
             for entry in entries.flatten().filter(|path| path.is_file()) {
                 let rel = entry.strip_prefix(workspace).unwrap_or(&entry);
                 files.insert(rel.display().to_string());
-                if files.len() >= 50 {
+                if files.len() >= limit {
                     break;
                 }
             }
@@ -4598,20 +4729,43 @@ fn collect_learn_files(workspace: &Path, scope: &[String]) -> Vec<String> {
     files.into_iter().collect()
 }
 
-fn render_learn_summary(mode: LearnSubMode, files: &[String], scope: &[String]) -> String {
+fn render_learn_summary(
+    mode: LearnSubMode,
+    files: &[String],
+    scope: &[String],
+    explicit_files: &[String],
+    profile: &LearnProfile,
+) -> String {
     let mut out = String::new();
-    let scope_lines = if scope.is_empty() {
+    let scope_lines = if scope.is_empty() && explicit_files.is_empty() {
         "- README.md\n- src/**/*\n- docs/**/*.md".to_string()
     } else {
         scope
             .iter()
+            .chain(explicit_files.iter())
             .map(|item| format!("- {item}"))
             .collect::<Vec<_>>()
             .join("\n")
     };
+    let topics = profile.topics.join(", ");
     writeln!(out, "# Learn Summary").unwrap();
     writeln!(out).unwrap();
     writeln!(out, "- Mode: {}", learn_sub_mode_label(mode)).unwrap();
+    writeln!(out, "- Depth: {}", profile.depth).unwrap();
+    writeln!(out, "- Format: {}", profile.format).unwrap();
+    writeln!(out, "- Topics: {topics}").unwrap();
+    writeln!(out, "- Fresh scan requested: {}", profile.scan).unwrap();
+    writeln!(out, "- Auto-fix enabled: {}", profile.auto_fix).unwrap();
+    writeln!(out, "- Evals enabled: {}", profile.evals).unwrap();
+    writeln!(
+        out,
+        "- Evals interval: {}",
+        profile
+            .evals_interval
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "none".to_string())
+    )
+    .unwrap();
     writeln!(out, "- Files scanned: {}", files.len()).unwrap();
     writeln!(out, "- Validation status: not run").unwrap();
     writeln!(out).unwrap();
@@ -4628,11 +4782,11 @@ fn render_learn_summary(mode: LearnSubMode, files: &[String], scope: &[String]) 
         )
         .unwrap();
     } else {
-        for file in files.iter().take(25) {
+        for file in files.iter().take(profile.inventory_limit) {
             writeln!(out, "- {file}").unwrap();
         }
-        if files.len() > 25 {
-            writeln!(out, "- ... {} more", files.len() - 25).unwrap();
+        if files.len() > profile.inventory_limit {
+            writeln!(out, "- ... {} more", files.len() - profile.inventory_limit).unwrap();
         }
     }
     writeln!(out).unwrap();
@@ -4656,13 +4810,15 @@ fn render_learn_summary(mode: LearnSubMode, files: &[String], scope: &[String]) 
     out
 }
 
-fn render_learn_validation(files: &[String]) -> String {
+fn render_learn_validation(files: &[String], profile: &LearnProfile) -> String {
     let mut out = String::new();
     writeln!(out, "# Learn Validation Report").unwrap();
     writeln!(out).unwrap();
     writeln!(out, "- Files considered: {}", files.len()).unwrap();
     writeln!(out, "- Issues found: DECISION NEEDED").unwrap();
     writeln!(out, "- Issues fixed: 0").unwrap();
+    writeln!(out, "- Auto-fix enabled: {}", profile.auto_fix).unwrap();
+    writeln!(out, "- Format: {}", profile.format).unwrap();
     writeln!(out).unwrap();
     writeln!(
         out,
@@ -4672,7 +4828,7 @@ fn render_learn_validation(files: &[String]) -> String {
     out
 }
 
-fn render_learn_results_tsv(files: &[String]) -> String {
+fn render_learn_results_tsv(files: &[String], profile: &LearnProfile) -> String {
     let mut out = String::new();
     let timestamp = chrono::Utc::now().to_rfc3339();
     writeln!(out, "# metric_direction: higher_is_better").unwrap();
@@ -4681,7 +4837,7 @@ fn render_learn_results_tsv(files: &[String]) -> String {
         "iteration\ttimestamp\tfile_documented\tvalidation_status\tissues_found\tissues_fixed\tdescription"
     )
     .unwrap();
-    for (index, file) in files.iter().take(25).enumerate() {
+    for (index, file) in files.iter().take(profile.inventory_limit).enumerate() {
         writeln!(
             out,
             "{}\t{}\t{}\tpending\t0\t0\tinventory",
@@ -4694,13 +4850,34 @@ fn render_learn_results_tsv(files: &[String]) -> String {
     out
 }
 
+#[allow(clippy::too_many_arguments)]
 fn cmd_learn(
     mode: &str,
     scope: Vec<String>,
+    depth: &str,
+    explicit_files: Vec<String>,
+    scan: bool,
+    topics: Option<String>,
+    no_fix: bool,
+    format: &str,
+    chain: Option<String>,
+    evals: bool,
+    evals_interval: Option<u32>,
     output_dir: Option<PathBuf>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let mode = parse_learn_sub_mode(mode)?;
+    let profile = resolve_learn_profile(
+        depth,
+        scan,
+        topics.as_deref(),
+        no_fix,
+        format,
+        evals,
+        evals_interval,
+    )?;
+    let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
+    let next_target = next_chain_target_value(&chain_targets);
     let workspace = resolve_workspace_root(cwd);
     let output_dir = output_dir.unwrap_or_else(|| {
         default_artifact_path("learn", format!("learn-{}", learn_sub_mode_label(mode)))
@@ -4708,23 +4885,24 @@ fn cmd_learn(
     let output_dir = resolve_workspace_path(&workspace, output_dir);
     std::fs::create_dir_all(&output_dir)
         .with_context(|| format!("failed to create {}", output_dir.display()))?;
-    let files = collect_learn_files(&workspace, &scope);
+    let files = collect_learn_files(&workspace, &scope, &explicit_files, profile.scan_limit);
 
     write_text_file(
         &output_dir.join("summary.md"),
-        &render_learn_summary(mode, &files, &scope),
+        &render_learn_summary(mode, &files, &scope, &explicit_files, &profile),
     )?;
     write_text_file(
         &output_dir.join("validation-report.md"),
-        &render_learn_validation(&files),
+        &render_learn_validation(&files, &profile),
     )?;
     write_text_file(
         &output_dir.join("learn-results.tsv"),
-        &render_learn_results_tsv(&files),
+        &render_learn_results_tsv(&files, &profile),
     )?;
     let handoff = serde_json::json!({
         "version": "2.1.0",
         "source": "learn",
+        "source_command": "learn",
         "timestamp": chrono::Utc::now().to_rfc3339(),
         "status": "COMPLETE",
         "results_tsv": output_dir.join("learn-results.tsv").display().to_string(),
@@ -4732,8 +4910,20 @@ fn cmd_learn(
         "config": {
             "mode": learn_sub_mode_label(mode),
             "scope": scope,
+            "files": explicit_files,
+            "depth": profile.depth.as_str(),
+            "scan_limit": profile.scan_limit,
+            "scan": profile.scan,
+            "topics": profile.topics.clone(),
+            "auto_fix": profile.auto_fix,
+            "format": profile.format.as_str(),
             "files_scanned": files.len(),
-        }
+        },
+        "chain": chain_targets.clone(),
+        "next_target": next_target.clone(),
+        "chain_continue": should_continue_handoff_chain("COMPLETE"),
+        "propagate_evals": profile.evals,
+        "evals_interval": profile.evals_interval,
     });
     write_json_file(&output_dir.join("handoff.json"), &handoff)?;
     println!(
@@ -4742,6 +4932,13 @@ fn cmd_learn(
             "status": "written",
             "output_dir": output_dir.display().to_string(),
             "mode": learn_sub_mode_label(mode),
+            "depth": profile.depth.as_str(),
+            "format": profile.format.as_str(),
+            "topics": profile.topics.clone(),
+            "auto_fix": profile.auto_fix,
+            "evals": profile.evals,
+            "evals_interval": profile.evals_interval,
+            "next_target": next_target,
             "files_scanned": files.len(),
         })
     );
