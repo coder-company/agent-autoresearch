@@ -30,6 +30,7 @@ use autoresearch::core::verify;
 use autoresearch::escalation::lessons::{self, LessonsLog};
 use autoresearch::escalation::pivot::{EscalationAction, EscalationState};
 use autoresearch::hooks;
+use autoresearch::modes::debug::DebugPhase;
 use autoresearch::modes::evals::{parse_results_tsv, ParsedRow};
 use autoresearch::modes::learn::LearnSubMode;
 use autoresearch::modes::plan::{scan_repo_files, suggest_metrics, PATTERN_INDICATORS};
@@ -618,6 +619,25 @@ enum Commands {
         /// Generate only checklist artifacts
         #[arg(long)]
         checklist_only: bool,
+        /// Output directory. Relative paths resolve from the workspace root.
+        #[arg(long)]
+        output_dir: Option<PathBuf>,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
+    /// Generate a hypothesis-driven debug investigation artifact bundle
+    Debug {
+        /// Symptom, failure, or behavior to investigate
+        #[arg(long)]
+        symptom: String,
+        /// File globs to investigate. Repeatable.
+        #[arg(long)]
+        scope: Vec<String>,
+        /// Investigation technique to seed
+        #[arg(long, default_value = "trace")]
+        technique: String,
         /// Output directory. Relative paths resolve from the workspace root.
         #[arg(long)]
         output_dir: Option<PathBuf>,
@@ -1339,6 +1359,14 @@ fn main() -> Result<()> {
             output_dir,
             cwd,
         ),
+
+        Commands::Debug {
+            symptom,
+            scope,
+            technique,
+            output_dir,
+            cwd,
+        } => cmd_debug(&symptom, scope, &technique, output_dir, cwd),
 
         Commands::Scenario {
             target,
@@ -2652,6 +2680,142 @@ fn cmd_ship(
             "phases": ShipPhase::all().len(),
             "dry_run": dry_run,
             "checklist_only": checklist_only,
+        })
+    );
+    Ok(())
+}
+
+fn debug_phase_label(phase: DebugPhase) -> &'static str {
+    match phase {
+        DebugPhase::GatherEvidence => "Gather Evidence",
+        DebugPhase::Hypothesize => "Hypothesize",
+        DebugPhase::TestHypothesis => "Test Hypothesis",
+        DebugPhase::Fix => "Fix",
+    }
+}
+
+fn render_debug_summary(
+    symptom: &str,
+    technique: &str,
+    scope: &[String],
+    files: &[String],
+) -> String {
+    let scope_lines = if scope.is_empty() {
+        "- DECISION NEEDED: identify investigation scope.".to_string()
+    } else {
+        scope
+            .iter()
+            .map(|item| format!("- {item}"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    let mut out = String::new();
+    writeln!(out, "# Debug Summary: {symptom}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "- Technique seed: {technique}").unwrap();
+    writeln!(out, "- Files scanned: {}", files.len()).unwrap();
+    writeln!(out, "- Confirmed findings: 0").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Scope").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "{scope_lines}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Investigation Phases").unwrap();
+    writeln!(out).unwrap();
+    for phase in DebugPhase::all() {
+        writeln!(out, "- [ ] {}", debug_phase_label(*phase)).unwrap();
+    }
+    out
+}
+
+fn render_debug_findings(symptom: &str, technique: &str) -> String {
+    format!(
+        "# Debug Findings\n\n\
+         ## Seed Hypothesis\n\n\
+         I hypothesize that `{symptom}` is caused by an unverified code path in the selected scope because no confirmed evidence has been recorded yet. Test by using `{technique}` and recording file:line evidence.\n\n\
+         ## Confirmed Bugs\n\n\
+         - DECISION NEEDED: run the investigation loop and promote only evidence-backed findings.\n"
+    )
+}
+
+fn render_debug_eliminated(symptom: &str) -> String {
+    format!(
+        "# Eliminated Hypotheses\n\n\
+         Symptom: {symptom}\n\n\
+         | Hypothesis | Result | Evidence |\n\
+         |---|---|---|\n\
+         | DECISION NEEDED | untested | no evidence recorded |\n"
+    )
+}
+
+fn render_debug_results_tsv(symptom: &str, technique: &str) -> String {
+    let timestamp = chrono::Utc::now().to_rfc3339();
+    format!(
+        "# metric_direction: higher_is_better\n\
+         iteration\ttimestamp\thypothesis\tstatus\ttechnique\tevidence\tfile_line\n\
+         0\t{timestamp}\tseed investigation for {symptom}\tinconclusive\t{technique}\tpending\t-\n"
+    )
+}
+
+fn cmd_debug(
+    symptom: &str,
+    scope: Vec<String>,
+    technique: &str,
+    output_dir: Option<PathBuf>,
+    cwd: Option<PathBuf>,
+) -> Result<()> {
+    let workspace = resolve_workspace_root(cwd);
+    let scan_scope = if scope.is_empty() {
+        vec!["**/*".to_string()]
+    } else {
+        scope.clone()
+    };
+    let files = collect_learn_files(&workspace, &scan_scope);
+    let output_dir = output_dir
+        .unwrap_or_else(|| PathBuf::from("debug").join(format!("debug-{}", slugify(symptom))));
+    let output_dir = resolve_workspace_path(&workspace, output_dir);
+    std::fs::create_dir_all(&output_dir)
+        .with_context(|| format!("failed to create {}", output_dir.display()))?;
+    write_text_file(
+        &output_dir.join("summary.md"),
+        &render_debug_summary(symptom, technique, &scope, &files),
+    )?;
+    write_text_file(
+        &output_dir.join("findings.md"),
+        &render_debug_findings(symptom, technique),
+    )?;
+    write_text_file(
+        &output_dir.join("eliminated.md"),
+        &render_debug_eliminated(symptom),
+    )?;
+    write_text_file(
+        &output_dir.join("debug-results.tsv"),
+        &render_debug_results_tsv(symptom, technique),
+    )?;
+    let handoff = serde_json::json!({
+        "version": "2.1.0",
+        "source": "debug",
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "status": "COMPLETE",
+        "results_tsv": output_dir.join("debug-results.tsv").display().to_string(),
+        "findings": [],
+        "config": {
+            "scope": scope,
+            "symptom": symptom,
+            "technique": technique,
+            "files_scanned": files.len(),
+        }
+    });
+    write_json_file(&output_dir.join("handoff.json"), &handoff)?;
+    println!(
+        "{}",
+        serde_json::json!({
+            "status": "written",
+            "output_dir": output_dir.display().to_string(),
+            "symptom": symptom,
+            "technique": technique,
+            "phases": DebugPhase::all().len(),
+            "files_scanned": files.len(),
         })
     );
     Ok(())

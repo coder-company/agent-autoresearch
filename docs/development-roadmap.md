@@ -56,6 +56,7 @@
 
 - [x] Stable CLI API — semver guarantees on commands, flags, and output formats
 - [x] Native plan command for repo-aware launch config suggestions
+- [x] Native debug generator for hypothesis-driven investigation bundles
 - [x] Native improve artifact bundle for research findings, ranked plan, TSV, summary, and handoff
 - [x] Native PRD generator for selected improve-mode ideas
 - [x] Native security generator for STRIDE + OWASP audit bundles

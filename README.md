@@ -199,6 +199,7 @@ Covered in detail in the [guide](guide/):
 - **Man pages** — `autoresearch manpages --output-dir man/man1` writes a local `autoresearch.1` page for packages and offline docs
 - **Project defaults** — `.autoresearch.toml` stores repeatable init settings such as goal, scope, metric, verify, guard, and iteration cap
 - **Native planning** — `autoresearch plan --goal "..." --format json` suggests scope, metric, direction, verify, guard, and iteration count from repo tooling
+- **Debug artifact generation** — `autoresearch debug --symptom ... --scope ...` writes hypothesis, findings, eliminated, TSV, and handoff artifacts
 - **Improve artifact bundle** — `autoresearch improve --goal ... --icp ...` writes research findings, ranked plan, summary, TSV, and handoff
 - **PRD artifact generation** — `autoresearch prd --title ... --problem ...` writes improve-mode PRDs with decision markers and ready-to-run config blocks
 - **Security artifact generation** — `autoresearch security --scope ... --focus ...` writes STRIDE, OWASP, findings, recommendations, TSV, and handoff artifacts

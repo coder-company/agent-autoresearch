@@ -206,6 +206,7 @@ fn test_api_manifest_lists_nested_commands_and_flags() {
         .stdout(predicate::str::contains("\"improve\""))
         .stdout(predicate::str::contains("\"security\""))
         .stdout(predicate::str::contains("\"ship\""))
+        .stdout(predicate::str::contains("\"debug\""))
         .stdout(predicate::str::contains("\"plan\""))
         .stdout(predicate::str::contains("\"prd\""))
         .stdout(predicate::str::contains("\"scenario\""))
@@ -647,6 +648,46 @@ fn test_ship_writes_checklist_artifact_bundle() {
     assert!(summary.contains("Phase count: 8"));
     assert!(log.contains("checklist_score"));
     assert!(handoff.contains("\"source\": \"ship\""));
+}
+
+#[test]
+fn test_debug_writes_investigation_artifact_bundle() {
+    let dir = TempDir::new().unwrap();
+    std::fs::create_dir_all(dir.path().join("src/api")).unwrap();
+    std::fs::write(dir.path().join("src/api/mod.rs"), "pub fn handler() {}\n").unwrap();
+    let output_dir = dir.path().join("debug/api-500");
+
+    cmd()
+        .args([
+            "debug",
+            "--symptom",
+            "API returns 500",
+            "--scope",
+            "src/**/*.rs",
+            "--technique",
+            "trace",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\":\"written\""))
+        .stdout(predicate::str::contains("\"phases\":4"));
+
+    let summary = std::fs::read_to_string(output_dir.join("summary.md")).unwrap();
+    let findings = std::fs::read_to_string(output_dir.join("findings.md")).unwrap();
+    let eliminated = std::fs::read_to_string(output_dir.join("eliminated.md")).unwrap();
+    let tsv = std::fs::read_to_string(output_dir.join("debug-results.tsv")).unwrap();
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+
+    assert!(summary.contains("# Debug Summary: API returns 500"));
+    assert!(summary.contains("Gather Evidence"));
+    assert!(findings.contains("Seed Hypothesis"));
+    assert!(eliminated.contains("Eliminated Hypotheses"));
+    assert!(tsv.contains("hypothesis\tstatus\ttechnique"));
+    assert!(handoff.contains("\"source\": \"debug\""));
 }
 
 #[test]
