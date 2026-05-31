@@ -30,7 +30,8 @@ fn test_help_exits_zero() {
         .arg("--help")
         .assert()
         .success()
-        .stdout(predicate::str::contains("completions"));
+        .stdout(predicate::str::contains("completions"))
+        .stdout(predicate::str::contains("manpages"));
 }
 
 #[test]
@@ -59,6 +60,21 @@ fn test_completions_rejects_unknown_shell() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("invalid value"));
+}
+
+#[test]
+fn test_manpages_writes_root_page() {
+    let dir = TempDir::new().unwrap();
+
+    cmd()
+        .args(["manpages", "--output-dir", dir.path().to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("autoresearch.1"));
+
+    let page = std::fs::read_to_string(dir.path().join("autoresearch.1")).unwrap();
+    assert!(page.contains(".SH NAME"));
+    assert!(page.contains("autoresearch"));
 }
 
 // ── Screen Command ───────────────────────────────────────────────────

@@ -368,6 +368,13 @@ enum Commands {
         #[arg(value_enum)]
         shell: clap_complete::Shell,
     },
+
+    /// Generate Unix man pages for local packaging
+    Manpages {
+        /// Directory where man pages should be written
+        #[arg(long)]
+        output_dir: PathBuf,
+    },
 }
 
 #[derive(Subcommand)]
@@ -666,6 +673,7 @@ fn main() -> Result<()> {
         Commands::Exec { iterations, cwd } => cmd_exec(iterations, cwd),
 
         Commands::Completions { shell } => cmd_completions(shell),
+        Commands::Manpages { output_dir } => cmd_manpages(&output_dir),
     }
 }
 
@@ -673,6 +681,26 @@ fn cmd_completions(shell: clap_complete::Shell) -> Result<()> {
     let mut command = Cli::command();
     let mut stdout = std::io::stdout();
     clap_complete::generate(shell, &mut command, "autoresearch", &mut stdout);
+    Ok(())
+}
+
+fn cmd_manpages(output_dir: &Path) -> Result<()> {
+    std::fs::create_dir_all(output_dir)
+        .with_context(|| format!("failed to create {}", output_dir.display()))?;
+    let page_path = output_dir.join("autoresearch.1");
+    let mut page = Vec::new();
+    clap_mangen::Man::new(Cli::command())
+        .render(&mut page)
+        .context("failed to render autoresearch man page")?;
+    std::fs::write(&page_path, page)
+        .with_context(|| format!("failed to write {}", page_path.display()))?;
+
+    println!(
+        "{}",
+        serde_json::json!({
+            "generated": [page_path],
+        })
+    );
     Ok(())
 }
 

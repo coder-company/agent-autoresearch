@@ -143,6 +143,10 @@ require_grep 'autoresearch completions' README.md
 require_grep 'autoresearch completions' docs/GUIDE.md
 require_grep 'autoresearch completions zsh' docs/INSTALL.md
 require_grep 'Shell completions \(bash, zsh, fish, elvish, PowerShell\)' docs/development-roadmap.md
+require_grep 'autoresearch manpages --output-dir' README.md
+require_grep 'autoresearch manpages --output-dir' docs/GUIDE.md
+require_grep 'autoresearch manpages --output-dir' docs/INSTALL.md
+require_grep 'Man pages generation' docs/development-roadmap.md
 require_grep '\.autoresearch\.toml' README.md
 require_grep '\.autoresearch\.toml' docs/GUIDE.md
 require_grep 'Configuration file \(`\.autoresearch\.toml`\) for project-level defaults' docs/development-roadmap.md

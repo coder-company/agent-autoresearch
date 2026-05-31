@@ -35,6 +35,7 @@ autoresearch completions zsh > ~/.zfunc/_autoresearch
 
 Use `autoresearch runtime run` for supervised background Codex sessions and `autoresearch runtime status` / `autoresearch runtime stop` for control.
 Use `autoresearch completions <bash|zsh|fish|elvish|powershell>` to generate shell completions.
+Use `autoresearch manpages --output-dir man/man1` to generate a local `autoresearch.1` manual page.
 
 ## Project Defaults
 
