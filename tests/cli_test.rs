@@ -77,6 +77,38 @@ fn test_manpages_writes_root_page() {
     assert!(page.contains("autoresearch"));
 }
 
+#[test]
+fn test_config_template_prints_toml() {
+    cmd()
+        .args(["config", "template"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("verify ="))
+        .stdout(predicate::str::contains("iterations = 25"));
+}
+
+#[test]
+fn test_config_template_writes_without_overwrite() {
+    let dir = TempDir::new().unwrap();
+    let path = dir.path().join(".autoresearch.toml");
+
+    cmd()
+        .args(["config", "template", "--output", path.to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(".autoresearch.toml"));
+
+    let template = std::fs::read_to_string(&path).unwrap();
+    assert!(template.contains("goal ="));
+    assert!(template.contains("verify ="));
+
+    cmd()
+        .args(["config", "template", "--output", path.to_str().unwrap()])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("failed to create"));
+}
+
 // ── Screen Command ───────────────────────────────────────────────────
 
 #[test]

@@ -375,6 +375,12 @@ enum Commands {
         #[arg(long)]
         output_dir: PathBuf,
     },
+
+    /// Manage project-level autoresearch configuration
+    Config {
+        #[command(subcommand)]
+        command: ConfigCommands,
+    },
 }
 
 #[derive(Subcommand)]
@@ -511,6 +517,19 @@ enum ParallelCommands {
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
+    },
+}
+
+#[derive(Subcommand)]
+enum ConfigCommands {
+    /// Print or write a starter .autoresearch.toml
+    Template {
+        /// Output path to write instead of printing to stdout
+        #[arg(long)]
+        output: Option<PathBuf>,
+        /// Replace an existing output file
+        #[arg(long)]
+        force: bool,
     },
 }
 
@@ -674,6 +693,9 @@ fn main() -> Result<()> {
 
         Commands::Completions { shell } => cmd_completions(shell),
         Commands::Manpages { output_dir } => cmd_manpages(&output_dir),
+        Commands::Config { command } => match command {
+            ConfigCommands::Template { output, force } => cmd_config_template(output, force),
+        },
     }
 }
 
@@ -702,6 +724,63 @@ fn cmd_manpages(output_dir: &Path) -> Result<()> {
         })
     );
     Ok(())
+}
+
+fn cmd_config_template(output: Option<PathBuf>, force: bool) -> Result<()> {
+    let template = project_config_template();
+    let Some(path) = output else {
+        print!("{template}");
+        return Ok(());
+    };
+
+    if let Some(parent) = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create {}", parent.display()))?;
+    }
+
+    let mut options = OpenOptions::new();
+    options.write(true).create(true);
+    if force {
+        options.truncate(true);
+    } else {
+        options.create_new(true);
+    }
+    let mut file = options
+        .open(&path)
+        .with_context(|| format!("failed to create {}", path.display()))?;
+    file.write_all(template.as_bytes())
+        .with_context(|| format!("failed to write {}", path.display()))?;
+
+    println!(
+        "{}",
+        serde_json::json!({
+            "written": path,
+        })
+    );
+    Ok(())
+}
+
+fn project_config_template() -> &'static str {
+    r#"# Autoresearch project defaults.
+# CLI flags passed to `autoresearch init` override these values.
+goal = "Reduce failing tests"
+scope = ["src/**/*.rs", "tests/**/*.rs"]
+metric = "failing test count"
+direction = "lower"
+verify = "cargo test 2>&1 | tail -1"
+guard = "cargo fmt -- --check"
+iterations = 25
+run_tag = "local"
+
+# Optional:
+# format = "scalar"
+# key = "coverage"
+# acceptance_criteria = "[{\"metric\":\"coverage\",\"op\":\">=\",\"value\":\"90\"}]"
+# required_keep_criteria = "[{\"metric\":\"failing\",\"op\":\"<=\",\"value\":\"0\"}]"
+"#
 }
 
 // ── Init ──────────────────────────────────────────────────────────────

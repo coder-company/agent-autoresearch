@@ -117,6 +117,7 @@ autoresearch --help
 autoresearch screen --command "npm test"
 autoresearch completions zsh >/tmp/_autoresearch
 autoresearch manpages --output-dir /tmp/autoresearch-manpages
+autoresearch config template >/tmp/autoresearch.toml
 ```
 
 For repository contributors:

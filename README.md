@@ -188,6 +188,7 @@ Covered in detail in the [guide](guide/):
 - **Shell completions** — `autoresearch completions bash|zsh|fish|elvish|powershell` prints native completion scripts for local installs
 - **Man pages** — `autoresearch manpages --output-dir man/man1` writes a local `autoresearch.1` page for packages and offline docs
 - **Project defaults** — `.autoresearch.toml` stores repeatable init settings such as goal, scope, metric, verify, guard, and iteration cap
+- **Config template** — `autoresearch config template --output .autoresearch.toml` writes a starter project defaults file
 - **Chaining** — `debug --fix`, `probe --chain plan`, `predict --chain debug`
 - **CI/CD mode** (`exec`) — non-interactive, JSON output, for automation pipelines
 - **Dual-gate verification** — separate verify (did it improve?) and guard (did anything break?)
