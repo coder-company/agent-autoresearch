@@ -125,6 +125,9 @@ require_grep 'exec-workflow\.md' .agents/skills/autoresearch/SKILL.md
 require_grep 'runtime-hard-invariants\.md' .agents/skills/autoresearch/SKILL.md
 require_grep 'autoresearch health --strict' SKILL.md
 require_grep 'autoresearch health --strict' .agents/skills/autoresearch/SKILL.md
+require_grep 'autoresearch status --summary' README.md
+require_grep 'autoresearch status --summary' docs/GUIDE.md
+require_grep 'autoresearch status --summary' SKILL.md
 require_grep 'autoresearch watch --lines 20 --format jsonl' SKILL.md
 require_grep 'autoresearch watch --lines 20 --format jsonl' skills/autoresearch/SKILL.md
 require_grep 'autoresearch watch' guide/advanced-patterns.md

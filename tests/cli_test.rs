@@ -3719,6 +3719,36 @@ fn test_status_defaults_to_repo_root_results_from_subdir() {
 }
 
 #[test]
+fn test_status_summary_omits_config_and_recent_rows() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args(["status", "--summary", "--cwd", root])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"active\": true"))
+        .stdout(predicate::str::contains("\"iteration\": 0"))
+        .stdout(predicate::str::contains("\"current_metric\": \"50\""))
+        .stdout(predicate::str::contains("\"config\"").not())
+        .stdout(predicate::str::contains("\"recent_rows\"").not());
+}
+
+#[test]
 fn test_init_blocks_unexpected_dirty_worktree() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

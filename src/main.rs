@@ -238,6 +238,9 @@ enum Commands {
 
     /// Show current run status from state.json
     Status {
+        /// Print compact status fields only
+        #[arg(long)]
+        summary: bool,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -670,7 +673,7 @@ fn main() -> Result<()> {
 
         Commands::Evals { path, format } => cmd_evals(path, &format),
 
-        Commands::Status { cwd } => cmd_status(cwd),
+        Commands::Status { summary, cwd } => cmd_status(cwd, summary),
 
         Commands::Health {
             verify,
@@ -2211,7 +2214,7 @@ fn evals_recommendation(
 
 // ── Status ────────────────────────────────────────────────────────────
 
-fn cmd_status(cwd: Option<PathBuf>) -> Result<()> {
+fn cmd_status(cwd: Option<PathBuf>, summary: bool) -> Result<()> {
     let workspace = resolve_results_workspace(cwd);
     let results_dir = workspace.join("autoresearch-results");
     let state_path = results_dir.join("state.json");
@@ -2223,6 +2226,22 @@ fn cmd_status(cwd: Option<PathBuf>) -> Result<()> {
 
     let state_content = std::fs::read_to_string(&state_path)?;
     let state: RunState = serde_json::from_str(&state_content)?;
+    if summary {
+        let out = serde_json::json!({
+            "active": true,
+            "iteration": state.iteration,
+            "current_metric": state.current_metric.to_string(),
+            "best_metric": state.best_metric.to_string(),
+            "best_iteration": state.best_iteration,
+            "keeps": state.keeps,
+            "discards": state.discards,
+            "crashes": state.crashes,
+            "last_status": state.last_status.as_str(),
+            "consecutive_discards": state.consecutive_discards,
+        });
+        println!("{}", serde_json::to_string_pretty(&out)?);
+        return Ok(());
+    }
 
     // Also read escalation state if it exists
     let esc_path = results_dir.join("escalation.json");

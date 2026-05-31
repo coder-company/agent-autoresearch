@@ -43,7 +43,7 @@ The `autoresearch` binary handles mechanical operations:
 - `autoresearch parallel closeout` — merge with cherry-pick, fast-forward, or squash; verify and retain one worker; log audit rows and update retained state once
 - `autoresearch parallel cleanup` — remove worker worktrees and branches
 - `autoresearch runtime run` — execute the supervised background loop; `start/status/supervise/stop` remain available for manual control
-- `autoresearch status|resume|progress|watch|lessons|evals` — inspect/resume/monitor/analyze runs
+- `autoresearch status --summary|resume|progress|watch|lessons|evals` — inspect/resume/monitor/analyze runs
 - `autoresearch lessons --add "..." --context "..."` — append reusable strategy lessons
 - `autoresearch hook <name>` — execute lifecycle hooks
 

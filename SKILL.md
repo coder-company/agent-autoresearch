@@ -122,7 +122,7 @@ Optional:
 | `autoresearch parallel closeout --batch-file workers.json --merge-strategy cherry-pick` | Merge, verify, and retain one worker; log audit rows and update retained state once |
 | `autoresearch parallel cleanup --manifest autoresearch-results/parallel-manifest.json` | Remove worker worktrees and branches |
 | `autoresearch log --iteration N --status keep --metric X --description "..."` | Append TSV row (alternative to decide) |
-| `autoresearch status` | Show full state JSON |
+| `autoresearch status --summary` | Show compact run counters |
 | `autoresearch progress` | Formatted progress summary |
 | `autoresearch watch --lines 20 --format jsonl` | Tail the active results.tsv for live monitoring |
 | `autoresearch lessons --add "..." --context "..."` | Append reusable strategy lessons |
