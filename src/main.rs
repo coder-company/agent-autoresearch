@@ -898,6 +898,9 @@ enum Commands {
         /// Generation temperature hint
         #[arg(long)]
         temperature: Option<String>,
+        /// Chain into predict mode after writing the debate artifact
+        #[arg(long)]
+        predict: bool,
         /// Comma-separated downstream command targets to record in handoff.json
         #[arg(long)]
         chain: Option<String>,
@@ -1818,6 +1821,7 @@ fn main() -> Result<()> {
             judge_personas,
             no_synthesis,
             temperature,
+            predict,
             chain,
             evals,
             evals_interval,
@@ -1834,6 +1838,7 @@ fn main() -> Result<()> {
             judge_personas,
             no_synthesis,
             temperature,
+            predict,
             chain,
             evals,
             evals_interval,
@@ -5026,6 +5031,7 @@ fn cmd_reason(
     judge_personas: Option<String>,
     no_synthesis: bool,
     temperature: Option<String>,
+    predict: bool,
     chain: Option<String>,
     evals: bool,
     evals_interval: Option<u32>,
@@ -5033,7 +5039,8 @@ fn cmd_reason(
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     validate_chain_evals_flags("reason", evals, evals_interval)?;
-    let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
+    let forced_targets = if predict { &["predict"][..] } else { &[][..] };
+    let chain_targets = chain_targets_with_forced(chain.as_deref(), forced_targets)?;
     let mode = parse_reasoning_mode(mode)?;
     let domain = parse_reason_domain(domain)?;
     let profile = resolve_reason_profile(

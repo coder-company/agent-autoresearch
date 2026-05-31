@@ -1920,6 +1920,35 @@ fn test_reason_chain_writes_handoff_sidecar() {
 }
 
 #[test]
+fn test_reason_predict_flag_records_predict_handoff() {
+    let dir = TempDir::new().unwrap();
+    let output = dir
+        .path()
+        .join("autoresearch-results/reason/storage-decision.md");
+
+    cmd()
+        .args([
+            "reason",
+            "--question",
+            "Should we replace the storage layer",
+            "--predict",
+            "--output",
+            output.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("handoff.json"));
+
+    let handoff = std::fs::read_to_string(output.parent().unwrap().join("handoff.json")).unwrap();
+    assert!(handoff.contains("\"source_command\": \"reason\""));
+    assert!(handoff.contains("\"chain\": ["));
+    assert!(handoff.contains("\"predict\""));
+    assert!(handoff.contains("\"next_target\": \"predict\""));
+}
+
+#[test]
 fn test_reason_accepts_protocol_task_alias() {
     let dir = TempDir::new().unwrap();
 

@@ -112,7 +112,7 @@ Use `autoresearch predict --proposal <change>` to write a five-persona review co
 Use `autoresearch predict --proposal <change> --depth deep --adversarial --fail-on high` to record review profile and CI gate metadata.
 Use `autoresearch predict --proposal <change> --debug` to record the review as handoff context for downstream investigation.
 Use `autoresearch reason --question <decision>` to write an adversarial debate artifact with candidate solutions, blind judge rubric, and convergence criteria.
-Use `autoresearch reason --question <decision> --chain predict,fix` to pass the selected debate context into downstream review or repair.
+Use `autoresearch reason --question <decision> --predict` to pass the selected debate context into downstream review.
 Use `autoresearch reason --question <decision> --iterations 11 --judges 7 --convergence 4 --temperature 0.2` to record debate budget, judge panel, convergence, synthesis, and generation hints.
 Use `autoresearch probe --subject <requirement>` to write eight persona-driven questions, constraint slots, and a saturation rule before implementation.
 Use `autoresearch probe --subject <requirement> --mode autonomous --depth deep --iterations 9 --adversarial` to override the interrogation round budget and record saturation metadata.

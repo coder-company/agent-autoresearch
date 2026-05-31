@@ -1,7 +1,7 @@
 ---
 name: autoresearch_reason
 description: "Adversarial debate with blind judges until convergence"
-argument-hint: "[Task: <question>] [Domain: <type>] [--mode convergent|creative|debate] [--judges N] [Iterations: N] [--evals]"
+argument-hint: "[Task: <question>] [Domain: <type>] [--mode convergent|creative|debate] [--judges N] [Iterations: N] [--predict] [--evals]"
 ---
 
 EXECUTE IMMEDIATELY.
@@ -18,6 +18,7 @@ Extract from $ARGUMENTS:
 - `--judge-personas` — custom judge persona overrides
 - `--no-synthesis` — skip synthesis, pure debate only
 - `--temperature` — generation temperature hint
+- `--predict` — shorthand for `--chain predict`
 - `--evals`, `--evals-interval N`, `--chain`, `--<subcommand>`
 
 Remaining text not matching flags = task description.
