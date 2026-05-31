@@ -541,6 +541,9 @@ enum Commands {
         /// Output format: json or text
         #[arg(long, default_value = "json")]
         format: String,
+        /// Chain into debug mode after writing the derived config
+        #[arg(long)]
+        debug: bool,
         /// Comma-separated downstream command targets to record in handoff.json
         #[arg(long)]
         chain: Option<String>,
@@ -1605,9 +1608,10 @@ fn main() -> Result<()> {
         Commands::Plan {
             goal,
             format,
+            debug,
             chain,
             cwd,
-        } => cmd_plan(goal, &format, chain, cwd),
+        } => cmd_plan(goal, &format, debug, chain, cwd),
 
         Commands::Prd {
             title,
@@ -2321,12 +2325,14 @@ fn render_plan_text(plan: &serde_json::Value) -> String {
 fn cmd_plan(
     goal: Option<String>,
     format: &str,
+    debug: bool,
     chain: Option<String>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let workspace = resolve_workspace_root(cwd);
     let goal = goal.unwrap_or_default();
-    let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
+    let forced_targets = if debug { &["debug"][..] } else { &[][..] };
+    let chain_targets = chain_targets_with_forced(chain.as_deref(), forced_targets)?;
     let detected_files = scan_repo_files(&workspace, PLAN_SCAN_PATTERNS);
     let indicator_patterns = PATTERN_INDICATORS
         .iter()

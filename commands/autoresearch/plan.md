@@ -1,7 +1,7 @@
 ---
 name: autoresearch:plan
 description: "Convert a goal into validated Scope, Metric, Direction, Verify config"
-argument-hint: "[Goal: <text>] [--chain <targets>]"
+argument-hint: "[Goal: <text>] [--debug] [--chain <targets>]"
 ---
 
 EXECUTE IMMEDIATELY.
@@ -10,6 +10,7 @@ EXECUTE IMMEDIATELY.
 
 Extract from $ARGUMENTS:
 - `Goal:` — text after keyword, or full $ARGUMENTS if no keyword
+- `--debug` — shorthand for `--chain debug`
 - `--chain <targets>` — comma-separated downstream commands
 - `--<subcommand>` — chain shorthand
 
