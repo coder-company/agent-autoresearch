@@ -124,6 +124,7 @@ Optional:
 | `autoresearch log --iteration N --status keep --metric X --description "..."` | Append TSV row (alternative to decide) |
 | `autoresearch status --summary` | Show compact run counters |
 | `autoresearch progress` | Formatted progress summary |
+| `autoresearch cost --per-iteration-usd 0.25 --format json` | Estimate completed, remaining, and projected token/API spend |
 | `autoresearch watch --lines 20 --format jsonl` / `watch --websocket` | Tail the active results.tsv locally or over WebSocket for live monitoring |
 | `autoresearch lessons --add "..." --context "..."` | Append reusable strategy lessons |
 | `autoresearch lessons --workspace-context --last 5` | Read shared workspace lessons with repo-target metadata |

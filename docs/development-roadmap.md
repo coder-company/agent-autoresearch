@@ -62,10 +62,10 @@
 - [x] Comprehensive documentation site
 - [x] GitHub Action for autoresearch in CI
 - [x] Metric history graphing (sparklines in terminal)
+- [x] Cost tracking — estimate token/API spend per iteration
 
 ## Future Ideas (unscheduled)
 
 - Interactive TUI dashboard for monitoring runs
 - VS Code extension for run visualization
 - A/B experiment mode — compare two approaches head-to-head
-- Cost tracking — estimate token/API spend per iteration

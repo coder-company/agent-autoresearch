@@ -320,6 +320,31 @@ enum Commands {
         cwd: Option<PathBuf>,
     },
 
+    /// Estimate token/API spend for the active run
+    Cost {
+        /// Direct estimated USD cost per completed iteration
+        #[arg(long)]
+        per_iteration_usd: Option<String>,
+        /// Estimated input tokens consumed per iteration
+        #[arg(long)]
+        input_tokens_per_iteration: Option<u64>,
+        /// Estimated output tokens consumed per iteration
+        #[arg(long)]
+        output_tokens_per_iteration: Option<u64>,
+        /// Input token price in USD per 1M tokens
+        #[arg(long)]
+        input_usd_per_million: Option<String>,
+        /// Output token price in USD per 1M tokens
+        #[arg(long)]
+        output_usd_per_million: Option<String>,
+        /// Output format: text or json
+        #[arg(long, default_value = "text")]
+        format: String,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
     /// Tail the active results.tsv for live run monitoring
     Watch {
         /// Number of recent data rows to print on startup
@@ -871,6 +896,24 @@ fn main() -> Result<()> {
         Commands::Resume { cwd } => cmd_resume(cwd),
 
         Commands::Progress { cwd } => cmd_progress(cwd),
+
+        Commands::Cost {
+            per_iteration_usd,
+            input_tokens_per_iteration,
+            output_tokens_per_iteration,
+            input_usd_per_million,
+            output_usd_per_million,
+            format,
+            cwd,
+        } => cmd_cost(
+            cwd,
+            per_iteration_usd.as_deref(),
+            input_tokens_per_iteration,
+            output_tokens_per_iteration,
+            input_usd_per_million.as_deref(),
+            output_usd_per_million.as_deref(),
+            &format,
+        ),
 
         Commands::Watch {
             lines,
@@ -5133,6 +5176,142 @@ fn metric_history_sparkline(metrics: &[Decimal]) -> Option<String> {
         })
         .collect();
     Some(sparkline)
+}
+
+fn parse_cost_decimal(label: &str, value: Option<&str>) -> Result<Option<Decimal>> {
+    value
+        .map(|raw| {
+            let parsed =
+                Decimal::from_str(raw.trim()).with_context(|| format!("Invalid {label}: {raw}"))?;
+            if parsed < Decimal::ZERO {
+                anyhow::bail!("{label} must be non-negative");
+            }
+            Ok(parsed)
+        })
+        .transpose()
+}
+
+fn estimate_cost_per_iteration(
+    per_iteration_usd: Option<&str>,
+    input_tokens_per_iteration: Option<u64>,
+    output_tokens_per_iteration: Option<u64>,
+    input_usd_per_million: Option<&str>,
+    output_usd_per_million: Option<&str>,
+) -> Result<(Decimal, serde_json::Value)> {
+    if let Some(per_iteration_usd) = parse_cost_decimal("per_iteration_usd", per_iteration_usd)? {
+        return Ok((
+            per_iteration_usd,
+            serde_json::json!({
+                "method": "direct",
+                "per_iteration_usd": per_iteration_usd.to_string(),
+            }),
+        ));
+    }
+
+    let input_tokens = input_tokens_per_iteration.unwrap_or(0);
+    let output_tokens = output_tokens_per_iteration.unwrap_or(0);
+    if input_tokens == 0 && output_tokens == 0 {
+        anyhow::bail!(
+            "cost requires --per-iteration-usd or at least one token count with matching USD-per-million rate"
+        );
+    }
+
+    let input_rate = parse_cost_decimal("input_usd_per_million", input_usd_per_million)?;
+    let output_rate = parse_cost_decimal("output_usd_per_million", output_usd_per_million)?;
+    if input_tokens > 0 && input_rate.is_none() {
+        anyhow::bail!("--input-usd-per-million is required when input tokens are provided");
+    }
+    if output_tokens > 0 && output_rate.is_none() {
+        anyhow::bail!("--output-usd-per-million is required when output tokens are provided");
+    }
+    let input_rate = input_rate.unwrap_or_default();
+    let output_rate = output_rate.unwrap_or_default();
+
+    let one_million = Decimal::from(1_000_000u64);
+    let input_cost = Decimal::from(input_tokens) * input_rate / one_million;
+    let output_cost = Decimal::from(output_tokens) * output_rate / one_million;
+    let per_iteration = input_cost + output_cost;
+    Ok((
+        per_iteration,
+        serde_json::json!({
+            "method": "token_rates",
+            "input_tokens_per_iteration": input_tokens,
+            "output_tokens_per_iteration": output_tokens,
+            "input_usd_per_million": input_rate.to_string(),
+            "output_usd_per_million": output_rate.to_string(),
+            "input_usd_per_iteration": input_cost.to_string(),
+            "output_usd_per_iteration": output_cost.to_string(),
+        }),
+    ))
+}
+
+fn cmd_cost(
+    cwd: Option<PathBuf>,
+    per_iteration_usd: Option<&str>,
+    input_tokens_per_iteration: Option<u64>,
+    output_tokens_per_iteration: Option<u64>,
+    input_usd_per_million: Option<&str>,
+    output_usd_per_million: Option<&str>,
+    format: &str,
+) -> Result<()> {
+    let workspace = resolve_results_workspace(cwd);
+    let results_dir = workspace.join("autoresearch-results");
+    let state_path = results_dir.join("state.json");
+    if !state_path.exists() {
+        anyhow::bail!("No active run (state.json not found)");
+    }
+
+    let state: RunState = serde_json::from_str(&std::fs::read_to_string(&state_path)?)?;
+    let (per_iteration, breakdown) = estimate_cost_per_iteration(
+        per_iteration_usd,
+        input_tokens_per_iteration,
+        output_tokens_per_iteration,
+        input_usd_per_million,
+        output_usd_per_million,
+    )?;
+
+    let completed_iterations = state.iteration;
+    let configured_iterations = state.config.as_ref().and_then(|config| config.iterations);
+    let projected_iterations = configured_iterations
+        .unwrap_or(completed_iterations)
+        .max(completed_iterations);
+    let remaining_iterations = projected_iterations.saturating_sub(completed_iterations);
+    let completed_usd = per_iteration * Decimal::from(completed_iterations);
+    let remaining_usd = per_iteration * Decimal::from(remaining_iterations);
+    let projected_total_usd = per_iteration * Decimal::from(projected_iterations);
+
+    let out = serde_json::json!({
+        "workspace": workspace.display().to_string(),
+        "completed_iterations": completed_iterations,
+        "configured_iterations": configured_iterations,
+        "projected_iterations": projected_iterations,
+        "remaining_iterations": remaining_iterations,
+        "per_iteration_usd": per_iteration.to_string(),
+        "completed_usd": completed_usd.to_string(),
+        "remaining_usd": remaining_usd.to_string(),
+        "projected_total_usd": projected_total_usd.to_string(),
+        "breakdown": breakdown,
+    });
+
+    match format {
+        "json" => println!("{}", serde_json::to_string_pretty(&out)?),
+        "text" => {
+            println!("--- Cost Estimate ---");
+            println!("Completed iterations: {}", completed_iterations);
+            if let Some(configured_iterations) = configured_iterations {
+                println!("Configured iterations: {}", configured_iterations);
+                println!("Remaining iterations: {}", remaining_iterations);
+            } else {
+                println!("Configured iterations: unbounded");
+            }
+            println!("Per iteration: ${}", per_iteration);
+            println!("Completed: ${}", completed_usd);
+            println!("Projected total: ${}", projected_total_usd);
+            println!("Remaining: ${}", remaining_usd);
+        }
+        other => anyhow::bail!("Invalid cost format {other:?}; use text or json"),
+    }
+    Ok(())
 }
 
 // ── Progress ─────────────────────────────────────────────────────────

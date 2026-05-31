@@ -46,6 +46,7 @@ This skill uses Claude Code's `/goal` command as the native continuation engine.
 - Read last 10-20 lines of `autoresearch-results/results.tsv`
 - Read `autoresearch-results/context.json` when present
 - Use `autoresearch api --format json` when an integration needs the stable command/flag manifest
+- Use `autoresearch cost --per-iteration-usd <usd> --format json` to estimate completed, remaining, and projected token/API spend for an active run
 - Use `autoresearch scope expand --format json` when a monorepo or companion repo scope needs concrete file/package context
 - Use `autoresearch workspace exec --command <cmd> --rollback-on-failure` when one screened command must run across primary and companion repo targets with automatic rollback
 - Use `autoresearch guard-presets --format json` when primary or companion repos need a guard command suggestion

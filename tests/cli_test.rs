@@ -203,6 +203,8 @@ fn test_api_manifest_lists_nested_commands_and_flags() {
         .stdout(predicate::str::contains("\"stability\": \"stable\""))
         .stdout(predicate::str::contains("\"runtime\""))
         .stdout(predicate::str::contains("\"start\""))
+        .stdout(predicate::str::contains("\"cost\""))
+        .stdout(predicate::str::contains("\"per-iteration-usd\""))
         .stdout(predicate::str::contains("\"mcp\""))
         .stdout(predicate::str::contains("\"serve\""))
         .stdout(predicate::str::contains("\"provider-command\""));
@@ -1682,6 +1684,98 @@ fn test_progress_accepts_timestamp_and_guard_metric_columns() {
         .stdout(predicate::str::contains("Trend: improving"))
         .stdout(predicate::str::contains("Metric history:"))
         .stdout(predicate::str::contains("higher is better"));
+}
+
+#[test]
+fn test_cost_estimates_active_run_spend() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--iterations",
+            "5",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    for (iteration, metric) in [("1", "55"), ("2", "60")] {
+        cmd()
+            .args([
+                "log",
+                "--iteration",
+                iteration,
+                "--commit",
+                "abc1234",
+                "--metric",
+                metric,
+                "--delta",
+                "+5",
+                "--guard",
+                "pass",
+                "--status",
+                "keep",
+                "--description",
+                "improved",
+                "--cwd",
+                root,
+            ])
+            .assert()
+            .success();
+    }
+
+    cmd()
+        .args([
+            "cost",
+            "--per-iteration-usd",
+            "0.25",
+            "--format",
+            "json",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"completed_iterations\": 2"))
+        .stdout(predicate::str::contains("\"configured_iterations\": 5"))
+        .stdout(predicate::str::contains("\"remaining_iterations\": 3"))
+        .stdout(predicate::str::contains("\"per_iteration_usd\": \"0.25\""))
+        .stdout(predicate::str::contains("\"completed_usd\": \"0.50\""))
+        .stdout(predicate::str::contains(
+            "\"projected_total_usd\": \"1.25\"",
+        ));
+
+    cmd()
+        .args([
+            "cost",
+            "--input-tokens-per-iteration",
+            "100000",
+            "--output-tokens-per-iteration",
+            "100000",
+            "--input-usd-per-million",
+            "1",
+            "--output-usd-per-million",
+            "2",
+            "--format",
+            "json",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"method\": \"token_rates\""))
+        .stdout(predicate::str::contains("\"per_iteration_usd\": \"0.30\""))
+        .stdout(predicate::str::contains(
+            "\"projected_total_usd\": \"1.50\"",
+        ));
 }
 
 #[test]
