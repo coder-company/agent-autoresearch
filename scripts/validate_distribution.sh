@@ -217,6 +217,7 @@ require_grep '`autoresearch predict` writes' COMPARISON.md
 require_grep 'autoresearch reason --question' README.md
 require_grep 'autoresearch reason --question' docs/GUIDE.md
 require_grep 'autoresearch reason --question' references/binary-operations.md
+require_grep 'reason --chain' references/binary-operations.md
 require_grep 'Native reason generator' docs/development-roadmap.md
 require_grep '`autoresearch reason` writes' COMPARISON.md
 require_grep 'autoresearch probe --subject' README.md

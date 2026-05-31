@@ -1062,6 +1062,50 @@ fn test_reason_writes_adversarial_debate_artifact() {
 }
 
 #[test]
+fn test_reason_chain_writes_handoff_sidecar() {
+    let dir = TempDir::new().unwrap();
+    let output = dir
+        .path()
+        .join("autoresearch-results/reason/storage-decision.md");
+
+    cmd()
+        .args([
+            "reason",
+            "--question",
+            "Should we replace the storage layer",
+            "--mode",
+            "debate",
+            "--domain",
+            "software",
+            "--scope",
+            "src/storage/**",
+            "--chain",
+            "predict,fix",
+            "--evals",
+            "--evals-interval",
+            "5",
+            "--output",
+            output.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("handoff.json"));
+
+    let handoff = std::fs::read_to_string(output.parent().unwrap().join("handoff.json")).unwrap();
+    assert!(handoff.contains("\"source_command\": \"reason\""));
+    assert!(handoff.contains("\"status\": \"CONVERGED\""));
+    assert!(handoff.contains("\"chain\": ["));
+    assert!(handoff.contains("\"predict\""));
+    assert!(handoff.contains("\"fix\""));
+    assert!(handoff.contains("\"next_target\": \"predict\""));
+    assert!(handoff.contains("\"chain_continue\": true"));
+    assert!(handoff.contains("\"propagate_evals\": true"));
+    assert!(handoff.contains("\"evals_interval\": 5"));
+}
+
+#[test]
 fn test_probe_writes_requirement_interrogation_artifact() {
     let dir = TempDir::new().unwrap();
     let output = dir.path().join("probe/payment-probe.md");
