@@ -96,7 +96,7 @@ Update `autoresearch-results/state.json`.
 ### Phase 9: Escalation
 - 3 consecutive discards → **REFINE**: adjust within strategy, consult lessons
 - 5 consecutive discards → **PIVOT**: abandon strategy entirely, fundamentally different approach
-- 2 PIVOTs without keep → **Web search**: look externally
+- 2 PIVOTs without keep → **Web search**: look externally; `decide` auto-runs the cached search helper when `AUTORESEARCH_SEARCH_CMD` is configured
 - 3 PIVOTs without keep → **Soft blocker**: clear /goal, report human input needed
 - 1 keep resets ALL counters
 

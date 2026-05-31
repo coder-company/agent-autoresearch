@@ -1805,7 +1805,7 @@ fn test_search_without_provider_reports_skipped() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("\"status\":\"skipped\""))
+        .stdout(predicate::str::contains("\"status\": \"skipped\""))
         .stdout(predicate::str::contains("no provider command configured"));
 }
 
@@ -1853,6 +1853,107 @@ fn test_search_log_records_meta_iteration() {
     let state =
         std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap();
     assert!(state.contains("\"iteration\": 1"));
+    assert!(state.contains("\"last_status\": \"search\""));
+}
+
+#[test]
+fn test_decide_web_search_escalation_runs_configured_provider() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "lower",
+            "--goal",
+            "Reduce flaky integration tests",
+            "--metric",
+            "flaky failure count",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    for iteration in 1..=3 {
+        cmd()
+            .args([
+                "log",
+                "--iteration",
+                &iteration.to_string(),
+                "--metric",
+                "50",
+                "--status",
+                "no-op",
+                "--description",
+                "no progress",
+                "--cwd",
+                root,
+            ])
+            .assert()
+            .success();
+    }
+
+    let state_path = dir.path().join("autoresearch-results/state.json");
+    let mut state: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&state_path).unwrap()).unwrap();
+    state["consecutive_discards"] = serde_json::json!(2);
+    state["pivot_count"] = serde_json::json!(2);
+    std::fs::write(&state_path, serde_json::to_string_pretty(&state).unwrap()).unwrap();
+
+    std::fs::write(
+        dir.path().join("autoresearch-results/escalation.json"),
+        serde_json::json!({
+            "consecutive_discards": 2,
+            "pivot_count": 2,
+            "pivots_since_last_keep": 2,
+            "last_action": "none"
+        })
+        .to_string(),
+    )
+    .unwrap();
+
+    let provider = dir
+        .path()
+        .join("autoresearch-results/auto-search-provider.sh");
+    std::fs::write(
+        &provider,
+        "printf '[{\"title\":\"%s\"}]\\n' \"$AUTORESEARCH_SEARCH_QUERY\"\n",
+    )
+    .unwrap();
+    let provider_command = format!("sh {}", provider.display());
+
+    cmd()
+        .env("AUTORESEARCH_SEARCH_CMD", provider_command)
+        .args([
+            "decide",
+            "--decision",
+            "no-op",
+            "--description",
+            "still stuck after pivots",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"action\": \"WebSearch\""))
+        .stdout(predicate::str::contains("\"auto_search\""))
+        .stdout(predicate::str::contains("\"status\": \"ok\""))
+        .stdout(predicate::str::contains("\"logged_iteration\": 5"));
+
+    let results =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/results.tsv")).unwrap();
+    assert!(results.contains("4\t-\t50\t0\t-\tno-op\tstill stuck after pivots"));
+    assert!(results.contains("5\t-\t50\t0\t-\tsearch\t[SEARCH]"));
+    assert!(results.contains("Reduce flaky integration tests"));
+
+    let state =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap();
+    assert!(state.contains("\"iteration\": 5"));
     assert!(state.contains("\"last_status\": \"search\""));
 }
 

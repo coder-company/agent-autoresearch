@@ -32,7 +32,7 @@
 
 ## v0.3.0 — Web Search + MCP Integration
 
-- [ ] Built-in web search escalation (Tavily, Exa, or configurable)
+- [x] Built-in web search escalation (configurable provider command)
 - [ ] MCP tool server mode — expose autoresearch as an MCP tool
 - [ ] MCP client mode — call external MCP tools during iteration
 - [x] Structured search queries from escalation context

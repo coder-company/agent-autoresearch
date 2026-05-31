@@ -1694,6 +1694,8 @@ fn cmd_decide(
     std::fs::write(&state_path, serde_json::to_string_pretty(&state)?)?;
     std::fs::write(&esc_path, serde_json::to_string_pretty(&escalation)?)?;
 
+    let auto_search = maybe_run_auto_web_search(&workspace, escalation_action, state.iteration);
+
     // Build response
     let escalation_guidance = escalation_action.map(|a| {
         serde_json::json!({
@@ -1703,7 +1705,7 @@ fn cmd_decide(
         })
     });
 
-    let out = serde_json::json!({
+    let mut out = serde_json::json!({
         "status": "ok",
         "decision": decision,
         "iteration": iteration,
@@ -1725,6 +1727,11 @@ fn cmd_decide(
         },
         "escalation": escalation_guidance,
     });
+    if let Some(auto_search) = auto_search {
+        if let Some(object) = out.as_object_mut() {
+            object.insert("auto_search".to_string(), auto_search);
+        }
+    }
     println!("{}", serde_json::to_string_pretty(&out)?);
     Ok(())
 }
@@ -3953,11 +3960,35 @@ fn cmd_search(
         anyhow::bail!("search --limit must be greater than zero");
     }
     let workspace = resolve_results_workspace(cwd);
-    let query = match query {
-        Some(query) if !query.trim().is_empty() => query.trim().to_string(),
-        _ if from_state => search_query_from_state(&workspace)?,
+    let query = resolve_search_query(&workspace, query, from_state)?;
+    let result = run_search_request(&workspace, query, provider_command, limit, refresh, log)?;
+    println!("{}", serde_json::to_string_pretty(&result)?);
+    Ok(())
+}
+
+fn resolve_search_query(
+    workspace: &Path,
+    query: Option<String>,
+    from_state: bool,
+) -> Result<String> {
+    match query {
+        Some(query) if !query.trim().is_empty() => Ok(query.trim().to_string()),
+        _ if from_state => search_query_from_state(workspace),
         _ => anyhow::bail!("search requires --query or --from-state"),
-    };
+    }
+}
+
+fn run_search_request(
+    workspace: &Path,
+    query: String,
+    provider_command: Option<String>,
+    limit: usize,
+    refresh: bool,
+    log: bool,
+) -> Result<serde_json::Value> {
+    if limit == 0 {
+        anyhow::bail!("search --limit must be greater than zero");
+    }
     let provider_command = provider_command
         .or_else(|| std::env::var("AUTORESEARCH_SEARCH_CMD").ok())
         .filter(|command| !command.trim().is_empty());
@@ -3981,8 +4012,7 @@ fn cmd_search(
                 object.insert("logged_iteration".to_string(), serde_json::json!(iteration));
             }
         }
-        println!("{}", result);
-        return Ok(());
+        return Ok(result);
     };
     verify::screen_command(&provider_command)?;
 
@@ -4009,8 +4039,7 @@ fn cmd_search(
                 object.insert("logged_iteration".to_string(), serde_json::json!(iteration));
             }
         }
-        println!("{}", serde_json::to_string_pretty(&cached)?);
-        return Ok(());
+        return Ok(cached);
     }
 
     let output = Command::new("sh")
@@ -4055,8 +4084,84 @@ fn cmd_search(
             object.insert("logged_iteration".to_string(), serde_json::json!(iteration));
         }
     }
-    println!("{}", serde_json::to_string_pretty(&result)?);
-    Ok(())
+    Ok(result)
+}
+
+fn maybe_run_auto_web_search(
+    workspace: &Path,
+    escalation_action: Option<EscalationAction>,
+    state_iteration: u32,
+) -> Option<serde_json::Value> {
+    if escalation_action != Some(EscalationAction::WebSearch) {
+        return None;
+    }
+    match automatic_search_blocker(workspace, state_iteration) {
+        Ok(Some(reason)) => {
+            return Some(serde_json::json!({
+                "status": "skipped",
+                "reason": reason,
+            }));
+        }
+        Ok(None) => {}
+        Err(err) => {
+            return Some(serde_json::json!({
+                "status": "error",
+                "reason": "auto_search_gate_failed",
+                "error": err.to_string(),
+            }));
+        }
+    }
+
+    let result = search_query_from_state(workspace)
+        .and_then(|query| run_search_request(workspace, query, None, 5, false, true));
+
+    Some(match result {
+        Ok(result) => result,
+        Err(err) => serde_json::json!({
+            "status": "error",
+            "reason": "auto_search_failed",
+            "error": err.to_string(),
+        }),
+    })
+}
+
+fn automatic_search_blocker(workspace: &Path, state_iteration: u32) -> Result<Option<String>> {
+    if state_iteration < 3 {
+        return Ok(Some(
+            "automatic web search waits until after the first 3 iterations".to_string(),
+        ));
+    }
+
+    let results_path = workspace.join("autoresearch-results/results.tsv");
+    if !results_path.exists() {
+        return Ok(None);
+    }
+    let rows = ResultsLog::open(results_path)?.tail(10)?;
+    let mut search_iterations = Vec::new();
+    for row in rows {
+        let columns = row.split('\t').collect::<Vec<_>>();
+        if columns.get(5) == Some(&"search") {
+            if let Some(iteration) = columns.first().and_then(|raw| raw.parse::<u32>().ok()) {
+                search_iterations.push(iteration);
+            }
+        }
+    }
+
+    if search_iterations.len() >= 3 {
+        return Ok(Some(
+            "automatic web search limit reached: 3 searches in the last 10 iterations".to_string(),
+        ));
+    }
+    if search_iterations
+        .last()
+        .is_some_and(|last| state_iteration.saturating_sub(*last) < 2)
+    {
+        return Ok(Some(
+            "automatic web search cooldown active: wait at least 2 iterations".to_string(),
+        ));
+    }
+
+    Ok(None)
 }
 
 fn search_query_from_state(workspace: &Path) -> Result<String> {

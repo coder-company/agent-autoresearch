@@ -143,6 +143,8 @@ require_grep 'autoresearch search --from-state --log' SKILL.md
 require_grep 'autoresearch search --from-state --log' .agents/skills/autoresearch/SKILL.md
 require_grep 'search.*meta-row' references/web-search-protocol.md
 require_grep 'AUTORESEARCH_SEARCH_CMD' references/web-search-protocol.md
+require_grep 'auto_search\.status' references/web-search-protocol.md
+require_grep '\[x\] Built-in web search escalation \(configurable provider command\)' docs/development-roadmap.md
 require_grep '\[x\] Search result caching to avoid redundant queries' docs/development-roadmap.md
 require_grep 'autoresearch parallel prepare' SKILL.md
 require_grep 'autoresearch parallel run' SKILL.md

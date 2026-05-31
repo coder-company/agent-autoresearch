@@ -16,6 +16,13 @@ returned as `results`, and successful responses are cached under
 `search` meta-row to `results.tsv` and advances `state.json` without changing the
 retained metric.
 
+When `autoresearch decide` escalates a run to `WebSearch`, the binary
+automatically invokes the same cached helper with `AUTORESEARCH_SEARCH_CMD`,
+`--from-state`, and `--log`. If no provider is configured, the automatic search
+logs a skipped `search` row. If the timing, sliding-window, or cooldown limits
+would be violated, `decide` reports `auto_search.status = "skipped"` without
+advancing the run.
+
 ## When to Search
 
 ### Automatic Triggers

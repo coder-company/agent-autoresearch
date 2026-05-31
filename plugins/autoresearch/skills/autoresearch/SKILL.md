@@ -45,7 +45,7 @@ The `autoresearch` binary handles mechanical operations:
 - `autoresearch runtime run` — execute the supervised background loop; `start/status/supervise/stop` remain available for manual control
 - `autoresearch status --summary|resume|progress|watch|lessons|evals` — inspect/resume/monitor/analyze runs
 - `autoresearch lessons --add "..." --context "..."` — append reusable strategy lessons
-- `autoresearch search --from-state --log` — build a run-aware search query, cache provider results, and log a search row
+- `autoresearch search --from-state --log` — build a run-aware search query, cache provider results, and log a search row; `decide` auto-runs this on Web Search escalation when `AUTORESEARCH_SEARCH_CMD` is configured
 - `autoresearch hook <name>` — execute lifecycle hooks
 
 ## Core Protocol (Each Turn)

@@ -41,7 +41,7 @@ Use `autoresearch runtime run` for supervised background Codex sessions and `aut
 Use `autoresearch status --summary` for compact monitor-friendly counters.
 Use `autoresearch watch --format <tsv|jsonl>` for human-readable tails or machine-readable JSON Lines.
 Use `autoresearch lessons --add <strategy> --context <note>` to append reusable lessons without editing `lessons.md` by hand.
-Use `autoresearch search --from-state` with `--provider-command` or `AUTORESEARCH_SEARCH_CMD` to run cached, run-aware web searches. Add `--log` to append a `search` meta-iteration.
+Use `autoresearch search --from-state` with `--provider-command` or `AUTORESEARCH_SEARCH_CMD` to run cached, run-aware web searches. Add `--log` to append a `search` meta-iteration. When `decide` escalates to Web Search, it automatically runs the same cached helper with `AUTORESEARCH_SEARCH_CMD` and logs the result when timing/cooldown limits allow it.
 Use `autoresearch parallel closeout --merge-strategy <cherry-pick|fast-forward|squash|rebase>` to select how the retained worker commit is merged.
 Use `autoresearch completions <bash|zsh|fish|elvish|powershell>` to generate shell completions.
 Use `autoresearch manpages --output-dir man/man1` to generate a local `autoresearch.1` manual page.
