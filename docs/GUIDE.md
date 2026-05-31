@@ -107,7 +107,7 @@ Use `autoresearch security --scope <glob> --depth deep --iterations 18 --diff --
 Use `autoresearch ship --target <thing> --type <kind> --dry-run` to write an 8-phase ship checklist, summary, ship log, and handoff JSON without external side effects.
 Use `autoresearch ship --target <thing> --auto --force --rollback --monitor 15 --chain learn` to record approval, rollback, monitoring, and downstream handoff metadata.
 Use `autoresearch scenario --target <feature> --domain <general|web|mobile|api|cli|data-pipeline|infrastructure> --format <test-scenarios|threat-scenarios|use-cases|user-stories>` to write a 12-dimension scenario matrix for tests, threat modeling, or debug follow-up.
-Use `autoresearch scenario --target <feature> --domain web --depth deep --iterations 16 --evals --chain debug` to override the exploration budget and record domain, checkpoint metadata, and downstream handoff.
+Use `autoresearch scenario --target <feature> --domain web --depth deep --iterations 16 --evals --debug` to override the exploration budget and record domain, checkpoint metadata, and downstream debug handoff.
 Use `autoresearch predict --proposal <change>` to write a five-persona review covering architecture, security, performance, UX, and adversarial risks.
 Use `autoresearch predict --proposal <change> --depth deep --adversarial --fail-on high` to record review profile and CI gate metadata.
 Use `autoresearch predict --proposal <change> --chain debug` to record the review as handoff context for downstream investigation.

@@ -220,8 +220,9 @@ require_grep 'autoresearch scenario --target' docs/GUIDE.md
 require_grep 'autoresearch scenario --target' references/binary-operations.md
 require_grep 'scenario --domain' README.md
 require_grep 'scenario --target <feature> --domain' docs/GUIDE.md
-require_grep 'scenario --domain <domain> --depth <level> --iterations <n> --evals --chain <targets>' references/binary-operations.md
+require_grep 'scenario --domain <domain> --depth <level> --iterations <n> --evals --debug' references/binary-operations.md
 require_grep 'test-scenarios \(default\), threat-scenarios, use-cases, user-stories' commands/autoresearch/scenario.md
+require_grep 'shorthand for `--chain debug`' commands/autoresearch/scenario.md
 require_grep 'Native scenario generator' docs/development-roadmap.md
 require_grep '`autoresearch scenario` writes' COMPARISON.md
 require_grep 'autoresearch predict --proposal' README.md

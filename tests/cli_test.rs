@@ -802,6 +802,33 @@ fn test_scenario_depth_and_evals_are_recorded() {
 }
 
 #[test]
+fn test_scenario_debug_flag_records_debug_handoff() {
+    let dir = TempDir::new().unwrap();
+    let output = dir.path().join("scenario/checkout-scenarios.md");
+
+    cmd()
+        .args([
+            "scenario",
+            "--target",
+            "Checkout flow",
+            "--debug",
+            "--output",
+            output.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("handoff.json"));
+
+    let handoff = std::fs::read_to_string(output.parent().unwrap().join("handoff.json")).unwrap();
+    assert!(handoff.contains("\"source_command\": \"scenario\""));
+    assert!(handoff.contains("\"chain\": ["));
+    assert!(handoff.contains("\"debug\""));
+    assert!(handoff.contains("\"next_target\": \"debug\""));
+}
+
+#[test]
 fn test_scenario_accepts_protocol_seed_alias() {
     let dir = TempDir::new().unwrap();
 

@@ -803,6 +803,9 @@ enum Commands {
         /// Eval checkpoint interval
         #[arg(long)]
         evals_interval: Option<u32>,
+        /// Chain into debug mode after writing scenario findings
+        #[arg(long)]
+        debug: bool,
         /// Comma-separated downstream command targets to record in handoff.json
         #[arg(long)]
         chain: Option<String>,
@@ -1747,6 +1750,7 @@ fn main() -> Result<()> {
             iterations,
             evals,
             evals_interval,
+            debug,
             chain,
             output,
             cwd,
@@ -1760,6 +1764,7 @@ fn main() -> Result<()> {
             iterations,
             evals,
             evals_interval,
+            debug,
             chain,
             output,
             cwd,
@@ -4392,13 +4397,15 @@ fn cmd_scenario(
     iterations: Option<u32>,
     evals: bool,
     evals_interval: Option<u32>,
+    debug: bool,
     chain: Option<String>,
     output: Option<PathBuf>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let format = parse_scenario_format(format)?;
     let profile = resolve_scenario_profile(domain, depth, iterations, evals, evals_interval)?;
-    let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
+    let forced_targets = if debug { &["debug"][..] } else { &[][..] };
+    let chain_targets = chain_targets_with_forced(chain.as_deref(), forced_targets)?;
     let workspace = resolve_workspace_root(cwd);
     let output = output.unwrap_or_else(|| {
         default_artifact_path("scenario", format!("scenario-{}.md", slugify(target)))
