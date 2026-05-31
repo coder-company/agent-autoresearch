@@ -674,6 +674,33 @@ fn test_improve_seed_discovery_and_chain_controls_are_recorded() {
 }
 
 #[test]
+fn test_improve_learn_flag_records_learn_handoff() {
+    let dir = TempDir::new().unwrap();
+    let output_dir = dir.path().join("improve/onboarding-learn");
+
+    cmd()
+        .args([
+            "improve",
+            "--goal",
+            "Improve onboarding activation",
+            "--learn",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"next_target\":\"learn\""));
+
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+    assert!(handoff.contains("\"source\": \"improve\""));
+    assert!(handoff.contains("\"chain\": ["));
+    assert!(handoff.contains("\"learn\""));
+    assert!(handoff.contains("\"next_target\": \"learn\""));
+}
+
+#[test]
 fn test_improve_iterations_override_depth_budget() {
     let dir = TempDir::new().unwrap();
     let output_dir = dir.path().join("improve/custom-budget");

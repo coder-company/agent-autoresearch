@@ -609,6 +609,9 @@ enum Commands {
         /// Eval checkpoint interval
         #[arg(long)]
         evals_interval: Option<u32>,
+        /// Chain into learn mode after writing improvement research
+        #[arg(long)]
+        learn: bool,
         /// Comma-separated downstream command targets to record in handoff.json
         #[arg(long)]
         chain: Option<String>,
@@ -1622,6 +1625,7 @@ fn main() -> Result<()> {
             no_discover,
             evals,
             evals_interval,
+            learn,
             chain,
             output_dir,
             cwd,
@@ -1636,6 +1640,7 @@ fn main() -> Result<()> {
             no_discover,
             evals,
             evals_interval,
+            learn,
             chain,
             output_dir,
             cwd,
@@ -2855,6 +2860,7 @@ fn cmd_improve(
     no_discover: bool,
     evals: bool,
     evals_interval: Option<u32>,
+    learn: bool,
     chain: Option<String>,
     output_dir: Option<PathBuf>,
     cwd: Option<PathBuf>,
@@ -2868,7 +2874,8 @@ fn cmd_improve(
         evals,
         evals_interval,
     )?;
-    let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
+    let forced_targets = if learn { &["learn"][..] } else { &[][..] };
+    let chain_targets = chain_targets_with_forced(chain.as_deref(), forced_targets)?;
     let next_target = next_chain_target_value(&chain_targets);
     let workspace = resolve_workspace_root(cwd);
     let icp = icp

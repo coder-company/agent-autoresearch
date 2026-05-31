@@ -1,7 +1,7 @@
 ---
 name: autoresearch:improve
 description: "Research-driven product improvement: ICP challenges → tiered features → PRDs"
-argument-hint: "[Goal: <text>] [ICP: <persona>] [Scope: <glob>] [Iterations: N] [--depth shallow|standard|deep] [--seeds N] [--discover] [--no-discover] [--evals]"
+argument-hint: "[Goal: <text>] [ICP: <persona>] [Scope: <glob>] [Iterations: N] [--depth shallow|standard|deep] [--seeds N] [--discover] [--no-discover] [--learn] [--evals]"
 ---
 
 EXECUTE IMMEDIATELY.
@@ -17,6 +17,7 @@ Extract from $ARGUMENTS:
 - `--discover` — enable discovery research (competitor analysis, market trends) — default ON
 - `--no-discover` — disable discovery research, use only codebase + ICP context
 - `Iterations:` or `--iterations` — default 20. "unlimited" for unbounded.
+- `--learn` — shorthand for `--chain learn`
 - `--evals`, `--evals-interval N`, `--chain`, `--<subcommand>`
 
 ## Setup (if Goal or ICP missing)
