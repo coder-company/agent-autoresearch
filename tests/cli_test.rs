@@ -771,6 +771,26 @@ fn test_scenario_depth_and_evals_are_recorded() {
 }
 
 #[test]
+fn test_scenario_accepts_protocol_seed_alias() {
+    let dir = TempDir::new().unwrap();
+
+    cmd()
+        .args([
+            "scenario",
+            "--scenario",
+            "Checkout flow",
+            "--domain",
+            "web",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"target\":\"Checkout flow\""))
+        .stdout(predicate::str::contains("\"domain\":\"web\""));
+}
+
+#[test]
 fn test_security_writes_audit_artifact_bundle() {
     let dir = TempDir::new().unwrap();
     std::fs::create_dir_all(dir.path().join("src/auth")).unwrap();

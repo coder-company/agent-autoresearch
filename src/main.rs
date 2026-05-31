@@ -762,7 +762,7 @@ enum Commands {
     /// Generate a 12-dimension scenario exploration artifact
     Scenario {
         /// Feature, workflow, or system to explore
-        #[arg(long)]
+        #[arg(long, visible_alias = "scenario")]
         target: String,
         /// Domain: general, web, mobile, API, CLI, data-pipeline, or infrastructure
         #[arg(long, default_value = "general")]
