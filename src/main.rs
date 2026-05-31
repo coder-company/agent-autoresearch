@@ -267,6 +267,9 @@ enum Commands {
         /// Path to results.tsv (alias for the positional path)
         #[arg(long, value_name = "PATH")]
         file: Option<PathBuf>,
+        /// Include explicit go/no-go decision and next-step guidance
+        #[arg(long)]
+        recommend: bool,
         /// Output format: text, json, or md
         #[arg(long, default_value = "text")]
         format: String,
@@ -1454,11 +1457,16 @@ fn main() -> Result<()> {
             cwd,
         ),
 
-        Commands::Evals { path, file, format } => {
+        Commands::Evals {
+            path,
+            file,
+            recommend,
+            format,
+        } => {
             if path.is_some() && file.is_some() {
                 anyhow::bail!("evals accepts either a positional path or --file, not both");
             }
-            cmd_evals(path.or(file), &format)
+            cmd_evals(path.or(file), &format, recommend)
         }
 
         Commands::Checkpoint {
@@ -7367,7 +7375,7 @@ fn cmd_decide(
 
 // ── Evals ─────────────────────────────────────────────────────────────
 
-fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
+fn cmd_evals(path: Option<PathBuf>, format: &str, recommend: bool) -> Result<()> {
     let tsv_path = match path {
         Some(p) => p,
         None => {
@@ -7546,11 +7554,13 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
         total_iterations,
         trend,
     );
+    let go_no_go = evals_go_no_go(recommendation);
+    let next_step = evals_next_step(recommendation);
     let summary_dir = tsv_path.parent().unwrap_or_else(|| Path::new("."));
 
     match format {
         "json" => {
-            let out = serde_json::json!({
+            let mut out = serde_json::json!({
                 "direction": direction,
                 "total_iterations": total_iterations,
                 "keeps": keeps,
@@ -7580,6 +7590,18 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                     serde_json::json!({"delta": d.to_string(), "description": desc})
                 }).collect::<Vec<_>>(),
             });
+            if recommend {
+                if let Some(object) = out.as_object_mut() {
+                    object.insert(
+                        "go_no_go".to_string(),
+                        serde_json::Value::String(go_no_go.to_string()),
+                    );
+                    object.insert(
+                        "next_step".to_string(),
+                        serde_json::Value::String(next_step.to_string()),
+                    );
+                }
+            }
             let json = serde_json::to_string_pretty(&out)?;
             std::fs::write(summary_dir.join("evals-summary.json"), &json)?;
             println!("{json}");
@@ -7605,6 +7627,8 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 improvement_pct: improvement_pct.as_deref(),
                 trend,
                 longest_plateau,
+                recommendation,
+                recommend,
                 unknown_columns: &unknown_columns,
                 parallel_workers: &parallel_workers,
                 top_keeps: &top_keeps,
@@ -7634,6 +7658,8 @@ fn cmd_evals(path: Option<PathBuf>, format: &str) -> Result<()> {
                 improvement_pct: improvement_pct.as_deref(),
                 trend,
                 longest_plateau,
+                recommendation,
+                recommend,
                 unknown_columns: &unknown_columns,
                 parallel_workers: &parallel_workers,
                 top_keeps: &top_keeps,
@@ -7687,7 +7713,7 @@ fn cmd_checkpoint(cwd: Option<PathBuf>, interval: Option<u32>, format: &str) -> 
         return Ok(());
     }
 
-    cmd_evals(Some(results_dir.join("results.tsv")), format)
+    cmd_evals(Some(results_dir.join("results.tsv")), format, false)
 }
 
 fn parse_evals_direction(value: Option<&str>) -> Result<&'static str> {
@@ -7787,6 +7813,8 @@ struct EvalsReport<'a> {
     improvement_pct: Option<&'a str>,
     trend: &'a str,
     longest_plateau: u32,
+    recommendation: &'a str,
+    recommend: bool,
     unknown_columns: &'a [String],
     top_keeps: &'a [(Decimal, &'a str)],
     top_regressions: &'a [(Decimal, &'a str)],
@@ -8070,6 +8098,18 @@ fn render_evals_markdown(report: EvalsReport<'_>) -> String {
         )
         .unwrap();
     }
+    if report.recommend {
+        writeln!(out).unwrap();
+        writeln!(out, "### Go / No-Go").unwrap();
+        writeln!(out).unwrap();
+        writeln!(out, "- Decision: {}", evals_go_no_go(report.recommendation)).unwrap();
+        writeln!(
+            out,
+            "- Next step: {}",
+            evals_next_step(report.recommendation)
+        )
+        .unwrap();
+    }
     out
 }
 
@@ -8093,6 +8133,22 @@ fn evals_recommendation(
         "check_verify"
     } else {
         "continue"
+    }
+}
+
+fn evals_go_no_go(recommendation: &str) -> &'static str {
+    match recommendation {
+        "continue" => "GO",
+        "check_verify" => "HOLD",
+        _ => "NO-GO",
+    }
+}
+
+fn evals_next_step(recommendation: &str) -> &'static str {
+    match recommendation {
+        "continue" => "Continue the current approach; keep eval checkpoints enabled.",
+        "check_verify" => "Stabilize the verify or guard command before continuing.",
+        _ => "Stop this line of attack and pivot to a new hypothesis or scope.",
     }
 }
 

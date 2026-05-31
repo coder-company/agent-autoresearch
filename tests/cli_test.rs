@@ -3272,6 +3272,41 @@ fn test_evals_file_flag_reads_tsv() {
 }
 
 #[test]
+fn test_evals_recommend_flag_adds_next_step() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: higher").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t50\t0\t-\tbaseline\tinitial state").unwrap();
+    writeln!(file, "1\tbcd2345\t55\t+5\tpass\tkeep\timprovement").unwrap();
+    writeln!(file, "2\tcde3456\t60\t+5\tpass\tkeep\tmore improvement").unwrap();
+
+    cmd()
+        .args([
+            "evals",
+            "--file",
+            tsv_path.to_str().unwrap(),
+            "--recommend",
+            "--format",
+            "json",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"go_no_go\": \"GO\""))
+        .stdout(predicate::str::contains("\"next_step\""));
+
+    let summary = std::fs::read_to_string(dir.path().join("evals-summary.json")).unwrap();
+    assert!(summary.contains("\"go_no_go\": \"GO\""));
+    assert!(summary.contains("Continue the current approach"));
+}
+
+#[test]
 fn test_evals_reports_parallel_worker_significance() {
     let dir = TempDir::new().unwrap();
     let tsv_path = dir.path().join("results.tsv");
