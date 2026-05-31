@@ -2,6 +2,17 @@
 
 Controlled integration of web search into the autonomous loop. Search results are treated as hypothesis inputs, never as verified solutions.
 
+The executable companion is `autoresearch search`:
+
+- `autoresearch search --query "..."`
+- `autoresearch search --from-state`
+
+`autoresearch search` runs a configurable provider command from
+`--provider-command` or `AUTORESEARCH_SEARCH_CMD`. The command receives
+`AUTORESEARCH_SEARCH_QUERY` and `AUTORESEARCH_SEARCH_LIMIT`; JSON array output is
+returned as `results`, and successful responses are cached under
+`autoresearch-results/search-cache/`.
+
 ## When to Search
 
 ### Automatic Triggers

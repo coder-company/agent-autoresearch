@@ -35,9 +35,9 @@
 - [ ] Built-in web search escalation (Tavily, Exa, or configurable)
 - [ ] MCP tool server mode — expose autoresearch as an MCP tool
 - [ ] MCP client mode — call external MCP tools during iteration
-- [ ] Structured search queries from escalation context
-- [ ] Search result caching to avoid redundant queries
-- [ ] `autoresearch search` — standalone web search for the current problem
+- [x] Structured search queries from escalation context
+- [x] Search result caching to avoid redundant queries
+- [x] `autoresearch search` — standalone web search for the current problem
 
 ## v0.4.0 — Multi-Repo + Workspace Support
 

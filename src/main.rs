@@ -345,6 +345,28 @@ enum Commands {
         cwd: Option<PathBuf>,
     },
 
+    /// Run a configurable web search helper with local result caching
+    Search {
+        /// Search query. Omit with --from-state to derive one from run state.
+        #[arg(long)]
+        query: Option<String>,
+        /// Build the query from state.json and escalation.json
+        #[arg(long)]
+        from_state: bool,
+        /// Provider command. Receives AUTORESEARCH_SEARCH_QUERY and AUTORESEARCH_SEARCH_LIMIT.
+        #[arg(long)]
+        provider_command: Option<String>,
+        /// Maximum result count hint passed to the provider
+        #[arg(long, default_value_t = 5)]
+        limit: usize,
+        /// Ignore cached results and run the provider again
+        #[arg(long)]
+        refresh: bool,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
     /// Write a chain handoff.json file for downstream commands
     Handoff {
         /// Source mode (e.g. iterate, search, refine)
@@ -719,6 +741,15 @@ fn main() -> Result<()> {
             last,
             cwd,
         ),
+
+        Commands::Search {
+            query,
+            from_state,
+            provider_command,
+            limit,
+            refresh,
+            cwd,
+        } => cmd_search(query, from_state, provider_command, limit, refresh, cwd),
 
         Commands::Handoff {
             source,
@@ -3893,6 +3924,175 @@ fn parse_lesson_outcome(value: &str) -> Result<lessons::LessonOutcome> {
             anyhow::bail!("Invalid lesson outcome {other:?}; use success, failure, or neutral")
         }
     }
+}
+
+// ── Search ───────────────────────────────────────────────────────────
+
+fn cmd_search(
+    query: Option<String>,
+    from_state: bool,
+    provider_command: Option<String>,
+    limit: usize,
+    refresh: bool,
+    cwd: Option<PathBuf>,
+) -> Result<()> {
+    if limit == 0 {
+        anyhow::bail!("search --limit must be greater than zero");
+    }
+    let workspace = resolve_results_workspace(cwd);
+    let query = match query {
+        Some(query) if !query.trim().is_empty() => query.trim().to_string(),
+        _ if from_state => search_query_from_state(&workspace)?,
+        _ => anyhow::bail!("search requires --query or --from-state"),
+    };
+    let provider_command = provider_command
+        .or_else(|| std::env::var("AUTORESEARCH_SEARCH_CMD").ok())
+        .filter(|command| !command.trim().is_empty());
+
+    let Some(provider_command) = provider_command else {
+        println!(
+            "{}",
+            serde_json::json!({
+                "status": "skipped",
+                "reason": "no provider command configured; pass --provider-command or set AUTORESEARCH_SEARCH_CMD",
+                "query": query,
+                "results": [],
+            })
+        );
+        return Ok(());
+    };
+    verify::screen_command(&provider_command)?;
+
+    let results_dir = workspace.join("autoresearch-results");
+    let cache_dir = results_dir.join("search-cache");
+    let cache_path = cache_dir.join(search_cache_key(&provider_command, &query, limit));
+    if !refresh && cache_path.exists() {
+        let mut cached: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(&cache_path)
+                .with_context(|| format!("failed to read {}", cache_path.display()))?,
+        )
+        .with_context(|| format!("failed to parse {}", cache_path.display()))?;
+        if let Some(object) = cached.as_object_mut() {
+            object.insert("cache_hit".to_string(), serde_json::json!(true));
+            object.insert(
+                "cache_path".to_string(),
+                serde_json::json!(cache_path.display().to_string()),
+            );
+        }
+        println!("{}", serde_json::to_string_pretty(&cached)?);
+        return Ok(());
+    }
+
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg(&provider_command)
+        .current_dir(&workspace)
+        .env("AUTORESEARCH_SEARCH_QUERY", &query)
+        .env("AUTORESEARCH_SEARCH_LIMIT", limit.to_string())
+        .output()
+        .with_context(|| format!("failed to run search provider command: {provider_command}"))?;
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    if !output.status.success() {
+        anyhow::bail!(
+            "search provider exited with status {}. stderr: {}",
+            output.status.code().unwrap_or(-1),
+            stderr.lines().rev().take(3).collect::<Vec<_>>().join(" | ")
+        );
+    }
+
+    let result = serde_json::json!({
+        "status": "ok",
+        "query": query,
+        "provider": provider_command,
+        "cache_hit": false,
+        "cache_path": cache_path.display().to_string(),
+        "results": parse_search_provider_results(&stdout),
+        "raw_stdout": stdout,
+    });
+    std::fs::create_dir_all(&cache_dir)
+        .with_context(|| format!("failed to create {}", cache_dir.display()))?;
+    write_json_file(&cache_path, &result)?;
+    println!("{}", serde_json::to_string_pretty(&result)?);
+    Ok(())
+}
+
+fn search_query_from_state(workspace: &Path) -> Result<String> {
+    let results_dir = workspace.join("autoresearch-results");
+    let state_path = results_dir.join("state.json");
+    let state: RunState = serde_json::from_str(
+        &std::fs::read_to_string(&state_path)
+            .with_context(|| format!("failed to read {}", state_path.display()))?,
+    )
+    .with_context(|| format!("failed to parse {}", state_path.display()))?;
+    let mut parts = Vec::new();
+    if let Some(config) = state.config.as_ref() {
+        if !config.goal.trim().is_empty() {
+            parts.push(config.goal.trim().to_string());
+        }
+        if !config.metric.trim().is_empty() {
+            parts.push(format!("metric {}", config.metric.trim()));
+        }
+    }
+    parts.push(format!("status {}", state.last_status.as_str()));
+    parts.push(format!("direction {}", state.direction.as_str()));
+    if state.consecutive_discards > 0 {
+        parts.push(format!(
+            "{} consecutive discards",
+            state.consecutive_discards
+        ));
+    }
+
+    let esc_path = results_dir.join("escalation.json");
+    if esc_path.exists() {
+        let escalation: EscalationState = serde_json::from_str(
+            &std::fs::read_to_string(&esc_path)
+                .with_context(|| format!("failed to read {}", esc_path.display()))?,
+        )
+        .with_context(|| format!("failed to parse {}", esc_path.display()))?;
+        parts.push(format!("escalation {:?}", escalation.last_action));
+        if escalation.pivots_since_last_keep > 0 {
+            parts.push(format!(
+                "{} pivots without keep",
+                escalation.pivots_since_last_keep
+            ));
+        }
+    }
+
+    Ok(parts.join(" "))
+}
+
+fn parse_search_provider_results(stdout: &str) -> serde_json::Value {
+    let trimmed = stdout.trim();
+    if trimmed.is_empty() {
+        return serde_json::Value::Array(Vec::new());
+    }
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(trimmed) {
+        if value.is_array() {
+            return value;
+        }
+        if let Some(results) = value.get("results") {
+            return results.clone();
+        }
+        return serde_json::Value::Array(vec![value]);
+    }
+
+    serde_json::Value::Array(
+        trimmed
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .map(|line| serde_json::json!({ "title": line.trim() }))
+            .collect(),
+    )
+}
+
+fn search_cache_key(provider: &str, query: &str, limit: usize) -> String {
+    let mut hash = 0xcbf29ce484222325u64;
+    for byte in format!("{provider}\0{query}\0{limit}").bytes() {
+        hash ^= u64::from(byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    format!("{hash:016x}.json")
 }
 
 // ── Handoff ──────────────────────────────────────────────────────────

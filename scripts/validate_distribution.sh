@@ -137,6 +137,12 @@ require_grep 'autoresearch lessons --add' README.md
 require_grep 'autoresearch lessons --add' docs/GUIDE.md
 require_grep 'autoresearch lessons --add' SKILL.md
 require_grep 'autoresearch lessons --add' .agents/skills/autoresearch/SKILL.md
+require_grep 'autoresearch search --from-state' README.md
+require_grep 'autoresearch search --from-state' docs/GUIDE.md
+require_grep 'autoresearch search --from-state' SKILL.md
+require_grep 'autoresearch search --from-state' .agents/skills/autoresearch/SKILL.md
+require_grep 'AUTORESEARCH_SEARCH_CMD' references/web-search-protocol.md
+require_grep '\[x\] Search result caching to avoid redundant queries' docs/development-roadmap.md
 require_grep 'autoresearch parallel prepare' SKILL.md
 require_grep 'autoresearch parallel run' SKILL.md
 require_grep 'timeout-seconds' SKILL.md

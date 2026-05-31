@@ -1700,6 +1700,116 @@ fn test_lessons_add_rejects_invalid_category() {
 }
 
 #[test]
+fn test_search_runs_provider_and_caches_results() {
+    let dir = TempDir::new().unwrap();
+    let root = dir.path().to_str().unwrap();
+    let provider = dir.path().join("search-provider.sh");
+    std::fs::write(
+        &provider,
+        "printf '%s\\n' '[{\"title\":\"first\",\"url\":\"https://example.com\",\"snippet\":\"hit\"}]'\n",
+    )
+    .unwrap();
+    let provider_command = format!("sh {}", provider.display());
+
+    cmd()
+        .args([
+            "search",
+            "--query",
+            "rust borrow checker",
+            "--provider-command",
+            &provider_command,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\": \"ok\""))
+        .stdout(predicate::str::contains("\"cache_hit\": false"))
+        .stdout(predicate::str::contains("\"title\": \"first\""));
+
+    std::fs::write(&provider, "exit 9\n").unwrap();
+    cmd()
+        .args([
+            "search",
+            "--query",
+            "rust borrow checker",
+            "--provider-command",
+            &provider_command,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"cache_hit\": true"))
+        .stdout(predicate::str::contains("\"title\": \"first\""));
+}
+
+#[test]
+fn test_search_from_state_builds_structured_query() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "lower",
+            "--goal",
+            "Reduce flaky integration tests",
+            "--metric",
+            "flaky failure count",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let provider = dir.path().join("autoresearch-results/search-provider.sh");
+    std::fs::write(
+        &provider,
+        "printf '[{\"title\":\"%s\"}]\\n' \"$AUTORESEARCH_SEARCH_QUERY\"\n",
+    )
+    .unwrap();
+    let provider_command = format!("sh {}", provider.display());
+
+    cmd()
+        .args([
+            "search",
+            "--from-state",
+            "--provider-command",
+            &provider_command,
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Reduce flaky integration tests"))
+        .stdout(predicate::str::contains("metric flaky failure count"))
+        .stdout(predicate::str::contains("direction lower"));
+}
+
+#[test]
+fn test_search_without_provider_reports_skipped() {
+    let dir = TempDir::new().unwrap();
+
+    cmd()
+        .args([
+            "search",
+            "--query",
+            "typescript inference error",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\":\"skipped\""))
+        .stdout(predicate::str::contains("no provider command configured"));
+}
+
+#[test]
 fn test_handoff_defaults_to_repo_root_results_from_subdir() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
