@@ -192,7 +192,7 @@ Covered in detail in the [guide](guide/):
 - **Config template** — `autoresearch config template --output .autoresearch.toml` writes a starter project defaults file
 - **Config validation** — `autoresearch config validate` checks project defaults without running verify or guard
 - **Manual lessons** — `autoresearch lessons --add "strategy" --context "why it matters"` appends reusable run knowledge
-- **Search helper** — `autoresearch search --from-state` builds a run-aware query, calls a configured provider, and caches results
+- **Search helper** — `autoresearch search --from-state --log` builds a run-aware query, calls a configured provider, caches results, and records a search meta-iteration
 - **Chaining** — `debug --fix`, `probe --chain plan`, `predict --chain debug`
 - **CI/CD mode** (`exec`) — non-interactive, JSON output, for automation pipelines
 - **Dual-gate verification** — separate verify (did it improve?) and guard (did anything break?)

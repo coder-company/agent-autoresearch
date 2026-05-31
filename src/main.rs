@@ -362,6 +362,9 @@ enum Commands {
         /// Ignore cached results and run the provider again
         #[arg(long)]
         refresh: bool,
+        /// Append a search meta-row to the active run log
+        #[arg(long)]
+        log: bool,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -748,8 +751,17 @@ fn main() -> Result<()> {
             provider_command,
             limit,
             refresh,
+            log,
             cwd,
-        } => cmd_search(query, from_state, provider_command, limit, refresh, cwd),
+        } => cmd_search(
+            query,
+            from_state,
+            provider_command,
+            limit,
+            refresh,
+            log,
+            cwd,
+        ),
 
         Commands::Handoff {
             source,
@@ -3934,6 +3946,7 @@ fn cmd_search(
     provider_command: Option<String>,
     limit: usize,
     refresh: bool,
+    log: bool,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     if limit == 0 {
@@ -3950,15 +3963,25 @@ fn cmd_search(
         .filter(|command| !command.trim().is_empty());
 
     let Some(provider_command) = provider_command else {
-        println!(
-            "{}",
-            serde_json::json!({
-                "status": "skipped",
-                "reason": "no provider command configured; pass --provider-command or set AUTORESEARCH_SEARCH_CMD",
-                "query": query,
-                "results": [],
-            })
-        );
+        let mut result = serde_json::json!({
+            "status": "skipped",
+            "reason": "no provider command configured; pass --provider-command or set AUTORESEARCH_SEARCH_CMD",
+            "query": query,
+            "results": [],
+        });
+        if log {
+            let iteration = log_search_result(
+                &workspace,
+                result["query"].as_str().unwrap_or(""),
+                0,
+                false,
+                "skipped",
+            )?;
+            if let Some(object) = result.as_object_mut() {
+                object.insert("logged_iteration".to_string(), serde_json::json!(iteration));
+            }
+        }
+        println!("{}", result);
         return Ok(());
     };
     verify::screen_command(&provider_command)?;
@@ -3978,6 +4001,13 @@ fn cmd_search(
                 "cache_path".to_string(),
                 serde_json::json!(cache_path.display().to_string()),
             );
+        }
+        if log {
+            let iteration =
+                log_search_result(&workspace, &query, search_result_count(&cached), true, "ok")?;
+            if let Some(object) = cached.as_object_mut() {
+                object.insert("logged_iteration".to_string(), serde_json::json!(iteration));
+            }
         }
         println!("{}", serde_json::to_string_pretty(&cached)?);
         return Ok(());
@@ -4001,7 +4031,7 @@ fn cmd_search(
         );
     }
 
-    let result = serde_json::json!({
+    let mut result = serde_json::json!({
         "status": "ok",
         "query": query,
         "provider": provider_command,
@@ -4013,6 +4043,18 @@ fn cmd_search(
     std::fs::create_dir_all(&cache_dir)
         .with_context(|| format!("failed to create {}", cache_dir.display()))?;
     write_json_file(&cache_path, &result)?;
+    if log {
+        let iteration = log_search_result(
+            &workspace,
+            result["query"].as_str().unwrap_or(""),
+            search_result_count(&result),
+            false,
+            "ok",
+        )?;
+        if let Some(object) = result.as_object_mut() {
+            object.insert("logged_iteration".to_string(), serde_json::json!(iteration));
+        }
+    }
     println!("{}", serde_json::to_string_pretty(&result)?);
     Ok(())
 }
@@ -4093,6 +4135,53 @@ fn search_cache_key(provider: &str, query: &str, limit: usize) -> String {
         hash = hash.wrapping_mul(0x100000001b3);
     }
     format!("{hash:016x}.json")
+}
+
+fn search_result_count(value: &serde_json::Value) -> usize {
+    value
+        .get("results")
+        .and_then(|results| results.as_array())
+        .map(Vec::len)
+        .unwrap_or(0)
+}
+
+fn log_search_result(
+    workspace: &Path,
+    query: &str,
+    result_count: usize,
+    cache_hit: bool,
+    provider_status: &str,
+) -> Result<u32> {
+    let results_dir = workspace.join("autoresearch-results");
+    let state_path = results_dir.join("state.json");
+    let tsv_path = results_dir.join("results.tsv");
+    if !state_path.exists() || !tsv_path.exists() {
+        anyhow::bail!("search --log requires an active autoresearch run");
+    }
+
+    let mut state: RunState = serde_json::from_str(
+        &std::fs::read_to_string(&state_path)
+            .with_context(|| format!("failed to read {}", state_path.display()))?,
+    )
+    .with_context(|| format!("failed to parse {}", state_path.display()))?;
+    let iteration = state.iteration + 1;
+    let description = format!(
+        "[SEARCH] \"{}\" -> {result_count} results ({provider_status}, cache_hit={cache_hit})",
+        query.replace(['\n', '\r', '\t'], " ")
+    );
+    let row = ResultRow {
+        iteration,
+        commit: None,
+        metric: state.current_metric,
+        delta: Decimal::ZERO,
+        guard: GuardResult::Skip,
+        status: IterationStatus::Search,
+        description,
+    };
+    ResultsLog::open(tsv_path)?.append(&row)?;
+    state.record_meta_status(IterationStatus::Search, state.current_metric);
+    std::fs::write(&state_path, serde_json::to_string_pretty(&state)?)?;
+    Ok(iteration)
 }
 
 // ── Handoff ──────────────────────────────────────────────────────────

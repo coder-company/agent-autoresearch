@@ -1810,6 +1810,53 @@ fn test_search_without_provider_reports_skipped() {
 }
 
 #[test]
+fn test_search_log_records_meta_iteration() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "higher",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let provider = dir.path().join("autoresearch-results/search-provider.sh");
+    std::fs::write(&provider, "printf '%s\\n' '[{\"title\":\"logged\"}]'\n").unwrap();
+    let provider_command = format!("sh {}", provider.display());
+    cmd()
+        .args([
+            "search",
+            "--query",
+            "rust flaky test strategy",
+            "--provider-command",
+            &provider_command,
+            "--log",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"logged_iteration\": 1"));
+
+    let results =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/results.tsv")).unwrap();
+    assert!(results
+        .contains("1\t-\t50\t0\t-\tsearch\t[SEARCH] \"rust flaky test strategy\" -> 1 results"));
+    let state =
+        std::fs::read_to_string(dir.path().join("autoresearch-results/state.json")).unwrap();
+    assert!(state.contains("\"iteration\": 1"));
+    assert!(state.contains("\"last_status\": \"search\""));
+}
+
+#[test]
 fn test_handoff_defaults_to_repo_root_results_from_subdir() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);
