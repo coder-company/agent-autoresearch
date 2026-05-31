@@ -40,7 +40,7 @@ The `autoresearch` binary handles mechanical operations:
 - `autoresearch parallel prepare` — create branch-backed worker worktrees, prompts, manifest, and batch file
 - `autoresearch parallel run` — launch prepared worker prompts with `codex exec`; record crashes/timeouts
 - `autoresearch parallel template` — generate editable worker batch JSON for manual parallel closeout
-- `autoresearch parallel closeout` — merge with cherry-pick, fast-forward, or squash; verify and retain one worker; log audit rows and update retained state once
+- `autoresearch parallel closeout` — merge with cherry-pick, fast-forward, squash, or rebase; verify and retain one worker; log audit rows and update retained state once
 - `autoresearch parallel cleanup` — remove worker worktrees and branches
 - `autoresearch runtime run` — execute the supervised background loop; `start/status/supervise/stop` remain available for manual control
 - `autoresearch status --summary|resume|progress|watch|lessons|evals` — inspect/resume/monitor/analyze runs
@@ -75,7 +75,7 @@ Run only after metric improvement. Must exit 0.
 
 ### Phase 7: Decide
 - Prefer `autoresearch decide --decision auto --metric <value> --metrics-json '<json>' --commit <sha>`.
-- For parallel worker batches, use `autoresearch parallel prepare` to create worktrees and prompts, `autoresearch parallel run --timeout-seconds <seconds>` to launch workers and record crashes/timeouts, `autoresearch parallel closeout --batch-file <workers.json>` to merge, verify, and retain one result with `--merge-strategy cherry-pick|fast-forward|squash`, and `autoresearch parallel cleanup` after closeout. Use `autoresearch parallel template` only when worker branches already exist.
+- For parallel worker batches, use `autoresearch parallel prepare` to create worktrees and prompts, `autoresearch parallel run --timeout-seconds <seconds>` to launch workers and record crashes/timeouts, `autoresearch parallel closeout --batch-file <workers.json>` to merge, verify, and retain one result with `--merge-strategy cherry-pick|fast-forward|squash|rebase`, and `autoresearch parallel cleanup` after closeout. Use `autoresearch parallel template` only when worker branches already exist.
 - **keep** — improved + guard passed + required keep criteria passed → commit stays
 - **discard** — flat/regressed OR guard/criteria failed → binary reverts the experiment commit
 - **crash** — command errored → binary reverts the experiment commit

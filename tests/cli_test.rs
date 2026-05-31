@@ -6619,6 +6619,72 @@ fn test_parallel_closeout_supports_squash_strategy() {
 }
 
 #[test]
+fn test_parallel_closeout_supports_rebase_strategy() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+    write_metric_and_commit(&dir, "41\n");
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "lower",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    let commit_a = create_branch_commit(
+        &dir,
+        "rebase-worker-a",
+        "metric.txt",
+        "34\n",
+        "worker a rebase",
+    );
+    commit_file(&dir, "notes.txt", "main note\n", "main note");
+    let batch_path = dir.path().join("autoresearch-results/parallel-batch.json");
+    std::fs::write(
+        &batch_path,
+        format!(
+            r#"[
+  {{"worker_id":"a","metric":"34","guard":"pass","commit":"{commit_a}","description":"rebased worker","diff_size":1}}
+]"#
+        ),
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "parallel",
+            "closeout",
+            "--batch-file",
+            batch_path.to_str().unwrap(),
+            "--merge-strategy",
+            "rebase",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"selected_worker\": \"a\""))
+        .stdout(predicate::str::contains("\"merge_strategy\": \"rebase\""));
+
+    assert_ne!(git_head_short(&dir), commit_a);
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("metric.txt")).unwrap(),
+        "34\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("notes.txt")).unwrap(),
+        "main note\n"
+    );
+}
+
+#[test]
 fn test_parallel_closeout_falls_back_when_best_worker_conflicts() {
     let dir = TempDir::new().unwrap();
     init_git_fixture(&dir);

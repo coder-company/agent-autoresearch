@@ -535,7 +535,7 @@ enum ParallelCommands {
         /// JSON array of worker results
         #[arg(long)]
         batch_file: PathBuf,
-        /// Merge strategy: cherry-pick, fast-forward, or squash
+        /// Merge strategy: cherry-pick, fast-forward, squash, or rebase
         #[arg(long, default_value = "cherry-pick")]
         merge_strategy: String,
         /// Working directory
@@ -2425,6 +2425,7 @@ enum ParallelMergeStrategy {
     CherryPick,
     FastForward,
     Squash,
+    Rebase,
 }
 
 impl ParallelMergeStrategy {
@@ -2433,6 +2434,7 @@ impl ParallelMergeStrategy {
             Self::CherryPick => "cherry-pick",
             Self::FastForward => "fast-forward",
             Self::Squash => "squash",
+            Self::Rebase => "rebase",
         }
     }
 }
@@ -3291,8 +3293,9 @@ fn parse_parallel_merge_strategy(value: &str) -> Result<ParallelMergeStrategy> {
         "cherry-pick" => Ok(ParallelMergeStrategy::CherryPick),
         "fast-forward" | "ff-only" => Ok(ParallelMergeStrategy::FastForward),
         "squash" => Ok(ParallelMergeStrategy::Squash),
+        "rebase" => Ok(ParallelMergeStrategy::Rebase),
         other => anyhow::bail!(
-            "Unknown parallel merge strategy: {other}. Use cherry-pick, fast-forward, or squash."
+            "Unknown parallel merge strategy: {other}. Use cherry-pick, fast-forward, squash, or rebase."
         ),
     }
 }
@@ -4560,6 +4563,37 @@ fn squash_parallel_commit(workspace: &Path, commit: &str) -> Result<String> {
     GitRepo::open(workspace)?.head_short()
 }
 
+fn rebase_parallel_commit(workspace: &Path, commit: &str) -> Result<String> {
+    let before = GitRepo::open(workspace)?.head_full()?;
+    let Some(resolved) = git_resolve_commit(workspace, commit)? else {
+        anyhow::bail!("selected worker commit does not exist: {commit}");
+    };
+    if before == resolved {
+        return GitRepo::open(workspace)?.head_short();
+    }
+
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(workspace)
+        .args(["rebase", &resolved])
+        .output()
+        .context("failed to run git rebase")?;
+    if !output.status.success() {
+        let _ = Command::new("git")
+            .arg("-C")
+            .arg(workspace)
+            .args(["rebase", "--abort"])
+            .output();
+        anyhow::bail!(
+            "git rebase {commit} failed: {}{}",
+            String::from_utf8_lossy(&output.stderr),
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+
+    GitRepo::open(workspace)?.head_short()
+}
+
 fn merge_parallel_commit(
     workspace: &Path,
     commit: &str,
@@ -4569,6 +4603,7 @@ fn merge_parallel_commit(
         ParallelMergeStrategy::CherryPick => cherry_pick_parallel_commit(workspace, commit),
         ParallelMergeStrategy::FastForward => fast_forward_parallel_commit(workspace, commit),
         ParallelMergeStrategy::Squash => squash_parallel_commit(workspace, commit),
+        ParallelMergeStrategy::Rebase => rebase_parallel_commit(workspace, commit),
     }
 }
 

@@ -25,7 +25,7 @@
 - [x] Parallel batch closeout (`autoresearch parallel closeout`) with cherry-pick, post-merge verify/guard, fallback, worker audit rows, and one authoritative retained-state update
 - [x] Parallel cleanup (`autoresearch parallel cleanup`) for worker worktrees and branches
 - [x] Experiment branching — each trial on its own git branch
-- [ ] Branch merge strategy selection (fast-forward, squash, rebase)
+- [x] Branch merge strategy selection (fast-forward, squash, rebase)
 - [x] `autoresearch watch` — tail results in real-time
 - [ ] Progress websocket for real-time monitoring
 - [ ] Improved evals: statistical significance testing on parallel results
