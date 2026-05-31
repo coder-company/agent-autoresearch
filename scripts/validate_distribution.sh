@@ -265,7 +265,9 @@ require_grep '`autoresearch learn` writes' COMPARISON.md
 require_grep 'autoresearch evals --file' docs/GUIDE.md
 require_grep 'autoresearch evals --file' references/binary-operations.md
 require_grep 'evals --recommend' references/binary-operations.md
+require_grep 'plateau-window <n>' references/binary-operations.md
 require_grep 'recommend` — include explicit go/no-go' commands/autoresearch/evals.md
+require_grep 'plateau-window N' commands/autoresearch/evals.md
 require_grep 'autoresearch cost --per-iteration-usd' README.md
 require_grep 'autoresearch cost --per-iteration-usd' docs/GUIDE.md
 require_grep '\[x\] Cost tracking — estimate token/API spend per iteration' docs/development-roadmap.md

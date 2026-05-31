@@ -1,7 +1,7 @@
 ---
 name: autoresearch:evals
 description: "Analyze iteration results: trends, plateaus, regressions, recommendations"
-argument-hint: "[path/to/results.tsv] [--file <path>] [--format text|json|md] [--recommend]"
+argument-hint: "[path/to/results.tsv] [--file <path>] [--format text|json|md] [--recommend] [--plateau-window N]"
 ---
 
 EXECUTE IMMEDIATELY.
@@ -12,6 +12,7 @@ Extract from $ARGUMENTS:
 - Positional path or `--file <path>` to a specific TSV file
 - `--format` — output format: text (default console), json, md (markdown file)
 - `--recommend` — include explicit go/no-go decision and next-step guidance
+- `--plateau-window N` — consecutive non-keep iterations that define a plateau (default 5)
 
 ## Input Discovery
 
@@ -84,6 +85,7 @@ Unknown columns: report presence but skip analysis. Forward-compatible with futu
 - If `--format md` → write `evals-summary.md` in same directory as input TSV
 - If `--format json` → write `evals-summary.json` with structured data
 - If `--recommend` → include go/no-go and next-step guidance in the selected output
+- If `--plateau-window N` → use N consecutive non-keep iterations for plateau detection
 
 ## Mid-Loop Checkpoint Protocol (for --evals flag in other commands)
 

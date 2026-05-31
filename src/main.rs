@@ -270,6 +270,9 @@ enum Commands {
         /// Include explicit go/no-go decision and next-step guidance
         #[arg(long)]
         recommend: bool,
+        /// Consecutive non-keep iterations that define a plateau
+        #[arg(long, default_value_t = 5)]
+        plateau_window: u32,
         /// Output format: text, json, or md
         #[arg(long, default_value = "text")]
         format: String,
@@ -1461,12 +1464,13 @@ fn main() -> Result<()> {
             path,
             file,
             recommend,
+            plateau_window,
             format,
         } => {
             if path.is_some() && file.is_some() {
                 anyhow::bail!("evals accepts either a positional path or --file, not both");
             }
-            cmd_evals(path.or(file), &format, recommend)
+            cmd_evals(path.or(file), &format, recommend, plateau_window)
         }
 
         Commands::Checkpoint {
@@ -7375,7 +7379,15 @@ fn cmd_decide(
 
 // ── Evals ─────────────────────────────────────────────────────────────
 
-fn cmd_evals(path: Option<PathBuf>, format: &str, recommend: bool) -> Result<()> {
+fn cmd_evals(
+    path: Option<PathBuf>,
+    format: &str,
+    recommend: bool,
+    plateau_window: u32,
+) -> Result<()> {
+    if plateau_window == 0 {
+        anyhow::bail!("evals plateau window must be greater than zero");
+    }
     let tsv_path = match path {
         Some(p) => p,
         None => {
@@ -7553,6 +7565,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str, recommend: bool) -> Result<()>
         efficiency,
         total_iterations,
         trend,
+        plateau_window,
     );
     let go_no_go = evals_go_no_go(recommendation);
     let next_step = evals_next_step(recommendation);
@@ -7579,6 +7592,8 @@ fn cmd_evals(path: Option<PathBuf>, format: &str, recommend: bool) -> Result<()>
                 "improvement_pct": improvement_pct.as_deref(),
                 "efficiency_pct": efficiency,
                 "longest_plateau": longest_plateau,
+                "plateau_window": plateau_window,
+                "plateau_detected": longest_plateau >= plateau_window,
                 "trend": trend,
                 "recommendation": recommendation,
                 "unknown_columns": &unknown_columns,
@@ -7627,6 +7642,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str, recommend: bool) -> Result<()>
                 improvement_pct: improvement_pct.as_deref(),
                 trend,
                 longest_plateau,
+                plateau_window,
                 recommendation,
                 recommend,
                 unknown_columns: &unknown_columns,
@@ -7658,6 +7674,7 @@ fn cmd_evals(path: Option<PathBuf>, format: &str, recommend: bool) -> Result<()>
                 improvement_pct: improvement_pct.as_deref(),
                 trend,
                 longest_plateau,
+                plateau_window,
                 recommendation,
                 recommend,
                 unknown_columns: &unknown_columns,
@@ -7713,7 +7730,7 @@ fn cmd_checkpoint(cwd: Option<PathBuf>, interval: Option<u32>, format: &str) -> 
         return Ok(());
     }
 
-    cmd_evals(Some(results_dir.join("results.tsv")), format, false)
+    cmd_evals(Some(results_dir.join("results.tsv")), format, false, 5)
 }
 
 fn parse_evals_direction(value: Option<&str>) -> Result<&'static str> {
@@ -7813,6 +7830,7 @@ struct EvalsReport<'a> {
     improvement_pct: Option<&'a str>,
     trend: &'a str,
     longest_plateau: u32,
+    plateau_window: u32,
     recommendation: &'a str,
     recommend: bool,
     unknown_columns: &'a [String],
@@ -8058,7 +8076,7 @@ fn render_evals_markdown(report: EvalsReport<'_>) -> String {
 
     writeln!(out, "### Recommendations").unwrap();
     writeln!(out).unwrap();
-    if report.longest_plateau >= 5 {
+    if report.longest_plateau >= report.plateau_window {
         writeln!(
             out,
             "- Plateau of {} iterations detected. Consider a PIVOT strategy.",
@@ -8126,8 +8144,12 @@ fn evals_recommendation(
     efficiency: u32,
     total_iterations: usize,
     trend: &str,
+    plateau_window: u32,
 ) -> &'static str {
-    if longest_plateau >= 5 || trend == "declining" || (efficiency < 20 && total_iterations > 10) {
+    if longest_plateau >= plateau_window
+        || trend == "declining"
+        || (efficiency < 20 && total_iterations > 10)
+    {
         "change_strategy"
     } else if crashes > keeps {
         "check_verify"

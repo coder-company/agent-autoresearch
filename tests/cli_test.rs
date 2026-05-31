@@ -3307,6 +3307,44 @@ fn test_evals_recommend_flag_adds_next_step() {
 }
 
 #[test]
+fn test_evals_plateau_window_controls_recommendation() {
+    let dir = TempDir::new().unwrap();
+    let tsv_path = dir.path().join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: higher").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t50\t0\t-\tbaseline\tinitial state").unwrap();
+    writeln!(file, "1\tbcd2345\t55\t+5\tpass\tkeep\timprovement").unwrap();
+    writeln!(file, "2\t-\t54\t-1\t-\tdiscard\tmissed target").unwrap();
+    writeln!(file, "3\t-\t53\t-1\t-\tdiscard\tmissed again").unwrap();
+
+    cmd()
+        .args([
+            "evals",
+            "--file",
+            tsv_path.to_str().unwrap(),
+            "--plateau-window",
+            "2",
+            "--recommend",
+            "--format",
+            "json",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"plateau_window\": 2"))
+        .stdout(predicate::str::contains("\"plateau_detected\": true"))
+        .stdout(predicate::str::contains(
+            "\"recommendation\": \"change_strategy\"",
+        ))
+        .stdout(predicate::str::contains("\"go_no_go\": \"NO-GO\""));
+}
+
+#[test]
 fn test_evals_reports_parallel_worker_significance() {
     let dir = TempDir::new().unwrap();
     let tsv_path = dir.path().join("results.tsv");
