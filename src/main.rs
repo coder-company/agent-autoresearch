@@ -702,6 +702,9 @@ enum Commands {
         /// Investigation depth: quick, standard, or deep
         #[arg(long, default_value = "standard")]
         depth: String,
+        /// Override the depth-derived investigation iteration budget
+        #[arg(long)]
+        iterations: Option<u32>,
         /// Severity filter: critical, high, medium, low, or info
         #[arg(long)]
         severity: Option<String>,
@@ -1652,6 +1655,7 @@ fn main() -> Result<()> {
             scope,
             technique,
             depth,
+            iterations,
             severity,
             fix,
             chain,
@@ -1664,6 +1668,7 @@ fn main() -> Result<()> {
             scope,
             &technique,
             &depth,
+            iterations,
             severity,
             fix,
             chain,
@@ -3558,12 +3563,19 @@ fn parse_debug_depth(value: &str) -> Result<(&'static str, u32)> {
     }
 }
 
-fn resolve_debug_profile(depth: &str, severity: Option<&str>) -> Result<DebugProfile> {
+fn resolve_debug_profile(
+    depth: &str,
+    iterations: Option<u32>,
+    severity: Option<&str>,
+) -> Result<DebugProfile> {
     let (depth, iteration_budget) = parse_debug_depth(depth)?;
+    if iterations == Some(0) {
+        anyhow::bail!("debug iterations must be greater than zero");
+    }
     let severity = parse_security_severity(severity, "--severity")?;
     Ok(DebugProfile {
         depth: depth.to_string(),
-        iteration_budget,
+        iteration_budget: iterations.unwrap_or(iteration_budget),
         severity,
     })
 }
@@ -3684,6 +3696,7 @@ fn cmd_debug(
     scope: Vec<String>,
     technique: &str,
     depth: &str,
+    iterations: Option<u32>,
     severity: Option<String>,
     fix: bool,
     chain: Option<String>,
@@ -3693,7 +3706,7 @@ fn cmd_debug(
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     validate_chain_evals_flags("debug", evals, evals_interval)?;
-    let profile = resolve_debug_profile(depth, severity.as_deref())?;
+    let profile = resolve_debug_profile(depth, iterations, severity.as_deref())?;
     let forced_targets = if fix { &["fix"][..] } else { &[][..] };
     let chain_targets = chain_targets_with_forced(chain.as_deref(), forced_targets)?;
     let workspace = resolve_workspace_root(cwd);

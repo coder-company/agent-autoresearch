@@ -1087,6 +1087,37 @@ fn test_debug_depth_and_severity_are_recorded() {
 }
 
 #[test]
+fn test_debug_iterations_override_depth_budget() {
+    let dir = TempDir::new().unwrap();
+    let output_dir = dir.path().join("debug/api-timeout");
+
+    cmd()
+        .args([
+            "debug",
+            "--symptom",
+            "API timeout",
+            "--depth",
+            "deep",
+            "--iterations",
+            "12",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"iteration_budget\":12"));
+
+    let summary = std::fs::read_to_string(output_dir.join("summary.md")).unwrap();
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+
+    assert!(summary.contains("- Depth: deep"));
+    assert!(summary.contains("- Iteration budget: 12"));
+    assert!(handoff.contains("\"iteration_budget\": 12"));
+}
+
+#[test]
 fn test_debug_fix_flag_writes_chain_handoff() {
     let dir = TempDir::new().unwrap();
     let output_dir = dir.path().join("autoresearch-results/debug/api-500");

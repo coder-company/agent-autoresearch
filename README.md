@@ -202,7 +202,7 @@ Covered in detail in the [guide](guide/):
 - **Plan chain handoff** — `autoresearch plan --goal "..." --chain debug` writes the derived config into a downstream handoff
 - **Ignored artifact defaults** — native artifact generators write under `autoresearch-results/<mode>/` unless you pass an explicit output path
 - **Debug artifact generation** — `autoresearch debug --symptom ... --scope ...` writes hypothesis, findings, eliminated, TSV, and handoff artifacts
-- **Debug investigation controls** — `autoresearch debug --depth deep --severity high` records investigation budget and severity filter metadata
+- **Debug investigation controls** — `autoresearch debug --depth deep --iterations 12 --severity high` records investigation budget and severity filter metadata
 - **Fix artifact generation** — `autoresearch fix --target ... --scope ...` writes a one-error-at-a-time repair plan, TSV, and handoff under `autoresearch-results/fix`
 - **Debug-to-fix import** — `autoresearch fix --from-debug` imports the latest debug handoff scope and symptom into a repair plan
 - **Fix chain controls** — `autoresearch fix --chain learn --evals` records downstream handoff and checkpoint propagation metadata
