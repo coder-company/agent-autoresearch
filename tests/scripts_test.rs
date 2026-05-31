@@ -263,6 +263,20 @@ fn contributor_gate_enforces_release_binary_size() {
 }
 
 #[test]
+fn install_script_supports_raw_github_bootstrap() {
+    let root = repo_root();
+    let script = std::fs::read_to_string(root.join("install.sh")).unwrap();
+
+    assert!(script.contains("bootstrap_source_tree \"$@\""));
+    assert!(script.contains("AUTORESEARCH_INSTALL_ARCHIVE_URL"));
+    assert!(script.contains("github.com/${INSTALL_REPO}/archive/refs/heads/${INSTALL_REF}.tar.gz"));
+    assert!(script.contains("curl -fsSL \"$INSTALL_ARCHIVE_URL\" -o \"$archive\""));
+    assert!(script.contains("export AUTORESEARCH_BOOTSTRAP_TMP_DIR=\"$tmp_dir\""));
+    assert!(script.contains("exec bash \"$source_dir/install.sh\" \"$@\""));
+    assert!(script.contains("raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh"));
+}
+
+#[test]
 fn ci_workflow_runs_full_contributor_gate_with_operational_guards() {
     let root = repo_root();
     let workflow = std::fs::read_to_string(root.join(".github/workflows/ci.yml")).unwrap();

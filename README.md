@@ -37,15 +37,31 @@ Inspired by [Karpathy's autoresearch](https://github.com/karpathy/autoresearch),
 
 ## Quick Start
 
-Install:
+Primary path: paste this into your coding agent and let it install Autoresearch for you:
 
-```bash
-git clone https://github.com/coder-company/agent-autoresearch.git
-cd agent-autoresearch
-./install.sh --yes --claude
+```text
+Install Autoresearch in this environment.
+
+Use the installer from:
+https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh
+
+Pick the install flag for the current agent:
+- Claude Code: --claude
+- Codex: --codex
+- OpenCode: --opencode
+- If you cannot infer the agent, use --all.
+
+Run the installer non-interactively with bash, verify `autoresearch --help`, then tell me the command I should use to start Autoresearch in this agent.
+Use a global install unless I explicitly asked for a project-local install.
 ```
 
-That builds the Rust binary, installs it on your `PATH`, and installs the Claude plugin hooks. If you already have the `autoresearch` binary installed, `claude plugin add coder-company/agent-autoresearch` also works.
+Manual one-liner:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh | bash -s -- --yes --claude
+```
+
+That downloads the current source archive, builds the Rust binary, installs it on your `PATH`, and installs the Claude plugin hooks. If you already have the `autoresearch` binary installed, `claude plugin add coder-company/agent-autoresearch` also works.
 For local/manual Claude installs, copy the generated `.claude/commands` and `.claude/skills/autoresearch` package from this repo into your target project.
 
 Open your project and go:
@@ -68,9 +84,9 @@ Agent: Baseline: 47. Iterating.
 
 Each improvement stacks. Each failure reverts. Everything is logged.
 
-> **Codex users:** start Codex with `codex --dangerously-bypass-approvals-and-sandbox` for the smoothest runtime experience, then `$skill-installer install https://github.com/coder-company/agent-autoresearch` and invoke `$autoresearch`. Local plugin package users can also add `.agents/plugins/marketplace.json` and install `autoresearch` from that marketplace.
+> **Codex users:** start Codex with `codex --dangerously-bypass-approvals-and-sandbox` for the smoothest runtime experience, then run the same one-liner with `--codex` instead of `--claude` and invoke `$autoresearch`. `$skill-installer install https://github.com/coder-company/agent-autoresearch` remains available when you only want the Codex skill package. Local plugin package users can also add `.agents/plugins/marketplace.json` and install `autoresearch` from that marketplace.
 >
-> **OpenCode users:** clone the repo and run `./install.sh --yes --opencode`. Add `--local` when running the installer from a target project to install into `./.opencode`. Commands install as `/autoresearch` and `/autoresearch_debug`, `/autoresearch_fix`, etc., with a hidden `docs-manager` helper agent for documentation updates.
+> **OpenCode users:** run the same one-liner with `--opencode` instead of `--claude`. Add `--local` when running the installer from a target project to install into `./.opencode`. Commands install as `/autoresearch` and `/autoresearch_debug`, `/autoresearch_fix`, etc., with a hidden `docs-manager` helper agent for documentation updates.
 >
 > **From source:** `git clone` + `./install.sh --yes --all`, or run `./install.sh` for the guided installer. Add `--vscode` to install the editor extension from `integrations/vscode`. See [Getting Started](guide/getting-started.md).
 

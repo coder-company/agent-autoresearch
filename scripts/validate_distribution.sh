@@ -426,6 +426,12 @@ require_grep '\.claude/commands' README.md
 require_grep '\.claude/skills/autoresearch' README.md
 require_grep '\.claude/commands' docs/INSTALL.md
 require_grep '\.claude/skills/autoresearch' docs/INSTALL.md
+require_grep 'Install Autoresearch in this environment\.' README.md
+require_grep 'Agent-Driven Install' docs/INSTALL.md
+require_grep 'raw\.githubusercontent\.com/coder-company/agent-autoresearch/main/install\.sh' README.md
+require_grep 'raw\.githubusercontent\.com/coder-company/agent-autoresearch/main/install\.sh' docs/INSTALL.md
+require_grep 'bootstrap_source_tree' install.sh
+require_grep 'AUTORESEARCH_INSTALL_ARCHIVE_URL' install.sh
 require_grep '\-\-codex-plugin' docs/INSTALL.md
 require_grep '\-\-codex-plugin' install.sh
 require_grep '\-\-local' docs/INSTALL.md

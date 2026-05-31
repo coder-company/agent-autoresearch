@@ -6,13 +6,32 @@ set -euo pipefail
 # or Codex.
 #
 # Usage:
+#   curl -fsSL https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh | bash -s -- --yes --claude
 #   ./install.sh                # Interactive guided install
 #   ./install.sh --help         # Show usage
 # ──────────────────────────────────────────────────────────────────────
 
-REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 LAUNCH_DIR="$(pwd)"
+SCRIPT_SOURCE="${BASH_SOURCE[0]:-$0}"
+if [[ -n "$SCRIPT_SOURCE" && -f "$SCRIPT_SOURCE" ]]; then
+    REPO_DIR="$(cd "$(dirname "$SCRIPT_SOURCE")" && pwd)"
+else
+    REPO_DIR=""
+fi
 DEFAULT_INSTALL_DIR="$HOME/.local/bin"
+INSTALL_REPO="${AUTORESEARCH_INSTALL_REPO:-coder-company/agent-autoresearch}"
+INSTALL_REF="${AUTORESEARCH_INSTALL_REF:-main}"
+INSTALL_ARCHIVE_URL="${AUTORESEARCH_INSTALL_ARCHIVE_URL:-https://github.com/${INSTALL_REPO}/archive/refs/heads/${INSTALL_REF}.tar.gz}"
+
+cleanup_bootstrap_tmp() {
+    if [[ -n "${AUTORESEARCH_BOOTSTRAP_TMP_DIR:-}" && -d "$AUTORESEARCH_BOOTSTRAP_TMP_DIR" ]]; then
+        rm -rf "$AUTORESEARCH_BOOTSTRAP_TMP_DIR"
+    fi
+}
+
+if [[ -n "${AUTORESEARCH_BOOTSTRAP_TMP_DIR:-}" ]]; then
+    trap cleanup_bootstrap_tmp EXIT
+fi
 
 ASSUME_YES=0
 INSTALL_BINARY=1
@@ -41,6 +60,50 @@ warn()    { echo -e "${YELLOW}▸${NC} $1"; }
 err()     { echo -e "${RED}✗${NC} $1" >&2; }
 header()  { echo -e "\n${BOLD}${CYAN}$1${NC}"; }
 success() { echo -e "${GREEN}✓${NC} $1"; }
+
+is_source_tree() {
+    [[ -n "$REPO_DIR" && -f "$REPO_DIR/Cargo.toml" && -f "$REPO_DIR/install.sh" && -d "$REPO_DIR/src" ]]
+}
+
+bootstrap_source_tree() {
+    if is_source_tree; then
+        return 0
+    fi
+
+    header "Fetching autoresearch source"
+    info "Installer was not launched from a source checkout."
+    info "Downloading $INSTALL_ARCHIVE_URL"
+
+    for command_name in curl find mktemp tar; do
+        if ! command -v "$command_name" &>/dev/null; then
+            err "Remote install requires $command_name."
+            err "Install dependencies or clone https://github.com/$INSTALL_REPO and run ./install.sh."
+            exit 1
+        fi
+    done
+
+    local tmp_dir archive source_dir
+    tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/autoresearch-install.XXXXXX")"
+    archive="$tmp_dir/source.tar.gz"
+
+    curl -fsSL "$INSTALL_ARCHIVE_URL" -o "$archive"
+    tar -xzf "$archive" -C "$tmp_dir"
+
+    source_dir="$(find "$tmp_dir" -mindepth 1 -maxdepth 2 -type f -name Cargo.toml -print -quit)"
+    if [[ -z "$source_dir" ]]; then
+        err "Downloaded archive did not contain Cargo.toml."
+        exit 1
+    fi
+    source_dir="$(dirname "$source_dir")"
+    if [[ ! -f "$source_dir/install.sh" ]]; then
+        err "Downloaded archive did not contain install.sh."
+        exit 1
+    fi
+
+    success "Source ready in $source_dir"
+    export AUTORESEARCH_BOOTSTRAP_TMP_DIR="$tmp_dir"
+    exec bash "$source_dir/install.sh" "$@"
+}
 
 parse_args() {
     while [[ $# -gt 0 ]]; do
@@ -573,6 +636,14 @@ show_help() {
     echo ""
     echo "Usage: ./install.sh [options]"
     echo ""
+    echo "Remote one-liner:"
+    echo "  curl -fsSL https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh | bash -s -- --yes --claude"
+    echo ""
+    echo "Remote install environment:"
+    echo "  AUTORESEARCH_INSTALL_REF=main        Branch name to download (default: main)"
+    echo "  AUTORESEARCH_INSTALL_REPO=owner/repo GitHub repository to download"
+    echo "  AUTORESEARCH_INSTALL_ARCHIVE_URL=URL Full source archive URL override"
+    echo ""
     echo "Options:"
     echo "  -y, --yes                 Accept default prompts"
     echo "  --install-dir PATH        Binary install directory (default: ~/.local/bin)"
@@ -608,6 +679,7 @@ show_help() {
 # ── Main ──────────────────────────────────────────────────────────────
 
 main() {
+    bootstrap_source_tree "$@"
     parse_args "$@"
 
     echo -e "${BOLD}╭─────────────────────────────────────╮${NC}"
