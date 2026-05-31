@@ -1869,6 +1869,27 @@ fn test_probe_chain_writes_handoff_sidecar() {
 }
 
 #[test]
+fn test_probe_accepts_protocol_topic_alias() {
+    let dir = TempDir::new().unwrap();
+
+    cmd()
+        .args([
+            "probe",
+            "--topic",
+            "Payment retry workflow",
+            "--scope",
+            "src/payments/**",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "\"subject\":\"Payment retry workflow\"",
+        ));
+}
+
+#[test]
 fn test_learn_writes_documentation_summary_artifacts() {
     let dir = TempDir::new().unwrap();
     std::fs::create_dir_all(dir.path().join("src")).unwrap();

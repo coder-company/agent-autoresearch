@@ -891,7 +891,7 @@ enum Commands {
     /// Generate an eight-persona requirement probe artifact
     Probe {
         /// Requirement, feature, or workflow to interrogate
-        #[arg(long)]
+        #[arg(long, visible_alias = "topic")]
         subject: String,
         /// Relevant implementation scope. Repeatable.
         #[arg(long)]
