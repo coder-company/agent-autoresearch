@@ -205,6 +205,8 @@ fn test_api_manifest_lists_nested_commands_and_flags() {
         .stdout(predicate::str::contains("\"start\""))
         .stdout(predicate::str::contains("\"cost\""))
         .stdout(predicate::str::contains("\"per-iteration-usd\""))
+        .stdout(predicate::str::contains("\"compare\""))
+        .stdout(predicate::str::contains("\"hypothesis\""))
         .stdout(predicate::str::contains("\"mcp\""))
         .stdout(predicate::str::contains("\"serve\""))
         .stdout(predicate::str::contains("\"provider-command\""));
@@ -7131,6 +7133,87 @@ fn test_parallel_prepare_creates_worker_worktrees_and_files() {
         .unwrap();
     assert!(status.status.success());
     assert_eq!(String::from_utf8_lossy(&status.stdout), "");
+}
+
+#[test]
+fn test_parallel_compare_prepares_ab_workers() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let root = dir.path().to_str().unwrap();
+    write_metric_and_commit(&dir, "41\n");
+
+    cmd()
+        .args([
+            "init",
+            "--verify",
+            "cat metric.txt",
+            "--direction",
+            "lower",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success();
+
+    cmd()
+        .args([
+            "parallel",
+            "compare",
+            "--a",
+            "replace parser branch",
+            "--b",
+            "cache expensive scan",
+            "--branch-prefix",
+            "ar/abtest",
+            "--manifest",
+            "autoresearch-results/ab-manifest.json",
+            "--batch-file",
+            "autoresearch-results/ab-workers.json",
+            "--cwd",
+            root,
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"mode\": \"ab_compare\""))
+        .stdout(predicate::str::contains(
+            "\"hypothesis\": \"replace parser branch\"",
+        ))
+        .stdout(predicate::str::contains(
+            "\"hypothesis\": \"cache expensive scan\"",
+        ));
+
+    let manifest_path = dir.path().join("autoresearch-results/ab-manifest.json");
+    let manifest: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(manifest_path).unwrap()).unwrap();
+    assert_eq!(manifest["workers"].as_array().unwrap().len(), 2);
+    assert_eq!(manifest["workers"][0]["branch"], "ar/abtest-1-a");
+    assert_eq!(manifest["workers"][1]["branch"], "ar/abtest-1-b");
+
+    let batch_path = dir.path().join("autoresearch-results/ab-workers.json");
+    let batch: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(batch_path).unwrap()).unwrap();
+    assert_eq!(batch.as_array().unwrap().len(), 2);
+    assert_eq!(
+        batch[0]["description"],
+        "A: replace parser branch result summary"
+    );
+    assert_eq!(
+        batch[1]["description"],
+        "B: cache expensive scan result summary"
+    );
+
+    for (worker, hypothesis) in [
+        ("a", "A: replace parser branch"),
+        ("b", "B: cache expensive scan"),
+    ] {
+        let worktree = dir.path().join(format!(
+            "autoresearch-results/parallel-worktrees/iteration-1/worker-{worker}"
+        ));
+        let prompt =
+            std::fs::read_to_string(worktree.join(".codex-autoresearch/parallel-worker.md"))
+                .unwrap();
+        assert!(prompt.contains(&format!("Assigned hypothesis: {hypothesis}")));
+    }
 }
 
 #[test]

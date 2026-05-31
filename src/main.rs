@@ -575,6 +575,9 @@ enum ParallelCommands {
         /// Number of workers to prepare
         #[arg(long, default_value_t = 3, value_parser = clap::value_parser!(u8).range(1..=3))]
         workers: u8,
+        /// Worker hypothesis text, repeated once per worker
+        #[arg(long)]
+        hypothesis: Vec<String>,
         /// Directory for worker worktrees. Relative paths resolve from the run workspace.
         #[arg(long)]
         worktree_root: Option<PathBuf>,
@@ -586,6 +589,30 @@ enum ParallelCommands {
         batch_file: Option<PathBuf>,
         /// Branch name prefix for worker branches
         #[arg(long, default_value = "autoresearch/parallel")]
+        branch_prefix: String,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+    /// Prepare a two-arm A/B experiment using isolated worker worktrees
+    Compare {
+        /// Hypothesis for arm A
+        #[arg(long)]
+        a: String,
+        /// Hypothesis for arm B
+        #[arg(long)]
+        b: String,
+        /// Directory for worker worktrees. Relative paths resolve from the run workspace.
+        #[arg(long)]
+        worktree_root: Option<PathBuf>,
+        /// Output manifest path. Relative paths resolve from the run workspace.
+        #[arg(long)]
+        manifest: Option<PathBuf>,
+        /// Output worker batch JSON path. Relative paths resolve from the run workspace.
+        #[arg(long)]
+        batch_file: Option<PathBuf>,
+        /// Branch name prefix for worker branches
+        #[arg(long, default_value = "autoresearch/ab")]
         branch_prefix: String,
         /// Working directory
         #[arg(long)]
@@ -3993,6 +4020,7 @@ fn cmd_parallel(command: ParallelCommands) -> Result<()> {
     match command {
         ParallelCommands::Prepare {
             workers,
+            hypothesis,
             worktree_root,
             manifest,
             batch_file,
@@ -4007,7 +4035,40 @@ fn cmd_parallel(command: ParallelCommands) -> Result<()> {
                 manifest,
                 batch_file,
                 &branch_prefix,
+                &hypothesis,
             )?;
+            println!("{}", serde_json::to_string_pretty(&out)?);
+        }
+        ParallelCommands::Compare {
+            a,
+            b,
+            worktree_root,
+            manifest,
+            batch_file,
+            branch_prefix,
+            cwd,
+        } => {
+            let workspace = resolve_results_workspace(cwd);
+            let hypotheses = vec![format!("A: {a}"), format!("B: {b}")];
+            let mut out = cmd_parallel_prepare(
+                &workspace,
+                2,
+                worktree_root,
+                manifest,
+                batch_file,
+                &branch_prefix,
+                &hypotheses,
+            )?;
+            if let Some(object) = out.as_object_mut() {
+                object.insert("mode".to_string(), serde_json::json!("ab_compare"));
+                object.insert(
+                    "arms".to_string(),
+                    serde_json::json!([
+                        {"worker_id": "a", "hypothesis": a},
+                        {"worker_id": "b", "hypothesis": b},
+                    ]),
+                );
+            }
             println!("{}", serde_json::to_string_pretty(&out)?);
         }
         ParallelCommands::Cleanup {
@@ -4085,7 +4146,11 @@ fn cmd_parallel_prepare(
     manifest: Option<PathBuf>,
     batch_file: Option<PathBuf>,
     branch_prefix: &str,
+    hypotheses: &[String],
 ) -> Result<serde_json::Value> {
+    if !hypotheses.is_empty() && hypotheses.len() != usize::from(workers) {
+        anyhow::bail!("--hypothesis must be repeated exactly once per worker");
+    }
     let health = health::run_health_check(workspace, None, 500)?;
     if health.has_blockers() {
         let codes = health
@@ -4165,7 +4230,13 @@ fn cmd_parallel_prepare(
         )
         .with_context(|| format!("failed to create worker-{worker_id} worktree"))?;
         copy_pointer_to_worker(workspace, &worktree)?;
-        let prompt_file = write_parallel_worker_prompt(&worktree, &state, &worker_id, &branch)?;
+        let prompt_file = write_parallel_worker_prompt(
+            &worktree,
+            &state,
+            &worker_id,
+            &branch,
+            hypotheses.get(index as usize).map(String::as_str),
+        )?;
         worker_entries.push(serde_json::json!({
             "worker_id": worker_id,
             "branch": branch,
@@ -4186,7 +4257,10 @@ fn cmd_parallel_prepare(
         "workers": worker_entries,
     });
     write_json_file(&manifest_path, &manifest_json)?;
-    write_json_file(&batch_path, &parallel_batch_template(workers))?;
+    write_json_file(
+        &batch_path,
+        &parallel_batch_template_with_hypotheses(workers, hypotheses),
+    )?;
 
     Ok(serde_json::json!({
         "status": "ok",
@@ -4423,9 +4497,20 @@ fn wait_parallel_worker(
 }
 
 fn parallel_batch_template(workers: u8) -> serde_json::Value {
+    parallel_batch_template_with_hypotheses(workers, &[])
+}
+
+fn parallel_batch_template_with_hypotheses(
+    workers: u8,
+    hypotheses: &[String],
+) -> serde_json::Value {
     let rows = (0..workers)
         .map(|index| {
             let worker_id = ((b'a' + index) as char).to_string();
+            let description = hypotheses
+                .get(index as usize)
+                .map(|hypothesis| format!("{hypothesis} result summary"))
+                .unwrap_or_else(|| format!("worker-{worker_id} result summary"));
             serde_json::json!({
                 "worker_id": worker_id,
                 "status": "completed",
@@ -4433,7 +4518,7 @@ fn parallel_batch_template(workers: u8) -> serde_json::Value {
                 "metrics": {},
                 "guard": "skip",
                 "commit": "<required-if-keepable>",
-                "description": format!("worker-{worker_id} result summary"),
+                "description": description,
                 "diff_size": 0,
                 "labels": [],
             })
@@ -7022,6 +7107,7 @@ fn write_parallel_worker_prompt(
     state: &RunState,
     worker_id: &str,
     branch: &str,
+    hypothesis: Option<&str>,
 ) -> Result<PathBuf> {
     let prompt_dir = worktree.join(".codex-autoresearch");
     std::fs::create_dir_all(&prompt_dir)
@@ -7049,6 +7135,9 @@ fn write_parallel_worker_prompt(
         .filter(|guard| !guard.trim().is_empty())
         .unwrap_or("skip");
     let direction = state.direction.as_str();
+    let assigned_hypothesis = hypothesis
+        .map(|hypothesis| format!("Assigned hypothesis: {hypothesis}\n"))
+        .unwrap_or_default();
     let mut content = String::new();
     writeln!(
         content,
@@ -7061,7 +7150,8 @@ Metric: {metric}\n\
 Metric direction: {direction}\n\
 Current retained metric: {}\n\
 Verify: {verify}\n\
-Guard: {guard}\n\n\
+Guard: {guard}\n\
+{assigned_hypothesis}\n\
 Instructions:\n\
 1. Apply exactly one focused hypothesis within scope.\n\
 2. Create a scoped trial commit in this worktree.\n\

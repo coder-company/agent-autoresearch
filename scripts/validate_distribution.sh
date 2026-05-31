@@ -187,6 +187,8 @@ require_grep 'merge-strategy' .agents/skills/autoresearch/SKILL.md
 require_grep 'rebase' .agents/skills/autoresearch/SKILL.md
 require_grep 'autoresearch parallel cleanup' .agents/skills/autoresearch/SKILL.md
 require_grep 'autoresearch parallel prepare' docs/GUIDE.md
+require_grep 'autoresearch parallel compare --a' README.md
+require_grep 'autoresearch parallel compare --a' docs/GUIDE.md
 require_grep 'autoresearch health --strict' docs/GUIDE.md
 require_grep 'merge-strategy' docs/GUIDE.md
 require_grep 'rebase' docs/GUIDE.md
@@ -195,6 +197,7 @@ require_grep 'autoresearch parallel run' guide/advanced-patterns.md
 require_grep 'merge-strategy' guide/advanced-patterns.md
 require_grep 'merge-strategy' references/parallel-experiments-protocol.md
 require_grep '\[x\] Branch merge strategy selection \(fast-forward, squash, rebase\)' docs/development-roadmap.md
+require_grep '\[x\] A/B experiment mode — compare two approaches head-to-head' docs/development-roadmap.md
 require_grep '\[x\] Improved evals: statistical significance testing on parallel results' docs/development-roadmap.md
 require_grep 'parallel worker significance' README.md
 require_grep 'sign-test summary' docs/GUIDE.md

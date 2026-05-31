@@ -40,6 +40,7 @@ The `autoresearch` binary handles mechanical operations:
 - `autoresearch parallel prepare` — create branch-backed worker worktrees, prompts, manifest, and batch file
 - `autoresearch parallel run` — launch prepared worker prompts with `codex exec`; record crashes/timeouts
 - `autoresearch parallel template` — generate editable worker batch JSON for manual parallel closeout
+- `autoresearch parallel compare --a <hypothesis> --b <hypothesis>` — prepare a two-arm A/B batch with explicit worker hypotheses
 - `autoresearch parallel closeout` — merge with cherry-pick, fast-forward, squash, or rebase; verify and retain one worker; log audit rows and update retained state once
 - `autoresearch parallel cleanup` — remove worker worktrees and branches
 - `autoresearch runtime run` — execute the supervised background loop; `start/status/supervise/stop` remain available for manual control
