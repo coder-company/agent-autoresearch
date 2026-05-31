@@ -303,6 +303,9 @@ enum Commands {
         /// Number of recent data rows to print on startup
         #[arg(long, default_value_t = 20)]
         lines: usize,
+        /// Output format: tsv or jsonl
+        #[arg(long, default_value = "tsv")]
+        format: String,
         /// Print once and exit instead of following
         #[arg(long)]
         once: bool,
@@ -678,10 +681,11 @@ fn main() -> Result<()> {
 
         Commands::Watch {
             lines,
+            format,
             once,
             interval_ms,
             cwd,
-        } => cmd_watch(cwd, lines, once, interval_ms),
+        } => cmd_watch(cwd, lines, &format, once, interval_ms),
 
         Commands::Lessons { search, last, cwd } => cmd_lessons(search.as_deref(), last, cwd),
 
@@ -3642,7 +3646,28 @@ fn cmd_progress(cwd: Option<PathBuf>) -> Result<()> {
 
 // ── Watch ────────────────────────────────────────────────────────────
 
-fn cmd_watch(cwd: Option<PathBuf>, lines: usize, once: bool, interval_ms: u64) -> Result<()> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum WatchFormat {
+    Tsv,
+    Jsonl,
+}
+
+fn parse_watch_format(value: &str) -> Result<WatchFormat> {
+    match value.trim() {
+        "tsv" => Ok(WatchFormat::Tsv),
+        "jsonl" => Ok(WatchFormat::Jsonl),
+        other => anyhow::bail!("Invalid watch format {other:?}; use tsv or jsonl"),
+    }
+}
+
+fn cmd_watch(
+    cwd: Option<PathBuf>,
+    lines: usize,
+    format: &str,
+    once: bool,
+    interval_ms: u64,
+) -> Result<()> {
+    let format = parse_watch_format(format)?;
     let cwd = resolve_cwd(cwd);
     let tsv_path = default_results_tsv(&cwd)
         .context("No results.tsv found. Provide --cwd inside a run workspace.")?;
@@ -3660,12 +3685,16 @@ fn cmd_watch(cwd: Option<PathBuf>, lines: usize, once: bool, interval_ms: u64) -
             printed_lines = 0;
         }
 
+        let header = visible_lines
+            .iter()
+            .find(|line| line.starts_with("iteration\t"))
+            .copied()
+            .context("results.tsv is missing the data header")?;
+        let header_columns = watch_header_columns(header);
+
         if printed_lines == 0 {
-            if let Some(header) = visible_lines
-                .iter()
-                .find(|line| line.starts_with("iteration\t"))
-            {
-                if !write_stdout_line(header)? {
+            if format == WatchFormat::Tsv {
+                if !write_watch_line(header, format, &header_columns)? {
                     return Ok(());
                 }
             }
@@ -3677,14 +3706,14 @@ fn cmd_watch(cwd: Option<PathBuf>, lines: usize, once: bool, interval_ms: u64) -
                 .collect();
             let start = data_rows.len().saturating_sub(lines);
             for row in &data_rows[start..] {
-                if !write_stdout_line(row)? {
+                if !write_watch_line(row, format, &header_columns)? {
                     return Ok(());
                 }
             }
             printed_lines = visible_lines.len();
         } else if visible_lines.len() > printed_lines {
             for row in &visible_lines[printed_lines..] {
-                if !write_stdout_line(row)? {
+                if !write_watch_line(row, format, &header_columns)? {
                     return Ok(());
                 }
             }
@@ -3699,6 +3728,32 @@ fn cmd_watch(cwd: Option<PathBuf>, lines: usize, once: bool, interval_ms: u64) -
     }
 
     Ok(())
+}
+
+fn watch_header_columns(header: &str) -> Vec<&str> {
+    header.split('\t').collect()
+}
+
+fn watch_row_json(row: &str, header_columns: &[&str]) -> serde_json::Value {
+    let values = row.split('\t').collect::<Vec<_>>();
+    let mut object = serde_json::Map::new();
+    for (index, key) in header_columns.iter().enumerate() {
+        object.insert(
+            (*key).to_string(),
+            serde_json::Value::String(values.get(index).copied().unwrap_or("").to_string()),
+        );
+    }
+    serde_json::Value::Object(object)
+}
+
+fn write_watch_line(line: &str, format: WatchFormat, header_columns: &[&str]) -> Result<bool> {
+    match format {
+        WatchFormat::Tsv => write_stdout_line(line),
+        WatchFormat::Jsonl => write_stdout_line(&serde_json::to_string(&watch_row_json(
+            line,
+            header_columns,
+        ))?),
+    }
 }
 
 fn write_stdout_line(line: &str) -> Result<bool> {

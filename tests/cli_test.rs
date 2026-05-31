@@ -1566,12 +1566,57 @@ fn test_watch_once_defaults_to_repo_root_results_from_subdir() {
 }
 
 #[test]
+fn test_watch_once_outputs_jsonl() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let results = dir.path().join("autoresearch-results");
+    std::fs::create_dir_all(&results).unwrap();
+    let tsv_path = results.join("results.tsv");
+
+    let mut file = std::fs::File::create(&tsv_path).unwrap();
+    writeln!(file, "# metric_direction: lower").unwrap();
+    writeln!(
+        file,
+        "iteration\tcommit\tmetric\tdelta\tguard\tstatus\tdescription"
+    )
+    .unwrap();
+    writeln!(file, "0\tabc1234\t50\t0\t-\tbaseline\tinitial state").unwrap();
+    writeln!(file, "1\tbcd2345\t45\t-5\tpass\tkeep\timprovement").unwrap();
+
+    cmd()
+        .args([
+            "watch",
+            "--once",
+            "--format",
+            "jsonl",
+            "--lines",
+            "1",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"iteration\":\"1\""))
+        .stdout(predicate::str::contains("\"status\":\"keep\""))
+        .stdout(predicate::str::contains("iteration\tcommit").not());
+}
+
+#[test]
 fn test_watch_rejects_zero_poll_interval() {
     cmd()
         .args(["watch", "--interval-ms", "0", "--once"])
         .assert()
         .failure()
         .stderr(predicate::str::contains("invalid value"));
+}
+
+#[test]
+fn test_watch_rejects_invalid_format() {
+    cmd()
+        .args(["watch", "--format", "xml", "--once"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("Invalid watch format"));
 }
 
 #[test]

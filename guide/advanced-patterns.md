@@ -147,10 +147,11 @@ Iterations: unlimited
 
 ```bash
 autoresearch watch --lines 20
+autoresearch watch --lines 20 --format jsonl --once
 autoresearch runtime status
 ```
 
-`watch` prints the active `results.tsv` header plus recent rows, then follows new rows until you stop it. Use `--once` for scripts or quick snapshots.
+`watch` prints the active `results.tsv` header plus recent rows, then follows new rows until you stop it. Use `--once` for scripts or quick snapshots, and `--format jsonl` for machine-readable rows.
 
 ### Recovery After Interruption
 
