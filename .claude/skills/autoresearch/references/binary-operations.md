@@ -8,6 +8,7 @@ Use the `autoresearch` binary for stateful or mechanical work. Do not hand-edit 
 autoresearch init --verify "<cmd>" --direction <higher|lower>
 autoresearch init --environment-summary auto --verify "<cmd>" --direction <higher|lower>
 autoresearch init --companion-repo-scope ../frontend='src/**/*.ts' ...
+autoresearch plan --goal "reduce any types" --format json
 autoresearch health --strict
 autoresearch env --format json
 autoresearch guard-presets --format json
@@ -15,6 +16,7 @@ autoresearch scope expand --format json
 ```
 
 `init` creates `autoresearch-results/results.tsv`, `state.json`, `context.json`, and repo-local `.codex-autoresearch/pointer.json` files. For multi-repo runs, every companion repo needs a clean worktree and its own `--companion-repo-scope PATH=SCOPE`.
+`plan` scans repo tooling and returns a suggested scope, metric, direction, verify, guard, and iteration count without starting a run.
 
 ## Verify, Decide, And Log
 

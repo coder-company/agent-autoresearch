@@ -203,6 +203,7 @@ fn test_api_manifest_lists_nested_commands_and_flags() {
         .stdout(predicate::str::contains("\"stability\": \"stable\""))
         .stdout(predicate::str::contains("\"runtime\""))
         .stdout(predicate::str::contains("\"start\""))
+        .stdout(predicate::str::contains("\"plan\""))
         .stdout(predicate::str::contains("\"env\""))
         .stdout(predicate::str::contains("\"checkpoint\""))
         .stdout(predicate::str::contains("\"reanchor\""))
@@ -393,6 +394,61 @@ fn test_reanchor_reports_due_fingerprint_at_iteration_boundary() {
             "references/runtime-hard-invariants.md",
         ))
         .stdout(predicate::str::contains("[RE-ANCHOR]"));
+}
+
+#[test]
+fn test_plan_recommends_typescript_any_metric() {
+    let dir = TempDir::new().unwrap();
+    std::fs::write(
+        dir.path().join("package.json"),
+        r#"{"scripts":{"test":"vitest"}}"#,
+    )
+    .unwrap();
+    std::fs::write(dir.path().join("tsconfig.json"), "{}").unwrap();
+    std::fs::create_dir_all(dir.path().join("src")).unwrap();
+
+    cmd()
+        .args([
+            "plan",
+            "--goal",
+            "reduce any types",
+            "--format",
+            "json",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"metric\": \"any_count\""))
+        .stdout(predicate::str::contains("\"direction\": \"lower\""))
+        .stdout(predicate::str::contains("\"tsconfig.json\""))
+        .stdout(predicate::str::contains("npx tsc --noEmit"));
+}
+
+#[test]
+fn test_plan_recommends_rust_test_metric() {
+    let dir = TempDir::new().unwrap();
+    std::fs::write(
+        dir.path().join("Cargo.toml"),
+        "[package]\nname = \"fixture\"\nversion = \"0.1.0\"\n",
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "plan",
+            "--goal",
+            "fix failing tests",
+            "--format",
+            "text",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Metric: failing_tests (lower)"))
+        .stdout(predicate::str::contains("Verify: cargo test"))
+        .stdout(predicate::str::contains("src/**/*.rs"));
 }
 
 #[test]

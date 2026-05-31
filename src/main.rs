@@ -31,6 +31,7 @@ use autoresearch::escalation::lessons::{self, LessonsLog};
 use autoresearch::escalation::pivot::{EscalationAction, EscalationState};
 use autoresearch::hooks;
 use autoresearch::modes::evals::{parse_results_tsv, ParsedRow};
+use autoresearch::modes::plan::{scan_repo_files, suggest_metrics, PATTERN_INDICATORS};
 
 const RUNTIME_HARD_INVARIANTS_DOC: &str = include_str!("../references/runtime-hard-invariants.md");
 const CORE_PRINCIPLES_DOC: &str = include_str!("../references/core-principles.md");
@@ -515,6 +516,19 @@ enum Commands {
         /// Maximum iterations (required in exec mode)
         #[arg(long)]
         iterations: u32,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
+    /// Suggest scope, metric, verify, guard, and iterations from a goal
+    Plan {
+        /// Goal description to turn into a launch-ready config
+        #[arg(long)]
+        goal: Option<String>,
+        /// Output format: json or text
+        #[arg(long, default_value = "json")]
+        format: String,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -1098,6 +1112,8 @@ fn main() -> Result<()> {
 
         Commands::Exec { iterations, cwd } => cmd_exec(iterations, cwd),
 
+        Commands::Plan { goal, format, cwd } => cmd_plan(goal, &format, cwd),
+
         Commands::Completions { shell } => cmd_completions(shell),
         Commands::Manpages { output_dir } => cmd_manpages(&output_dir),
         Commands::Api { format } => cmd_api(&format),
@@ -1285,6 +1301,246 @@ fn render_cli_api_markdown(manifest: &serde_json::Value) -> String {
         }
     }
     out
+}
+
+const PLAN_SCAN_PATTERNS: &[&str] = &[
+    "Cargo.toml",
+    "package.json",
+    "tsconfig.json",
+    "pyproject.toml",
+    "pytest.ini",
+    "go.mod",
+    "Makefile",
+    "jest.config*",
+    "vitest.config*",
+    ".eslintrc*",
+    "vite.config*",
+    "webpack.config*",
+];
+
+fn has_detected_file(files: &[String], name: &str) -> bool {
+    files.iter().any(|file| file == name)
+}
+
+fn goal_contains(goal: &str, terms: &[&str]) -> bool {
+    let goal = goal.to_lowercase();
+    terms.iter().any(|term| goal.contains(term))
+}
+
+fn plan_recommendation(goal: &str, detected_files: &[String]) -> serde_json::Value {
+    let has_cargo = has_detected_file(detected_files, "Cargo.toml");
+    let has_package = has_detected_file(detected_files, "package.json");
+    let has_ts = has_detected_file(detected_files, "tsconfig.json");
+    let has_pytest = has_detected_file(detected_files, "pytest.ini")
+        || has_detected_file(detected_files, "pyproject.toml");
+    let has_go = has_detected_file(detected_files, "go.mod");
+
+    let (metric, direction, verify, guard, scope, iterations, confidence, rationale) =
+        if has_ts && goal_contains(goal, &["any", "types", "typescript", "tsc"]) {
+            (
+                "any_count",
+                "lower",
+                "rg -n \"\\bany\\b\" src tests --glob '*.ts' --glob '*.tsx' 2>/dev/null | wc -l",
+                Some("npx tsc --noEmit"),
+                vec![
+                    "src/**/*.ts",
+                    "src/**/*.tsx",
+                    "tests/**/*.ts",
+                    "tests/**/*.tsx",
+                ],
+                20,
+                "high",
+                "TypeScript project detected and the goal is type-related",
+            )
+        } else if has_ts {
+            (
+                "type_errors",
+                "lower",
+                "npx tsc --noEmit 2>&1 | grep -c 'error TS' || echo 0",
+                if has_package { Some("npm test") } else { None },
+                vec![
+                    "src/**/*.ts",
+                    "src/**/*.tsx",
+                    "tests/**/*.ts",
+                    "tests/**/*.tsx",
+                ],
+                20,
+                "medium",
+                "TypeScript project detected",
+            )
+        } else if has_cargo {
+            (
+                "failing_tests",
+                "lower",
+                "cargo test 2>&1 | grep -cE 'FAILED|panicked|error:' || echo 0",
+                Some("cargo fmt -- --check"),
+                vec!["src/**/*.rs", "tests/**/*.rs"],
+                20,
+                "high",
+                "Rust project detected",
+            )
+        } else if has_pytest {
+            (
+                "failing_tests",
+                "lower",
+                "pytest -q 2>&1 | grep -cE 'FAILED|ERROR|failed' || echo 0",
+                Some("python -m compileall ."),
+                vec!["src/**/*.py", "tests/**/*.py"],
+                20,
+                "high",
+                "Python test configuration detected",
+            )
+        } else if has_go {
+            (
+                "failing_tests",
+                "lower",
+                "go test ./... 2>&1 | grep -cE 'FAIL|panic' || echo 0",
+                None,
+                vec!["**/*.go"],
+                20,
+                "high",
+                "Go module detected",
+            )
+        } else if has_package && goal_contains(goal, &["coverage", "test"]) {
+            (
+                "coverage",
+                "higher",
+                "npm test -- --coverage | tail -1",
+                Some("npm test"),
+                vec!["src/**/*", "tests/**/*"],
+                15,
+                "medium",
+                "JavaScript package detected and the goal mentions tests or coverage",
+            )
+        } else {
+            (
+                "manual_metric",
+                "higher",
+                "printf '0\\n'",
+                None,
+                vec!["**/*"],
+                10,
+                "low",
+                "No strong tooling pattern detected; replace the placeholder verify command",
+            )
+        };
+
+    if let Err(err) = verify::screen_command(verify) {
+        return serde_json::json!({
+            "status": "unsafe",
+            "reason": err.to_string(),
+            "metric": metric,
+            "verify": verify,
+        });
+    }
+    if let Some(guard) = guard {
+        if let Err(err) = verify::screen_command(guard) {
+            return serde_json::json!({
+                "status": "unsafe",
+                "reason": err.to_string(),
+                "metric": metric,
+                "verify": verify,
+                "guard": guard,
+            });
+        }
+    }
+
+    serde_json::json!({
+        "status": if confidence == "low" { "needs_confirmation" } else { "ready" },
+        "goal": goal,
+        "scope": scope,
+        "metric": metric,
+        "direction": direction,
+        "verify": verify,
+        "guard": guard,
+        "iterations": iterations,
+        "confidence": confidence,
+        "rationale": rationale,
+    })
+}
+
+fn render_plan_text(plan: &serde_json::Value) -> String {
+    let recommended = &plan["recommended"];
+    let mut out = String::new();
+    writeln!(out, "--- Autoresearch Plan ---").unwrap();
+    writeln!(out, "Goal: {}", plan["goal"].as_str().unwrap_or("")).unwrap();
+    writeln!(
+        out,
+        "Metric: {} ({})",
+        recommended["metric"].as_str().unwrap_or(""),
+        recommended["direction"].as_str().unwrap_or("")
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "Verify: {}",
+        recommended["verify"].as_str().unwrap_or("")
+    )
+    .unwrap();
+    if let Some(guard) = recommended["guard"].as_str() {
+        writeln!(out, "Guard: {guard}").unwrap();
+    }
+    writeln!(
+        out,
+        "Iterations: {}",
+        recommended["iterations"].as_u64().unwrap_or(10)
+    )
+    .unwrap();
+    writeln!(out, "Scope:").unwrap();
+    if let Some(scope) = recommended["scope"].as_array() {
+        for item in scope {
+            writeln!(out, "  - {}", item.as_str().unwrap_or("")).unwrap();
+        }
+    }
+    writeln!(out, "Detected files:").unwrap();
+    if let Some(files) = plan["detected_files"].as_array() {
+        if files.is_empty() {
+            writeln!(out, "  - none").unwrap();
+        }
+        for file in files {
+            writeln!(out, "  - {}", file.as_str().unwrap_or("")).unwrap();
+        }
+    }
+    out
+}
+
+fn cmd_plan(goal: Option<String>, format: &str, cwd: Option<PathBuf>) -> Result<()> {
+    let workspace = resolve_workspace_root(cwd);
+    let goal = goal.unwrap_or_default();
+    let detected_files = scan_repo_files(&workspace, PLAN_SCAN_PATTERNS);
+    let indicator_patterns = PATTERN_INDICATORS
+        .iter()
+        .map(|(pattern, _)| *pattern)
+        .collect::<Vec<_>>();
+    let indicator_files = scan_repo_files(&workspace, &indicator_patterns);
+    let metric_hints = suggest_metrics(&indicator_files);
+    let metric_hints = metric_hints
+        .iter()
+        .map(|suggestion| {
+            serde_json::json!({
+                "name": suggestion.name,
+                "metric": suggestion.metric,
+                "direction": suggestion.direction,
+                "verify": suggestion.verify_command,
+                "rationale": suggestion.rationale,
+            })
+        })
+        .collect::<Vec<_>>();
+    let recommended = plan_recommendation(&goal, &detected_files);
+    let out = serde_json::json!({
+        "goal": goal,
+        "workspace": workspace.display().to_string(),
+        "detected_files": detected_files,
+        "recommended": recommended,
+        "metric_hints": metric_hints,
+    });
+
+    match format {
+        "json" => println!("{}", serde_json::to_string_pretty(&out)?),
+        "text" => print!("{}", render_plan_text(&out)),
+        other => anyhow::bail!("Invalid plan format {other:?}; use json or text"),
+    }
+    Ok(())
 }
 
 fn cmd_config_template(output: Option<PathBuf>, force: bool) -> Result<()> {

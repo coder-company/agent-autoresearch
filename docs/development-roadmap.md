@@ -55,6 +55,7 @@
 ## v1.0.0 — Stable API + Ecosystem
 
 - [x] Stable CLI API — semver guarantees on commands, flags, and output formats
+- [x] Native plan command for repo-aware launch config suggestions
 - [x] Adaptive eval checkpoint command for long-running loops
 - [x] Native protocol re-anchor command for long-running Codex sessions
 - [x] Plugin system — loadable mode definitions (TOML or YAML)

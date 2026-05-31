@@ -198,6 +198,7 @@ Covered in detail in the [guide](guide/):
 - **Shell completions** — `autoresearch completions bash|zsh|fish|elvish|powershell` prints native completion scripts for local installs
 - **Man pages** — `autoresearch manpages --output-dir man/man1` writes a local `autoresearch.1` page for packages and offline docs
 - **Project defaults** — `.autoresearch.toml` stores repeatable init settings such as goal, scope, metric, verify, guard, and iteration cap
+- **Native planning** — `autoresearch plan --goal "..." --format json` suggests scope, metric, direction, verify, guard, and iteration count from repo tooling
 - **Config template** — `autoresearch config template --output .autoresearch.toml` writes a starter project defaults file
 - **Config validation** — `autoresearch config validate` checks project defaults without running verify or guard
 - **Stable CLI API manifest** — `autoresearch api --format json` emits command, flag, and semver policy metadata for wrappers and agents

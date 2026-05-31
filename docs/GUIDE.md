@@ -22,6 +22,7 @@ The agent-facing protocols delegate stateful work to the `autoresearch` binary:
 autoresearch init --verify "cat metric.txt" --direction lower
 autoresearch verify --command "cat metric.txt"
 autoresearch verify --command "cat metric.txt" --repeat 3 --aggregate median
+autoresearch plan --goal "reduce any types" --format json
 autoresearch decide --decision auto --metric 4 --commit abc1234 --description "improved"
 autoresearch status --summary
 autoresearch progress
@@ -76,6 +77,7 @@ Use `autoresearch completions <bash|zsh|fish|elvish|powershell>` to generate she
 Use `autoresearch manpages --output-dir man/man1` to generate a local `autoresearch.1` manual page.
 Use `autoresearch config template --output .autoresearch.toml` to write a starter project defaults file.
 Use `autoresearch config validate` to parse defaults, validate options, and screen configured commands without running them.
+Use `autoresearch plan --goal <goal> --format json` to get a launch-ready suggested scope, metric, direction, verify, guard, and iteration count from detected repo tooling.
 Use `autoresearch api --format json` to inspect the stable command/flag manifest and semver policy used by wrappers and agents.
 Use `autoresearch mcp serve` as a stdio MCP server exposing read-only `autoresearch_status` and `autoresearch_watch_snapshot` tools.
 Use `autoresearch mcp call --server-command <cmd> --tool <name> --arguments '{}'` to call a tool on an external stdio MCP server from an iteration script.
