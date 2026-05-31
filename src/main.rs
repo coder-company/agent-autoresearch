@@ -785,6 +785,9 @@ enum Commands {
         /// Exploration depth: shallow, standard, or deep
         #[arg(long, default_value = "standard")]
         depth: String,
+        /// Override the depth-derived exploration iteration budget
+        #[arg(long)]
+        iterations: Option<u32>,
         /// Record eval checkpoint metadata
         #[arg(long)]
         evals: bool,
@@ -1714,6 +1717,7 @@ fn main() -> Result<()> {
             focus,
             scope,
             depth,
+            iterations,
             evals,
             evals_interval,
             chain,
@@ -1726,6 +1730,7 @@ fn main() -> Result<()> {
             &focus,
             scope,
             &depth,
+            iterations,
             evals,
             evals_interval,
             chain,
@@ -4174,16 +4179,20 @@ fn parse_scenario_depth(value: &str) -> Result<(&'static str, u32)> {
 fn resolve_scenario_profile(
     domain: &str,
     depth: &str,
+    iterations: Option<u32>,
     evals: bool,
     evals_interval: Option<u32>,
 ) -> Result<ScenarioProfile> {
     validate_chain_evals_flags("scenario", evals, evals_interval)?;
     let domain = parse_scenario_domain(domain)?;
     let (depth, exploration_budget) = parse_scenario_depth(depth)?;
+    if iterations == Some(0) {
+        anyhow::bail!("scenario iterations must be greater than zero");
+    }
     Ok(ScenarioProfile {
         domain: domain.to_string(),
         depth: depth.to_string(),
-        exploration_budget,
+        exploration_budget: iterations.unwrap_or(exploration_budget),
         evals,
         evals_interval,
     })
@@ -4320,6 +4329,7 @@ fn cmd_scenario(
     focus: &str,
     scope: Vec<String>,
     depth: &str,
+    iterations: Option<u32>,
     evals: bool,
     evals_interval: Option<u32>,
     chain: Option<String>,
@@ -4327,7 +4337,7 @@ fn cmd_scenario(
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let format = parse_scenario_format(format)?;
-    let profile = resolve_scenario_profile(domain, depth, evals, evals_interval)?;
+    let profile = resolve_scenario_profile(domain, depth, iterations, evals, evals_interval)?;
     let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
     let workspace = resolve_workspace_root(cwd);
     let output = output.unwrap_or_else(|| {

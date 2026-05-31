@@ -791,6 +791,36 @@ fn test_scenario_accepts_protocol_seed_alias() {
 }
 
 #[test]
+fn test_scenario_iterations_override_depth_budget() {
+    let dir = TempDir::new().unwrap();
+    let output = dir
+        .path()
+        .join("autoresearch-results/scenario/custom-budget.md");
+
+    cmd()
+        .args([
+            "scenario",
+            "--target",
+            "Checkout flow",
+            "--depth",
+            "deep",
+            "--iterations",
+            "16",
+            "--output",
+            output.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"exploration_budget\":16"));
+
+    let scenario = std::fs::read_to_string(output).unwrap();
+    assert!(scenario.contains("- Depth: deep"));
+    assert!(scenario.contains("- Exploration budget: 16"));
+}
+
+#[test]
 fn test_security_writes_audit_artifact_bundle() {
     let dir = TempDir::new().unwrap();
     std::fs::create_dir_all(dir.path().join("src/auth")).unwrap();
