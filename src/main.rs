@@ -767,6 +767,9 @@ enum Commands {
         /// Eval checkpoint interval
         #[arg(long)]
         evals_interval: Option<u32>,
+        /// Comma-separated downstream command targets to record in handoff.json
+        #[arg(long)]
+        chain: Option<String>,
         /// Output path. Relative paths resolve from the workspace root.
         #[arg(long)]
         output: Option<PathBuf>,
@@ -1671,6 +1674,7 @@ fn main() -> Result<()> {
             depth,
             evals,
             evals_interval,
+            chain,
             output,
             cwd,
         } => cmd_scenario(
@@ -1681,6 +1685,7 @@ fn main() -> Result<()> {
             &depth,
             evals,
             evals_interval,
+            chain,
             output,
             cwd,
         ),
@@ -4136,11 +4141,13 @@ fn cmd_scenario(
     depth: &str,
     evals: bool,
     evals_interval: Option<u32>,
+    chain: Option<String>,
     output: Option<PathBuf>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let format = parse_scenario_format(format)?;
     let profile = resolve_scenario_profile(depth, evals, evals_interval)?;
+    let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
     let workspace = resolve_workspace_root(cwd);
     let output = output.unwrap_or_else(|| {
         default_artifact_path("scenario", format!("scenario-{}.md", slugify(target)))
@@ -4149,14 +4156,50 @@ fn cmd_scenario(
 
     let markdown = render_scenario_markdown(target, format, focus, &scope, &profile);
     write_text_file(&output, &markdown)?;
+    let handoff_path = if !chain_targets.is_empty() || profile.evals {
+        let handoff_path = output
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .join("handoff.json");
+        let next_target = next_chain_target_value(&chain_targets);
+        let handoff = serde_json::json!({
+            "version": "2.1.0",
+            "source": "scenario",
+            "source_command": "scenario",
+            "timestamp": chrono::Utc::now().to_rfc3339(),
+            "status": "COMPLETE",
+            "report": output.display().to_string(),
+            "handoff_path": handoff_path.display().to_string(),
+            "findings": [],
+            "config": {
+                "target": target,
+                "format": scenario_format_slug(format),
+                "focus": focus,
+                "scope": scope,
+                "depth": profile.depth.as_str(),
+                "exploration_budget": profile.exploration_budget,
+                "dimensions": Dimension::all().len(),
+            },
+            "chain": chain_targets,
+            "next_target": next_target,
+            "chain_continue": should_continue_handoff_chain("COMPLETE"),
+            "propagate_evals": profile.evals,
+            "evals_interval": profile.evals_interval,
+        });
+        write_json_file(&handoff_path, &handoff)?;
+        Some(handoff_path)
+    } else {
+        None
+    };
     println!(
         "{}",
         serde_json::json!({
             "status": "written",
             "path": output.display().to_string(),
+            "handoff_path": handoff_path.as_ref().map(|path| path.display().to_string()),
             "target": target,
             "format": scenario_format_slug(format),
-            "depth": profile.depth,
+            "depth": profile.depth.as_str(),
             "exploration_budget": profile.exploration_budget,
             "evals": profile.evals,
             "evals_interval": profile.evals_interval,

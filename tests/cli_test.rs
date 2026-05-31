@@ -611,7 +611,7 @@ fn test_scenario_writes_twelve_dimension_artifact() {
         .stdout(predicate::str::contains("\"status\":\"written\""))
         .stdout(predicate::str::contains("\"dimensions\":12"));
 
-    let scenario = std::fs::read_to_string(output).unwrap();
+    let scenario = std::fs::read_to_string(&output).unwrap();
     assert!(scenario.contains("# Scenario Exploration: Checkout flow"));
     assert!(scenario.contains("Boundary Values"));
     assert!(scenario.contains("Resource Exhaustion"));
@@ -642,6 +642,8 @@ fn test_scenario_depth_and_evals_are_recorded() {
             "--evals",
             "--evals-interval",
             "5",
+            "--chain",
+            "debug",
             "--output",
             output.to_str().unwrap(),
             "--cwd",
@@ -652,13 +654,23 @@ fn test_scenario_depth_and_evals_are_recorded() {
         .stdout(predicate::str::contains("\"depth\":\"deep\""))
         .stdout(predicate::str::contains("\"exploration_budget\":40"))
         .stdout(predicate::str::contains("\"evals\":true"))
-        .stdout(predicate::str::contains("\"evals_interval\":5"));
+        .stdout(predicate::str::contains("\"evals_interval\":5"))
+        .stdout(predicate::str::contains("handoff.json"));
 
-    let scenario = std::fs::read_to_string(output).unwrap();
+    let scenario = std::fs::read_to_string(&output).unwrap();
+    let handoff = std::fs::read_to_string(output.parent().unwrap().join("handoff.json")).unwrap();
     assert!(scenario.contains("- Depth: deep"));
     assert!(scenario.contains("- Exploration budget: 40"));
     assert!(scenario.contains("- Evals enabled: true"));
     assert!(scenario.contains("- Evals interval: 5"));
+    assert!(handoff.contains("\"source_command\": \"scenario\""));
+    assert!(handoff.contains("\"depth\": \"deep\""));
+    assert!(handoff.contains("\"exploration_budget\": 40"));
+    assert!(handoff.contains("\"chain\": ["));
+    assert!(handoff.contains("\"debug\""));
+    assert!(handoff.contains("\"next_target\": \"debug\""));
+    assert!(handoff.contains("\"propagate_evals\": true"));
+    assert!(handoff.contains("\"evals_interval\": 5"));
 }
 
 #[test]

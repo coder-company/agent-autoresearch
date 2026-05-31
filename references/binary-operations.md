@@ -15,7 +15,7 @@ autoresearch improve --goal "Improve onboarding activation" --icp "Developer too
 autoresearch prd --title "Improve onboarding" --problem "New users stall before first run"
 autoresearch security --scope "src/**/*.rs" --focus auth --depth deep --diff --evals
 autoresearch ship --target "Release v1.2.0" --type code-release --dry-run --monitor 15
-autoresearch scenario --target "Checkout flow" --format threat-scenarios --scope "src/checkout/**"
+autoresearch scenario --target "Checkout flow" --format threat-scenarios --scope "src/checkout/**" --chain debug
 autoresearch predict --proposal "Add cache warming to search results" --scope "src/search/**"
 autoresearch reason --question "Should we replace the storage layer" --mode debate --domain software --judges 7 --convergence 4
 autoresearch probe --subject "Payment retry workflow" --scope "src/payments/**"
@@ -44,7 +44,7 @@ Native artifact generators default to ignored `autoresearch-results/<mode>/` pat
 `ship` writes an 8-phase checklist, summary, ship log TSV, and handoff JSON without performing external ship actions.
 `ship --auto --force --rollback --monitor <minutes> --chain <targets>` records approval posture, rollback intent, monitoring window, and downstream handoff metadata without external side effects.
 `scenario` writes a markdown artifact covering all 12 scenario dimensions for the requested target, format, focus, and implementation scope.
-`scenario --depth <level> --evals` records exploration budget and checkpoint metadata in the generated matrix.
+`scenario --depth <level> --evals --chain <targets>` records exploration budget, checkpoint metadata, and downstream handoff context.
 `predict` writes a five-persona pre-implementation review with architecture, security, performance, UX, and adversarial findings.
 `predict --depth <level> --adversarial --fail-on <severity>` records review profile, finding budget, incremental mode, and CI gate metadata.
 `predict --chain <targets>` writes a sidecar handoff with comma-separated downstream targets and eval propagation metadata when requested.
