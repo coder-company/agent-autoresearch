@@ -33,6 +33,7 @@ use autoresearch::hooks;
 use autoresearch::modes::evals::{parse_results_tsv, ParsedRow};
 use autoresearch::modes::plan::{scan_repo_files, suggest_metrics, PATTERN_INDICATORS};
 use autoresearch::modes::predict::Persona;
+use autoresearch::modes::probe::ProbePersona;
 use autoresearch::modes::reason::{ReasonDomain, ReasoningMode};
 use autoresearch::modes::scenario::{Dimension, ScenarioFormat};
 
@@ -614,6 +615,22 @@ enum Commands {
         /// Domain: software, product, business, security, research, or content
         #[arg(long, default_value = "software")]
         domain: String,
+        /// Relevant implementation scope. Repeatable.
+        #[arg(long)]
+        scope: Vec<String>,
+        /// Output path. Relative paths resolve from the workspace root.
+        #[arg(long)]
+        output: Option<PathBuf>,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
+    /// Generate an eight-persona requirement probe artifact
+    Probe {
+        /// Requirement, feature, or workflow to interrogate
+        #[arg(long)]
+        subject: String,
         /// Relevant implementation scope. Repeatable.
         #[arg(long)]
         scope: Vec<String>,
@@ -1240,6 +1257,13 @@ fn main() -> Result<()> {
             output,
             cwd,
         } => cmd_reason(&question, &mode, &domain, scope, output, cwd),
+
+        Commands::Probe {
+            subject,
+            scope,
+            output,
+            cwd,
+        } => cmd_probe(&subject, scope, output, cwd),
 
         Commands::Completions { shell } => cmd_completions(shell),
         Commands::Manpages { output_dir } => cmd_manpages(&output_dir),
@@ -2331,6 +2355,131 @@ fn cmd_reason(
             "mode": reasoning_mode_label(mode).to_ascii_lowercase(),
             "domain": domain.label(),
             "candidates": 3,
+        })
+    );
+    Ok(())
+}
+
+fn probe_persona_question(persona: ProbePersona, subject: &str) -> String {
+    match persona {
+        ProbePersona::EndUser => {
+            format!("What does a successful first use of {subject} look like for the target user?")
+        }
+        ProbePersona::EdgeCaseHunter => {
+            format!(
+                "Which unusual inputs, boundaries, or workflow interruptions can break {subject}?"
+            )
+        }
+        ProbePersona::SecurityAnalyst => {
+            format!("What data, authorization, or trust boundary does {subject} touch?")
+        }
+        ProbePersona::PerformanceTester => {
+            format!("What latency, throughput, or resource limit should {subject} stay within?")
+        }
+        ProbePersona::BusinessAnalyst => {
+            format!("Which business outcome makes {subject} worth shipping now?")
+        }
+        ProbePersona::Skeptic => {
+            format!("Which assumption behind {subject} would invalidate the approach if false?")
+        }
+        ProbePersona::ComplianceOfficer => {
+            format!("Which privacy, retention, consent, or audit requirement constrains {subject}?")
+        }
+        ProbePersona::DevOpsEngineer => {
+            format!("How should {subject} be deployed, monitored, and rolled back?")
+        }
+    }
+}
+
+fn render_probe_markdown(subject: &str, scope: &[String]) -> String {
+    let mut out = String::new();
+    let scope_items = if scope.is_empty() {
+        vec!["DECISION NEEDED: identify implementation scope.".to_string()]
+    } else {
+        scope.to_vec()
+    };
+    let scope_lines = scope_items
+        .iter()
+        .map(|item| format!("- {item}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    writeln!(out, "# Requirement Probe: {subject}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "> Auto-generated requirement interrogation artifact. Answer these before turning the work into an autoresearch loop."
+    )
+    .unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Scope").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "{scope_lines}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Persona Questions").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "| Persona | Focus | Question | Constraint Slot |").unwrap();
+    writeln!(out, "|---|---|---|---|").unwrap();
+    for persona in ProbePersona::all() {
+        writeln!(
+            out,
+            "| {} | {} | {} | DECISION NEEDED |",
+            persona.title(),
+            persona.focus(),
+            probe_persona_question(*persona, subject)
+        )
+        .unwrap();
+    }
+    writeln!(out).unwrap();
+    writeln!(out, "## Saturation Rule").unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "- Stop probing after 2 consecutive rounds add zero new constraints."
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "- Convert confirmed constraints into acceptance criteria, required keep labels, or guard commands."
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "- DECISION NEEDED: mark must-have constraints before implementation."
+    )
+    .unwrap();
+    out
+}
+
+fn cmd_probe(
+    subject: &str,
+    scope: Vec<String>,
+    output: Option<PathBuf>,
+    cwd: Option<PathBuf>,
+) -> Result<()> {
+    let workspace = resolve_workspace_root(cwd);
+    let output = output
+        .unwrap_or_else(|| PathBuf::from("probe").join(format!("probe-{}.md", slugify(subject))));
+    let output = resolve_workspace_path(&workspace, output);
+    if let Some(parent) = output
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create {}", parent.display()))?;
+    }
+
+    let markdown = render_probe_markdown(subject, &scope);
+    std::fs::write(&output, markdown)
+        .with_context(|| format!("failed to write {}", output.display()))?;
+    println!(
+        "{}",
+        serde_json::json!({
+            "status": "written",
+            "path": output.display().to_string(),
+            "subject": subject,
+            "personas": ProbePersona::all().len(),
+            "saturation_rule": "2 consecutive rounds with zero new constraints",
         })
     );
     Ok(())

@@ -13,6 +13,7 @@ autoresearch prd --title "Improve onboarding" --problem "New users stall before 
 autoresearch scenario --target "Checkout flow" --format threat-scenarios --scope "src/checkout/**"
 autoresearch predict --proposal "Add cache warming to search results" --scope "src/search/**"
 autoresearch reason --question "Should we replace the storage layer" --mode debate --domain software
+autoresearch probe --subject "Payment retry workflow" --scope "src/payments/**"
 autoresearch health --strict
 autoresearch env --format json
 autoresearch guard-presets --format json
@@ -25,6 +26,7 @@ autoresearch scope expand --format json
 `scenario` writes a markdown artifact covering all 12 scenario dimensions for the requested target, format, focus, and implementation scope.
 `predict` writes a five-persona pre-implementation review with architecture, security, performance, UX, and adversarial findings.
 `reason` writes an adversarial debate artifact with candidate solutions, blind judge rubric, and convergence criteria.
+`probe` writes eight persona-driven requirement questions, constraint slots, and the saturation rule used to decide when enough constraints have been found.
 
 ## Verify, Decide, And Log
 

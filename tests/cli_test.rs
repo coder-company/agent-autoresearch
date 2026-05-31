@@ -208,6 +208,7 @@ fn test_api_manifest_lists_nested_commands_and_flags() {
         .stdout(predicate::str::contains("\"scenario\""))
         .stdout(predicate::str::contains("\"predict\""))
         .stdout(predicate::str::contains("\"reason\""))
+        .stdout(predicate::str::contains("\"probe\""))
         .stdout(predicate::str::contains("\"env\""))
         .stdout(predicate::str::contains("\"checkpoint\""))
         .stdout(predicate::str::contains("\"reanchor\""))
@@ -590,6 +591,36 @@ fn test_reason_writes_adversarial_debate_artifact() {
     assert!(report.contains("Candidate A"));
     assert!(report.contains("Convergence threshold"));
     assert!(report.contains("src/storage/**"));
+}
+
+#[test]
+fn test_probe_writes_requirement_interrogation_artifact() {
+    let dir = TempDir::new().unwrap();
+    let output = dir.path().join("probe/payment-probe.md");
+
+    cmd()
+        .args([
+            "probe",
+            "--subject",
+            "Payment retry workflow",
+            "--scope",
+            "src/payments/**",
+            "--output",
+            output.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\":\"written\""))
+        .stdout(predicate::str::contains("\"personas\":8"));
+
+    let report = std::fs::read_to_string(output).unwrap();
+    assert!(report.contains("# Requirement Probe: Payment retry workflow"));
+    assert!(report.contains("Edge Case Hunter"));
+    assert!(report.contains("Compliance Officer"));
+    assert!(report.contains("Saturation Rule"));
+    assert!(report.contains("src/payments/**"));
 }
 
 #[test]

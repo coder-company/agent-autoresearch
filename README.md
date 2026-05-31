@@ -203,6 +203,7 @@ Covered in detail in the [guide](guide/):
 - **Scenario artifact generation** — `autoresearch scenario --target ... --format test-scenarios` writes a 12-dimension edge-case matrix grounded in scope
 - **Predict artifact generation** — `autoresearch predict --proposal ...` writes a five-persona pre-implementation review
 - **Reason artifact generation** — `autoresearch reason --question ...` writes an adversarial candidate debate with a blind-judge rubric
+- **Probe artifact generation** — `autoresearch probe --subject ...` writes eight-persona requirement questions and constraint slots
 - **Config template** — `autoresearch config template --output .autoresearch.toml` writes a starter project defaults file
 - **Config validation** — `autoresearch config validate` checks project defaults without running verify or guard
 - **Stable CLI API manifest** — `autoresearch api --format json` emits command, flag, and semver policy metadata for wrappers and agents
