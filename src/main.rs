@@ -588,6 +588,9 @@ enum Commands {
         /// Research depth: shallow, standard, or deep
         #[arg(long, default_value = "standard")]
         depth: String,
+        /// Override the depth-derived research iteration budget
+        #[arg(long)]
+        iterations: Option<u32>,
         /// Number of seed ideas per research category
         #[arg(long)]
         seeds: Option<u8>,
@@ -1581,6 +1584,7 @@ fn main() -> Result<()> {
             icp,
             scope,
             depth,
+            iterations,
             seeds,
             discover,
             no_discover,
@@ -1594,6 +1598,7 @@ fn main() -> Result<()> {
             icp,
             scope,
             &depth,
+            iterations,
             seeds,
             discover,
             no_discover,
@@ -2520,6 +2525,7 @@ fn parse_improve_depth(value: &str) -> Result<(&'static str, usize, u32)> {
 
 fn resolve_improve_profile(
     depth: &str,
+    iterations: Option<u32>,
     seeds: Option<u8>,
     discover: bool,
     no_discover: bool,
@@ -2535,10 +2541,13 @@ fn resolve_improve_profile(
         anyhow::bail!("improve seeds must be between 1 and 20");
     }
     let (depth, category_limit, iteration_budget) = parse_improve_depth(depth)?;
+    if iterations == Some(0) {
+        anyhow::bail!("improve iterations must be greater than zero");
+    }
     Ok(ImproveProfile {
         depth: depth.to_string(),
         category_limit,
-        iteration_budget,
+        iteration_budget: iterations.unwrap_or(iteration_budget),
         seeds_per_category,
         discover: !no_discover,
         evals,
@@ -2792,6 +2801,7 @@ fn cmd_improve(
     icp: Option<String>,
     scope: Vec<String>,
     depth: &str,
+    iterations: Option<u32>,
     seeds: Option<u8>,
     discover: bool,
     no_discover: bool,
@@ -2801,8 +2811,15 @@ fn cmd_improve(
     output_dir: Option<PathBuf>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
-    let profile =
-        resolve_improve_profile(depth, seeds, discover, no_discover, evals, evals_interval)?;
+    let profile = resolve_improve_profile(
+        depth,
+        iterations,
+        seeds,
+        discover,
+        no_discover,
+        evals,
+        evals_interval,
+    )?;
     let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
     let next_target = next_chain_target_value(&chain_targets);
     let workspace = resolve_workspace_root(cwd);

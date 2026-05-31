@@ -206,7 +206,7 @@ Covered in detail in the [guide](guide/):
 - **Fix artifact generation** — `autoresearch fix --target ... --scope ...` writes a one-error-at-a-time repair plan, TSV, and handoff under `autoresearch-results/fix`
 - **Debug-to-fix import** — `autoresearch fix --from-debug` imports the latest debug handoff scope and symptom into a repair plan
 - **Fix chain controls** — `autoresearch fix --chain learn --evals` records downstream handoff and checkpoint propagation metadata
-- **Improve artifact bundle** — `autoresearch improve --goal ... --icp ... --depth deep --evals` writes research findings, ranked plan, summary, TSV, and handoff with research budget metadata
+- **Improve artifact bundle** — `autoresearch improve --goal ... --icp ... --depth deep --iterations 24 --evals` writes research findings, ranked plan, summary, TSV, and handoff with research budget metadata
 - **Improve research controls** — `autoresearch improve --seeds 5 --no-discover --chain learn` records seed volume, discovery posture, and downstream handoff metadata
 - **PRD artifact generation** — `autoresearch prd --title ... --problem ...` writes improve-mode PRDs with decision markers and ready-to-run config blocks
 - **Security artifact generation** — `autoresearch security --scope ... --focus ...` writes STRIDE, OWASP, findings, recommendations, TSV, and handoff artifacts

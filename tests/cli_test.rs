@@ -674,6 +674,37 @@ fn test_improve_seed_discovery_and_chain_controls_are_recorded() {
 }
 
 #[test]
+fn test_improve_iterations_override_depth_budget() {
+    let dir = TempDir::new().unwrap();
+    let output_dir = dir.path().join("improve/custom-budget");
+
+    cmd()
+        .args([
+            "improve",
+            "--goal",
+            "Improve onboarding activation",
+            "--depth",
+            "deep",
+            "--iterations",
+            "24",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"iteration_budget\":24"));
+
+    let summary = std::fs::read_to_string(output_dir.join("summary.md")).unwrap();
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+
+    assert!(summary.contains("Depth: deep"));
+    assert!(summary.contains("Iteration budget: 24"));
+    assert!(handoff.contains("\"iteration_budget\": 24"));
+}
+
+#[test]
 fn test_scenario_writes_twelve_dimension_artifact() {
     let dir = TempDir::new().unwrap();
     let output = dir.path().join("scenario/checkout-scenarios.md");
