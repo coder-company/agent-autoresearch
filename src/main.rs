@@ -711,6 +711,15 @@ enum Commands {
         /// Relevant implementation scope. Repeatable.
         #[arg(long)]
         scope: Vec<String>,
+        /// Comma-separated downstream command targets to record in handoff.json
+        #[arg(long)]
+        chain: Option<String>,
+        /// Propagate eval checkpoints to downstream chain targets
+        #[arg(long)]
+        evals: bool,
+        /// Propagated eval checkpoint interval
+        #[arg(long)]
+        evals_interval: Option<u32>,
         /// Output path. Relative paths resolve from the workspace root.
         #[arg(long)]
         output: Option<PathBuf>,
@@ -1438,9 +1447,12 @@ fn main() -> Result<()> {
         Commands::Predict {
             proposal,
             scope,
+            chain,
+            evals,
+            evals_interval,
             output,
             cwd,
-        } => cmd_predict(&proposal, scope, output, cwd),
+        } => cmd_predict(&proposal, scope, chain, evals, evals_interval, output, cwd),
 
         Commands::Reason {
             question,
@@ -3358,9 +3370,14 @@ fn render_predict_markdown(proposal: &str, scope: &[String]) -> String {
 fn cmd_predict(
     proposal: &str,
     scope: Vec<String>,
+    chain: Option<String>,
+    evals: bool,
+    evals_interval: Option<u32>,
     output: Option<PathBuf>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
+    validate_chain_evals_flags("predict", evals, evals_interval)?;
+    let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
     let workspace = resolve_workspace_root(cwd);
     let output = output.unwrap_or_else(|| {
         default_artifact_path("predict", format!("predict-{}.md", slugify(proposal)))
@@ -3369,11 +3386,44 @@ fn cmd_predict(
 
     let markdown = render_predict_markdown(proposal, &scope);
     write_text_file(&output, &markdown)?;
+    let handoff_path = if !chain_targets.is_empty() || evals {
+        let handoff_path = output
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .join("handoff.json");
+        let next_target = next_chain_target_value(&chain_targets);
+        let handoff = serde_json::json!({
+            "version": "2.1.0",
+            "source": "predict",
+            "source_command": "predict",
+            "timestamp": chrono::Utc::now().to_rfc3339(),
+            "status": "COMPLETE",
+            "report": output.display().to_string(),
+            "handoff_path": handoff_path.display().to_string(),
+            "findings": [],
+            "config": {
+                "proposal": proposal,
+                "scope": scope,
+                "personas": Persona::all().len(),
+                "risk_level": "medium",
+            },
+            "chain": chain_targets,
+            "next_target": next_target,
+            "chain_continue": should_continue_handoff_chain("COMPLETE"),
+            "propagate_evals": evals,
+            "evals_interval": evals_interval,
+        });
+        write_json_file(&handoff_path, &handoff)?;
+        Some(handoff_path)
+    } else {
+        None
+    };
     println!(
         "{}",
         serde_json::json!({
             "status": "written",
             "path": output.display().to_string(),
+            "handoff_path": handoff_path.as_ref().map(|path| path.display().to_string()),
             "proposal": proposal,
             "personas": Persona::all().len(),
             "risk_level": "medium",

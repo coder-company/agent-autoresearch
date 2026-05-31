@@ -99,6 +99,7 @@ Use `autoresearch security --scope <glob> --focus <area>` to write a STRIDE + OW
 Use `autoresearch ship --target <thing> --type <kind> --dry-run` to write an 8-phase ship checklist, summary, ship log, and handoff JSON without external side effects.
 Use `autoresearch scenario --target <feature> --format <test-scenarios|threat-scenarios|use-cases|user-stories>` to write a 12-dimension scenario matrix for tests, threat modeling, or debug follow-up.
 Use `autoresearch predict --proposal <change>` to write a five-persona review covering architecture, security, performance, UX, and adversarial risks.
+Use `autoresearch predict --proposal <change> --chain debug` to record the review as handoff context for downstream investigation.
 Use `autoresearch reason --question <decision>` to write an adversarial debate artifact with candidate solutions, blind judge rubric, and convergence criteria.
 Use `autoresearch probe --subject <requirement>` to write eight persona-driven questions, constraint slots, and a saturation rule before implementation.
 Use `autoresearch learn --mode <init|update|check|summarize> --scope <glob>` to write documentation summary, validation, TSV, and handoff artifacts.

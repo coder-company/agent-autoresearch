@@ -989,6 +989,45 @@ fn test_predict_writes_five_persona_artifact() {
 }
 
 #[test]
+fn test_predict_chain_writes_handoff_sidecar() {
+    let dir = TempDir::new().unwrap();
+    let output = dir
+        .path()
+        .join("autoresearch-results/predict/cache-review.md");
+
+    cmd()
+        .args([
+            "predict",
+            "--proposal",
+            "Add cache warming to search results",
+            "--scope",
+            "src/search/**",
+            "--chain",
+            "debug,fix",
+            "--evals",
+            "--evals-interval",
+            "3",
+            "--output",
+            output.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("handoff.json"));
+
+    let handoff = std::fs::read_to_string(output.parent().unwrap().join("handoff.json")).unwrap();
+    assert!(handoff.contains("\"source_command\": \"predict\""));
+    assert!(handoff.contains("\"chain\": ["));
+    assert!(handoff.contains("\"debug\""));
+    assert!(handoff.contains("\"fix\""));
+    assert!(handoff.contains("\"next_target\": \"debug\""));
+    assert!(handoff.contains("\"chain_continue\": true"));
+    assert!(handoff.contains("\"propagate_evals\": true"));
+    assert!(handoff.contains("\"evals_interval\": 3"));
+}
+
+#[test]
 fn test_reason_writes_adversarial_debate_artifact() {
     let dir = TempDir::new().unwrap();
     let output = dir.path().join("reason/storage-decision.md");
