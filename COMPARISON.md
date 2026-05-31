@@ -31,7 +31,7 @@ The idea was simple enough that several people generalized it:
 | Health preflight | No | Markdown checklist | Helper scripts | **Native `autoresearch health` for git/artifact/disk/verify/guard/context** |
 | Goal planning | Manual prompt | `/autoresearch:plan` | Wizard guidance | **`/autoresearch:plan` + native `autoresearch plan --goal` suggestions** |
 | Debug output | Manual notes | Hypothesis investigation reports | Protocol guidance | **`autoresearch debug` writes investigation bundles with TSV and handoff** |
-| Fix output | Manual repair loop | Error-crushing protocol | Protocol guidance | **`autoresearch fix` writes repair-plan bundles under `autoresearch-results/fix`** |
+| Fix output | Manual repair loop | Error-crushing protocol | Protocol guidance | **`autoresearch fix` writes repair-plan bundles under `autoresearch-results/fix` with chain/eval metadata** |
 | Improve research | Manual notes | Research findings + plans | Protocol guidance | **`autoresearch improve` writes findings, plan, TSV, summary, handoff, depth, and eval metadata** |
 | PRD output | No | Improve-mode PRDs | No | **`autoresearch prd` writes selected-improvement PRD artifacts** |
 | Security output | No | STRIDE/OWASP reports | Protocol guidance | **`autoresearch security` writes audit bundles with coverage, gates, depth, chain, and handoff** |

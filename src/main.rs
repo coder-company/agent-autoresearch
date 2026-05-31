@@ -721,6 +721,15 @@ enum Commands {
         /// Error category to prioritize: crash, test, type, lint, warning
         #[arg(long)]
         category: Option<String>,
+        /// Comma-separated downstream command targets to record in handoff.json
+        #[arg(long)]
+        chain: Option<String>,
+        /// Propagate eval checkpoints to downstream chain targets
+        #[arg(long)]
+        evals: bool,
+        /// Propagated eval checkpoint interval
+        #[arg(long)]
+        evals_interval: Option<u32>,
         /// Output directory. Defaults under autoresearch-results/fix/.
         #[arg(long)]
         output_dir: Option<PathBuf>,
@@ -1611,9 +1620,23 @@ fn main() -> Result<()> {
             from_debug,
             guard,
             category,
+            chain,
+            evals,
+            evals_interval,
             output_dir,
             cwd,
-        } => cmd_fix(target, scope, from_debug, guard, category, output_dir, cwd),
+        } => cmd_fix(
+            target,
+            scope,
+            from_debug,
+            guard,
+            category,
+            chain,
+            evals,
+            evals_interval,
+            output_dir,
+            cwd,
+        ),
 
         Commands::Scenario {
             target,
@@ -3749,9 +3772,15 @@ fn cmd_fix(
     from_debug: bool,
     guard: Option<String>,
     category: Option<String>,
+    chain: Option<String>,
+    evals: bool,
+    evals_interval: Option<u32>,
     output_dir: Option<PathBuf>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
+    validate_chain_evals_flags("fix", evals, evals_interval)?;
+    let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
+    let next_target = next_chain_target_value(&chain_targets);
     let category = parse_fix_category(category.as_deref())?;
     let workspace = resolve_workspace_root(cwd);
     let debug_handoff = if from_debug {
@@ -3800,6 +3829,7 @@ fn cmd_fix(
     let handoff = serde_json::json!({
         "version": "2.1.0",
         "source": "fix",
+        "source_command": "fix",
         "timestamp": chrono::Utc::now().to_rfc3339(),
         "status": "COMPLETE",
         "results_tsv": output_dir.join("fix-results.tsv").display().to_string(),
@@ -3812,7 +3842,12 @@ fn cmd_fix(
             "from_debug": from_debug,
             "debug_handoff_path": debug_handoff.as_ref().map(|debug| debug.path.display().to_string()),
             "debug_symptom": debug_handoff.as_ref().and_then(|debug| debug.symptom.clone()),
-        }
+        },
+        "chain": chain_targets,
+        "next_target": next_target.clone(),
+        "chain_continue": should_continue_handoff_chain("COMPLETE"),
+        "propagate_evals": evals,
+        "evals_interval": evals_interval,
     });
     write_json_file(&output_dir.join("handoff.json"), &handoff)?;
     println!(
@@ -3823,6 +3858,9 @@ fn cmd_fix(
             "target": target,
             "category": category.map(|value| value.label()).unwrap_or("auto"),
             "from_debug": from_debug,
+            "next_target": next_target,
+            "evals": evals,
+            "evals_interval": evals_interval,
         })
     );
     Ok(())

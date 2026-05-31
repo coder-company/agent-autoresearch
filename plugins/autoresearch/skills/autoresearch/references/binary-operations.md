@@ -10,7 +10,7 @@ autoresearch init --environment-summary auto --verify "<cmd>" --direction <highe
 autoresearch init --companion-repo-scope ../frontend='src/**/*.ts' ...
 autoresearch plan --goal "reduce any types" --format json
 autoresearch debug --symptom "API returns 500" --scope "src/**/*.rs"
-autoresearch fix --target "npx tsc --noEmit" --scope "src/**/*.ts" --category type
+autoresearch fix --target "npx tsc --noEmit" --scope "src/**/*.ts" --category type --chain learn --evals
 autoresearch improve --goal "Improve onboarding activation" --icp "Developer tools teams" --depth deep --evals
 autoresearch prd --title "Improve onboarding" --problem "New users stall before first run"
 autoresearch security --scope "src/**/*.rs" --focus auth --depth deep --diff --evals
@@ -33,6 +33,7 @@ Native artifact generators default to ignored `autoresearch-results/<mode>/` pat
 `debug --fix` records `fix` as the next handoff target. `debug --chain <targets>` records comma-separated downstream targets plus eval propagation metadata when requested.
 `fix` writes a repair-plan artifact bundle under `autoresearch-results/fix` with priority order, fix-results TSV, and handoff JSON.
 `fix --from-debug` imports the latest debug handoff scope, symptom, and finding count before writing the repair-plan bundle.
+`fix --chain <targets> --evals` records comma-separated downstream targets and checkpoint propagation metadata in handoff JSON.
 `improve` writes a product-improvement artifact bundle with research findings, ranked plan, summary, improve-results TSV, and handoff JSON.
 `improve --depth <level> --evals` records active category count, iteration budget, and checkpoint metadata in the research bundle.
 `prd` writes a focused improve-mode markdown artifact with DECISION NEEDED markers, acceptance criteria, risks, success metrics, and a ready-to-run autoresearch config block.
