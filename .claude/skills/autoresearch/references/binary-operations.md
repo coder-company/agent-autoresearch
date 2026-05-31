@@ -11,6 +11,7 @@ autoresearch init --companion-repo-scope ../frontend='src/**/*.ts' ...
 autoresearch plan --goal "reduce any types" --format json
 autoresearch prd --title "Improve onboarding" --problem "New users stall before first run"
 autoresearch scenario --target "Checkout flow" --format threat-scenarios --scope "src/checkout/**"
+autoresearch predict --proposal "Add cache warming to search results" --scope "src/search/**"
 autoresearch health --strict
 autoresearch env --format json
 autoresearch guard-presets --format json
@@ -21,6 +22,7 @@ autoresearch scope expand --format json
 `plan` scans repo tooling and returns a suggested scope, metric, direction, verify, guard, and iteration count without starting a run.
 `prd` writes a focused improve-mode markdown artifact with DECISION NEEDED markers, acceptance criteria, risks, success metrics, and a ready-to-run autoresearch config block.
 `scenario` writes a markdown artifact covering all 12 scenario dimensions for the requested target, format, focus, and implementation scope.
+`predict` writes a five-persona pre-implementation review with architecture, security, performance, UX, and adversarial findings.
 
 ## Verify, Decide, And Log
 

@@ -176,6 +176,11 @@ require_grep 'autoresearch scenario --target' docs/GUIDE.md
 require_grep 'autoresearch scenario --target' references/binary-operations.md
 require_grep 'Native scenario generator' docs/development-roadmap.md
 require_grep '`autoresearch scenario` writes' COMPARISON.md
+require_grep 'autoresearch predict --proposal' README.md
+require_grep 'autoresearch predict --proposal' docs/GUIDE.md
+require_grep 'autoresearch predict --proposal' references/binary-operations.md
+require_grep 'Native predict generator' docs/development-roadmap.md
+require_grep '`autoresearch predict` writes' COMPARISON.md
 require_grep 'autoresearch cost --per-iteration-usd' README.md
 require_grep 'autoresearch cost --per-iteration-usd' docs/GUIDE.md
 require_grep '\[x\] Cost tracking — estimate token/API spend per iteration' docs/development-roadmap.md

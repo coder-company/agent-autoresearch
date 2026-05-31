@@ -32,6 +32,7 @@ use autoresearch::escalation::pivot::{EscalationAction, EscalationState};
 use autoresearch::hooks;
 use autoresearch::modes::evals::{parse_results_tsv, ParsedRow};
 use autoresearch::modes::plan::{scan_repo_files, suggest_metrics, PATTERN_INDICATORS};
+use autoresearch::modes::predict::Persona;
 use autoresearch::modes::scenario::{Dimension, ScenarioFormat};
 
 const RUNTIME_HARD_INVARIANTS_DOC: &str = include_str!("../references/runtime-hard-invariants.md");
@@ -574,6 +575,22 @@ enum Commands {
         /// Focus area: edge-cases, failures, security, or scale
         #[arg(long, default_value = "edge-cases")]
         focus: String,
+        /// Relevant implementation scope. Repeatable.
+        #[arg(long)]
+        scope: Vec<String>,
+        /// Output path. Relative paths resolve from the workspace root.
+        #[arg(long)]
+        output: Option<PathBuf>,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
+
+    /// Generate a five-persona prediction review artifact
+    Predict {
+        /// Proposal, change, or design decision to analyze
+        #[arg(long)]
+        proposal: String,
         /// Relevant implementation scope. Repeatable.
         #[arg(long)]
         scope: Vec<String>,
@@ -1184,6 +1201,13 @@ fn main() -> Result<()> {
             output,
             cwd,
         } => cmd_scenario(&target, &format, &focus, scope, output, cwd),
+
+        Commands::Predict {
+            proposal,
+            scope,
+            output,
+            cwd,
+        } => cmd_predict(&proposal, scope, output, cwd),
 
         Commands::Completions { shell } => cmd_completions(shell),
         Commands::Manpages { output_dir } => cmd_manpages(&output_dir),
@@ -1930,6 +1954,138 @@ fn cmd_scenario(
             "target": target,
             "format": scenario_format_slug(format),
             "dimensions": Dimension::all().len(),
+        })
+    );
+    Ok(())
+}
+
+fn predict_persona_recommendation(persona: Persona) -> &'static str {
+    match persona {
+        Persona::Architect => "Keep module boundaries explicit, add an ADR if the proposal changes ownership, and avoid coupling unrelated paths.",
+        Persona::SecurityExpert => "List trust boundaries, inputs, secrets, and permission checks before implementation; add a guard for the riskiest path.",
+        Persona::PerformanceEngineer => "Define the latency, memory, or throughput budget and include a repeatable benchmark or lightweight proxy metric.",
+        Persona::UxDesigner => "Map the first successful user workflow and verify that errors remain understandable and recoverable.",
+        Persona::DevilsAdvocate => "Write the rollback plan, the smallest reversible first step, and the condition that should stop the work.",
+    }
+}
+
+fn predict_persona_risk(persona: Persona) -> &'static str {
+    match persona {
+        Persona::Architect => {
+            "Hidden shared-state or ownership changes make the design harder to reverse."
+        }
+        Persona::SecurityExpert => {
+            "A convenience path could bypass validation, authorization, or secret handling."
+        }
+        Persona::PerformanceEngineer => {
+            "The proposal may improve the happy path while increasing tail latency or resource use."
+        }
+        Persona::UxDesigner => {
+            "The implementation may satisfy the metric while leaving the target workflow confusing."
+        }
+        Persona::DevilsAdvocate => {
+            "Success criteria may be too vague to distinguish a real improvement from churn."
+        }
+    }
+}
+
+fn render_predict_markdown(proposal: &str, scope: &[String]) -> String {
+    let mut out = String::new();
+    let scope_items = if scope.is_empty() {
+        vec!["DECISION NEEDED: identify implementation scope.".to_string()]
+    } else {
+        scope.to_vec()
+    };
+    let scope_lines = scope_items
+        .iter()
+        .map(|item| format!("- {item}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    writeln!(out, "# Predict Review: {proposal}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "> Auto-generated five-persona review. Treat this as pre-implementation risk shaping, not final approval."
+    )
+    .unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Scope").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "{scope_lines}").unwrap();
+    writeln!(out).unwrap();
+    writeln!(out, "## Persona Findings").unwrap();
+
+    for persona in Persona::all() {
+        writeln!(out).unwrap();
+        writeln!(out, "### {}", persona.title()).unwrap();
+        writeln!(out).unwrap();
+        writeln!(out, "- Focus: {}", persona.focus()).unwrap();
+        writeln!(out, "- Primary risk: {}", predict_persona_risk(*persona)).unwrap();
+        writeln!(
+            out,
+            "- Recommendation: {}",
+            predict_persona_recommendation(*persona)
+        )
+        .unwrap();
+    }
+
+    writeln!(out).unwrap();
+    writeln!(out, "## Synthesis").unwrap();
+    writeln!(out).unwrap();
+    writeln!(
+        out,
+        "- Agreement: the proposal needs explicit scope, mechanical verification, and a rollback path before implementation."
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "- Disagreement to resolve: whether the highest risk is architectural coupling, security exposure, performance cost, or user confusion."
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "- Next step: run `autoresearch scenario --target \"{proposal}\" --format test-scenarios` for concrete edge cases."
+    )
+    .unwrap();
+    writeln!(
+        out,
+        "- DECISION NEEDED: choose the primary success metric and the guard command."
+    )
+    .unwrap();
+    out
+}
+
+fn cmd_predict(
+    proposal: &str,
+    scope: Vec<String>,
+    output: Option<PathBuf>,
+    cwd: Option<PathBuf>,
+) -> Result<()> {
+    let workspace = resolve_workspace_root(cwd);
+    let output = output.unwrap_or_else(|| {
+        PathBuf::from("predict").join(format!("predict-{}.md", slugify(proposal)))
+    });
+    let output = resolve_workspace_path(&workspace, output);
+    if let Some(parent) = output
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create {}", parent.display()))?;
+    }
+
+    let markdown = render_predict_markdown(proposal, &scope);
+    std::fs::write(&output, markdown)
+        .with_context(|| format!("failed to write {}", output.display()))?;
+    println!(
+        "{}",
+        serde_json::json!({
+            "status": "written",
+            "path": output.display().to_string(),
+            "proposal": proposal,
+            "personas": Persona::all().len(),
+            "risk_level": "medium",
         })
     );
     Ok(())

@@ -201,6 +201,7 @@ Covered in detail in the [guide](guide/):
 - **Native planning** — `autoresearch plan --goal "..." --format json` suggests scope, metric, direction, verify, guard, and iteration count from repo tooling
 - **PRD artifact generation** — `autoresearch prd --title ... --problem ...` writes improve-mode PRDs with decision markers and ready-to-run config blocks
 - **Scenario artifact generation** — `autoresearch scenario --target ... --format test-scenarios` writes a 12-dimension edge-case matrix grounded in scope
+- **Predict artifact generation** — `autoresearch predict --proposal ...` writes a five-persona pre-implementation review
 - **Config template** — `autoresearch config template --output .autoresearch.toml` writes a starter project defaults file
 - **Config validation** — `autoresearch config validate` checks project defaults without running verify or guard
 - **Stable CLI API manifest** — `autoresearch api --format json` emits command, flag, and semver policy metadata for wrappers and agents

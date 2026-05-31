@@ -32,6 +32,7 @@ The idea was simple enough that several people generalized it:
 | Goal planning | Manual prompt | `/autoresearch:plan` | Wizard guidance | **`/autoresearch:plan` + native `autoresearch plan --goal` suggestions** |
 | PRD output | No | Improve-mode PRDs | No | **`autoresearch prd` writes selected-improvement PRD artifacts** |
 | Scenario output | No | Scenario markdown reports | Protocol guidance | **`autoresearch scenario` writes 12-dimension edge-case artifacts** |
+| Predict output | No | Persona debate reports | Protocol guidance | **`autoresearch predict` writes five-persona review artifacts** |
 | Background runs | No | No | Yes (daemon) | **Yes (`runtime run/start/status/supervise/stop`)** |
 | Parallel experiments | No | No | Yes | **Worktree workers + verified closeout + `parallel compare` A/B batches** |
 | Structured metrics | No | No | Limited | **`metrics_json`, primary key, acceptance and required-keep gates** |
@@ -54,7 +55,7 @@ The idea was simple enough that several people generalized it:
 - You want install choices: Claude marketplace/plugin, OpenCode global/local assets, `$skill-installer`, direct `.agents` skill copy, or `plugins/autoresearch` via `.agents/plugins/marketplace.json`
 - You care about **hook speed** — the safety checks fire on every tool call, and they're fast enough to be invisible
 - You want a **single binary** with no Python/Node.js dependency chain
-- You want the full 13-command surface **plus** native runtime control, health preflight, structured metrics, scenario artifacts, `parallel compare`, cost estimates, dashboards, CI action packaging, and cross-run learning
+- You want the full 13-command surface **plus** native runtime control, health preflight, structured metrics, scenario and predict artifacts, `parallel compare`, cost estimates, dashboards, CI action packaging, and cross-run learning
 
 ---
 

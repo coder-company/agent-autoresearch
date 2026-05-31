@@ -206,6 +206,7 @@ fn test_api_manifest_lists_nested_commands_and_flags() {
         .stdout(predicate::str::contains("\"plan\""))
         .stdout(predicate::str::contains("\"prd\""))
         .stdout(predicate::str::contains("\"scenario\""))
+        .stdout(predicate::str::contains("\"predict\""))
         .stdout(predicate::str::contains("\"env\""))
         .stdout(predicate::str::contains("\"checkpoint\""))
         .stdout(predicate::str::contains("\"reanchor\""))
@@ -523,6 +524,37 @@ fn test_scenario_writes_twelve_dimension_artifact() {
     assert!(scenario.contains("Resource Exhaustion"));
     assert!(scenario.contains("Threat"));
     assert!(scenario.contains("src/checkout/**"));
+}
+
+#[test]
+fn test_predict_writes_five_persona_artifact() {
+    let dir = TempDir::new().unwrap();
+    let output = dir.path().join("predict/cache-review.md");
+
+    cmd()
+        .args([
+            "predict",
+            "--proposal",
+            "Add cache warming to search results",
+            "--scope",
+            "src/search/**",
+            "--output",
+            output.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"status\":\"written\""))
+        .stdout(predicate::str::contains("\"personas\":5"));
+
+    let report = std::fs::read_to_string(output).unwrap();
+    assert!(report.contains("# Predict Review: Add cache warming to search results"));
+    assert!(report.contains("Software Architect"));
+    assert!(report.contains("Security Expert"));
+    assert!(report.contains("Performance Engineer"));
+    assert!(report.contains("Devil's Advocate"));
+    assert!(report.contains("src/search/**"));
 }
 
 #[test]
