@@ -6,6 +6,18 @@ Autoresearch ships as a Rust binary plus agent-specific skill or command package
 
 Tagged releases publish `.tar.gz` archives for Linux x86_64, Linux aarch64, macOS x86_64, macOS aarch64, and Windows x86_64. Download the archive for your platform from the GitHub release, verify the adjacent `.sha256` file, and place the `autoresearch` binary on your `PATH`.
 
+## Cargo Binstall
+
+`Cargo.toml` includes `cargo-binstall` metadata for the same target-named release archives:
+
+```bash
+cargo binstall autoresearch
+```
+
+## Homebrew
+
+Homebrew tap maintainers can render `packaging/homebrew/autoresearch.rb.template` with the release version and SHA-256 values from GitHub release assets, then publish it as `Formula/autoresearch.rb` in a tap.
+
 ## Claude Code
 
 ```bash

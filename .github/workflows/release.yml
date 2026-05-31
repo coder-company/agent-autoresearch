@@ -63,7 +63,7 @@ jobs:
           fi
 
           ref_name="${GITHUB_REF_NAME//\//-}"
-          package="autoresearch-${ref_name}-${{ matrix.label }}"
+          package="autoresearch-${ref_name}-${{ matrix.target }}"
           staging="dist/$package"
           mkdir -p "$staging"
           cp "target/${{ matrix.target }}/release/$binary" "$staging/$binary"

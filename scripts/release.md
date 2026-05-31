@@ -42,6 +42,7 @@ Manual steps for cutting a release. For automation, use `./scripts/release.sh <v
 
 - [ ] Confirm the `Release` workflow completed for tag `v<VERSION>`
 - [ ] Confirm GitHub release assets include Linux x86_64, Linux aarch64, macOS x86_64, macOS aarch64, and Windows x86_64 archives plus `.sha256` files
+- [ ] Render `packaging/homebrew/autoresearch.rb.template` with release SHA-256 values and publish it to the Homebrew tap
 - [ ] Review auto-generated notes, edit if needed
 
 ## Post-release

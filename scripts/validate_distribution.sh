@@ -70,6 +70,8 @@ required_paths=(
     scripts/run_contributor_gate.sh
     scripts/run_skill_e2e.sh
     scripts/transform.sh
+    packaging/homebrew/README.md
+    packaging/homebrew/autoresearch.rb.template
     tests/test-hooks.sh
     .github/workflows/ci.yml
     .github/workflows/release.yml
@@ -296,8 +298,14 @@ require_grep 'macos-15-intel' .github/workflows/release.yml
 require_grep 'macos-aarch64' .github/workflows/release.yml
 require_grep 'windows-x86_64' .github/workflows/release.yml
 require_grep 'gh release upload "\$TAG" --clobber' .github/workflows/release.yml
+require_grep '\[package.metadata.binstall\]' Cargo.toml
+require_grep '\{ name \}-v\{ version \}-\{ target \}\.tar\.gz' Cargo.toml
+require_grep 'class Autoresearch < Formula' packaging/homebrew/autoresearch.rb.template
+require_grep 'aarch64-unknown-linux-gnu' packaging/homebrew/autoresearch.rb.template
+require_grep 'Homebrew formula and cargo-binstall support' docs/development-roadmap.md
 require_grep 'Pre-built binaries for Linux \(x86_64, aarch64\), macOS \(x86_64, aarch64\), Windows' docs/development-roadmap.md
 require_grep 'Tagged releases publish `\.tar\.gz` archives' docs/INSTALL.md
+require_grep 'cargo binstall autoresearch' docs/INSTALL.md
 if grep -q 'sed -i' "$ROOT/scripts/release.sh"; then
     fail "release script still uses non-portable sed -i"
 fi

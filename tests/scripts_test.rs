@@ -178,6 +178,35 @@ fn release_script_uses_portable_file_rewrites() {
 }
 
 #[test]
+fn cargo_manifest_configures_binstall_archives() {
+    let root = repo_root();
+    let manifest = std::fs::read_to_string(root.join("Cargo.toml")).unwrap();
+
+    assert!(manifest.contains("[package.metadata.binstall]"));
+    assert!(manifest.contains("releases/download/v{ version }"));
+    assert!(manifest.contains("{ name }-v{ version }-{ target }.tar.gz"));
+    assert!(
+        manifest.contains("bin-dir = \"{ name }-v{ version }-{ target }/{ bin }{ binary-ext }\"")
+    );
+    assert!(manifest.contains("pkg-fmt = \"tgz\""));
+}
+
+#[test]
+fn homebrew_formula_template_tracks_release_archives() {
+    let root = repo_root();
+    let formula =
+        std::fs::read_to_string(root.join("packaging/homebrew/autoresearch.rb.template")).unwrap();
+
+    assert!(formula.contains("class Autoresearch < Formula"));
+    assert!(formula.contains("aarch64-apple-darwin"));
+    assert!(formula.contains("x86_64-apple-darwin"));
+    assert!(formula.contains("aarch64-unknown-linux-gnu"));
+    assert!(formula.contains("x86_64-unknown-linux-gnu"));
+    assert!(formula.contains("SHA256_MACOS_AARCH64"));
+    assert!(formula.contains("bin.install \"autoresearch\""));
+}
+
+#[test]
 fn release_script_avoids_mapfile_for_macos_bash() {
     let root = repo_root();
     let script = std::fs::read_to_string(root.join("scripts/release.sh")).unwrap();
@@ -269,6 +298,7 @@ fn release_workflow_builds_prebuilt_binary_matrix() {
     assert!(workflow.contains("actions/upload-artifact@v4"));
     assert!(workflow.contains("actions/download-artifact@v4"));
     assert!(workflow.contains("gh release upload \"$TAG\" --clobber"));
+    assert!(workflow.contains("autoresearch-${ref_name}-${{ matrix.target }}"));
     assert!(workflow.contains("sha256sum"));
     assert!(workflow.contains("shasum -a 256"));
 }

@@ -193,6 +193,7 @@ Covered in detail in the [guide](guide/):
 - **Config validation** — `autoresearch config validate` checks project defaults without running verify or guard
 - **Stable CLI API manifest** — `autoresearch api --format json` emits command, flag, and semver policy metadata for wrappers and agents
 - **Pre-built release binaries** — tag builds publish checksummed Linux, macOS, and Windows archives through GitHub Releases
+- **Package-manager metadata** — `cargo-binstall` archive metadata and a Homebrew formula template track the release assets
 - **Workspace scope expansion** — `autoresearch scope expand --format json` resolves primary and companion repo globs and annotates package roots for monorepos
 - **Cross-repo guard presets** — `autoresearch guard-presets --format json` suggests per-repo guard commands for primary and companion repos
 - **Shared workspace lessons** — `autoresearch lessons --workspace-context --last 5` proves companion repos read the shared workspace lessons log

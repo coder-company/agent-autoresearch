@@ -58,7 +58,7 @@
 - [x] Shell completions (bash, zsh, fish, elvish, PowerShell)
 - [x] Man pages generation
 - [x] Pre-built binaries for Linux (x86_64, aarch64), macOS (x86_64, aarch64), Windows
-- [ ] Homebrew formula and cargo-binstall support
+- [x] Homebrew formula and cargo-binstall support
 - [ ] Comprehensive documentation site
 
 ## Future Ideas (unscheduled)
