@@ -660,6 +660,15 @@ enum PluginCommands {
         #[arg(long)]
         cwd: Option<PathBuf>,
     },
+    /// Validate a plugin marketplace TOML index
+    Marketplace {
+        /// Marketplace TOML path. Defaults to .autoresearch/plugins/marketplace.toml.
+        #[arg(long)]
+        path: Option<PathBuf>,
+        /// Working directory
+        #[arg(long)]
+        cwd: Option<PathBuf>,
+    },
 }
 
 fn main() -> Result<()> {
@@ -870,6 +879,7 @@ fn main() -> Result<()> {
         Commands::Plugin { command } => match command {
             PluginCommands::List { dir, cwd } => cmd_plugin_list(dir, cwd),
             PluginCommands::Validate { path, cwd } => cmd_plugin_validate(path, cwd),
+            PluginCommands::Marketplace { path, cwd } => cmd_plugin_marketplace(path, cwd),
         },
         Commands::Scope { command } => match command {
             ScopeCommands::Expand {
@@ -1162,6 +1172,26 @@ struct ModePluginManifest {
     scopes: Vec<String>,
 }
 
+#[derive(Debug, serde::Deserialize)]
+struct PluginMarketplace {
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    plugins: Vec<PluginMarketplaceEntry>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct PluginMarketplaceEntry {
+    name: String,
+    path: PathBuf,
+    #[serde(default)]
+    source: Option<String>,
+    #[serde(default)]
+    description: Option<String>,
+    #[serde(default)]
+    tags: Vec<String>,
+}
+
 fn cmd_plugin_list(dir: Option<PathBuf>, cwd: Option<PathBuf>) -> Result<()> {
     let workspace = resolve_workspace_root(cwd);
     let plugin_dir = dir
@@ -1174,6 +1204,9 @@ fn cmd_plugin_list(dir: Option<PathBuf>, cwd: Option<PathBuf>) -> Result<()> {
         {
             let path = entry?.path();
             if path.extension().and_then(|ext| ext.to_str()) != Some("toml") {
+                continue;
+            }
+            if path.file_name().and_then(|name| name.to_str()) == Some("marketplace.toml") {
                 continue;
             }
             let manifest = load_plugin_manifest(&path)?;
@@ -1193,6 +1226,67 @@ fn cmd_plugin_list(dir: Option<PathBuf>, cwd: Option<PathBuf>) -> Result<()> {
         "{}",
         serde_json::to_string_pretty(&serde_json::json!({
             "plugin_dir": plugin_dir.display().to_string(),
+            "plugins": plugins,
+        }))?
+    );
+    Ok(())
+}
+
+fn cmd_plugin_marketplace(path: Option<PathBuf>, cwd: Option<PathBuf>) -> Result<()> {
+    let workspace = resolve_workspace_root(cwd);
+    let path = path
+        .map(|path| resolve_workspace_path(&workspace, path))
+        .unwrap_or_else(|| workspace.join(".autoresearch/plugins/marketplace.toml"));
+    let marketplace: PluginMarketplace = toml::from_str(
+        &std::fs::read_to_string(&path)
+            .with_context(|| format!("failed to read {}", path.display()))?,
+    )
+    .with_context(|| format!("failed to parse {}", path.display()))?;
+    if marketplace.plugins.is_empty() {
+        anyhow::bail!("plugin marketplace must contain at least one [[plugins]] entry");
+    }
+
+    let base_dir = path.parent().unwrap_or(&workspace);
+    let mut plugins = Vec::new();
+    let mut seen_names = BTreeSet::new();
+    for entry in marketplace.plugins {
+        if entry.name.trim().is_empty() {
+            anyhow::bail!("plugin marketplace entry name must not be empty");
+        }
+        if !seen_names.insert(entry.name.clone()) {
+            anyhow::bail!("duplicate plugin marketplace entry {}", entry.name);
+        }
+        let manifest_path = if entry.path.is_absolute() {
+            entry.path.clone()
+        } else {
+            base_dir.join(&entry.path)
+        };
+        let manifest = load_plugin_manifest(&manifest_path)
+            .with_context(|| format!("marketplace entry {}", entry.name))?;
+        if manifest.name != entry.name {
+            anyhow::bail!(
+                "marketplace entry {} points to manifest named {}",
+                entry.name,
+                manifest.name
+            );
+        }
+        plugins.push(serde_json::json!({
+            "name": entry.name,
+            "source": entry.source.unwrap_or_else(|| "local".to_string()),
+            "description": entry.description,
+            "tags": entry.tags,
+            "path": manifest_path.display().to_string(),
+            "manifest": manifest,
+        }));
+    }
+    plugins.sort_by_key(|plugin| plugin["name"].as_str().unwrap_or_default().to_string());
+
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&serde_json::json!({
+            "valid": true,
+            "name": marketplace.name.unwrap_or_else(|| "local".to_string()),
+            "path": path.display().to_string(),
             "plugins": plugins,
         }))?
     );

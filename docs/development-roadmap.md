@@ -53,7 +53,7 @@
 
 - [x] Stable CLI API — semver guarantees on commands, flags, and output formats
 - [x] Plugin system — loadable mode definitions (TOML or YAML)
-- [ ] Plugin marketplace — community-contributed modes
+- [x] Plugin marketplace — community-contributed modes
 - [x] Configuration file (`.autoresearch.toml`) for project-level defaults
 - [x] Shell completions (bash, zsh, fish, elvish, PowerShell)
 - [x] Man pages generation

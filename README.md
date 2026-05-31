@@ -196,6 +196,7 @@ Covered in detail in the [guide](guide/):
 - **Cross-repo guard presets** — `autoresearch guard-presets --format json` suggests per-repo guard commands for primary and companion repos
 - **Shared workspace lessons** — `autoresearch lessons --workspace-context --last 5` proves companion repos read the shared workspace lessons log
 - **Mode plugin manifests** — `autoresearch plugin list` and `autoresearch plugin validate` load TOML mode definitions with safety screening
+- **Plugin marketplace index** — `autoresearch plugin marketplace` validates a local community plugin catalog and the manifests it references
 - **Manual lessons** — `autoresearch lessons --add "strategy" --context "why it matters"` appends reusable run knowledge
 - **Search helper and escalation** — `autoresearch search --from-state --log` builds a run-aware query, calls a configured provider, caches results, and records a search meta-iteration; `decide` automatically runs the same helper when escalation reaches Web Search and `AUTORESEARCH_SEARCH_CMD` is configured
 - **Chaining** — `debug --fix`, `probe --chain plan`, `predict --chain debug`

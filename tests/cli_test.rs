@@ -336,6 +336,15 @@ scopes = ["src/**/*.rs"]
 "#,
     )
     .unwrap();
+    std::fs::write(
+        plugins.join("marketplace.toml"),
+        r#"
+[[plugins]]
+name = "coverage_boost"
+path = "coverage.toml"
+"#,
+    )
+    .unwrap();
 
     cmd()
         .args(["plugin", "list", "--cwd", dir.path().to_str().unwrap()])
@@ -360,6 +369,91 @@ scopes = ["src/**/*.rs"]
         .stdout(predicate::str::contains(
             "\"command\": \"cargo test -- --coverage\"",
         ));
+}
+
+#[test]
+fn test_plugin_marketplace_validates_manifest_index() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let plugins = dir.path().join(".autoresearch/plugins");
+    std::fs::create_dir_all(&plugins).unwrap();
+    std::fs::write(
+        plugins.join("coverage.toml"),
+        r#"
+name = "coverage_boost"
+version = "0.1.0"
+mode = "improve"
+command = "cargo test -- --coverage"
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        plugins.join("marketplace.toml"),
+        r#"
+name = "local"
+
+[[plugins]]
+name = "coverage_boost"
+path = "coverage.toml"
+source = "community"
+description = "Push coverage with the improve loop"
+tags = ["coverage", "rust"]
+"#,
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "plugin",
+            "marketplace",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"valid\": true"))
+        .stdout(predicate::str::contains("\"source\": \"community\""))
+        .stdout(predicate::str::contains("\"description\": \"Push coverage"))
+        .stdout(predicate::str::contains("\"tags\": ["))
+        .stdout(predicate::str::contains("\"name\": \"coverage_boost\""));
+}
+
+#[test]
+fn test_plugin_marketplace_rejects_name_mismatch() {
+    let dir = TempDir::new().unwrap();
+    init_git_fixture(&dir);
+    let plugins = dir.path().join(".autoresearch/plugins");
+    std::fs::create_dir_all(&plugins).unwrap();
+    std::fs::write(
+        plugins.join("coverage.toml"),
+        r#"
+name = "coverage_boost"
+version = "0.1.0"
+mode = "improve"
+command = "cargo test"
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        plugins.join("marketplace.toml"),
+        r#"
+[[plugins]]
+name = "other"
+path = "coverage.toml"
+"#,
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "plugin",
+            "marketplace",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("points to manifest named"));
 }
 
 #[test]

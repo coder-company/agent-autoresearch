@@ -49,7 +49,7 @@ This skill uses Claude Code's `/goal` command as the native continuation engine.
 - Use `autoresearch scope expand --format json` when a monorepo or companion repo scope needs concrete file/package context
 - Use `autoresearch guard-presets --format json` when primary or companion repos need a guard command suggestion
 - Use `autoresearch lessons --workspace-context --last 5` when reading lessons from a companion repo to confirm the shared workspace source
-- Use `autoresearch plugin list` or `autoresearch plugin validate --path <file>` when local TOML mode plugins are present
+- Use `autoresearch plugin list`, `autoresearch plugin validate --path <file>`, or `autoresearch plugin marketplace` when local TOML mode plugins or marketplace indexes are present
 - Run `git log --oneline -10` — see what worked/failed
 - If last iteration was "keep" → run `git diff HEAD~1`
 - Consult `autoresearch-results/lessons.md` for strategy insights
