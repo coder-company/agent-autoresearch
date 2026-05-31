@@ -156,6 +156,12 @@ enum Commands {
         /// Primary metric key (for metrics_json)
         #[arg(long)]
         key: Option<String>,
+        /// Number of times to run scalar verification before aggregating
+        #[arg(long, default_value_t = 1)]
+        repeat: usize,
+        /// Aggregate for repeated scalar verification: median, mean, min, max, or last
+        #[arg(long, default_value = "median")]
+        aggregate: String,
         /// Working directory
         #[arg(long)]
         cwd: Option<PathBuf>,
@@ -881,8 +887,10 @@ fn main() -> Result<()> {
             command,
             format,
             key,
+            repeat,
+            aggregate,
             cwd,
-        } => cmd_verify(&command, &format, key.as_deref(), cwd),
+        } => cmd_verify(&command, &format, key.as_deref(), repeat, &aggregate, cwd),
 
         Commands::Guard { command, cwd } => cmd_guard(&command, cwd),
 
@@ -2206,30 +2214,102 @@ fn run_baseline_guard(guard: Option<&str>, workspace: &Path) -> Result<GuardResu
 
 // ── Verify ────────────────────────────────────────────────────────────
 
+#[derive(Debug, Clone, Copy)]
+enum VerifyAggregate {
+    Median,
+    Mean,
+    Min,
+    Max,
+    Last,
+}
+
+fn parse_verify_aggregate(value: &str) -> Result<VerifyAggregate> {
+    match value {
+        "median" => Ok(VerifyAggregate::Median),
+        "mean" => Ok(VerifyAggregate::Mean),
+        "min" => Ok(VerifyAggregate::Min),
+        "max" => Ok(VerifyAggregate::Max),
+        "last" => Ok(VerifyAggregate::Last),
+        other => {
+            anyhow::bail!("Unknown verify aggregate: {other}. Use median, mean, min, max, or last.")
+        }
+    }
+}
+
+fn aggregate_verify_samples(samples: &[Decimal], aggregate: VerifyAggregate) -> Decimal {
+    match aggregate {
+        VerifyAggregate::Median => {
+            let mut sorted = samples.to_vec();
+            sorted.sort();
+            let midpoint = sorted.len() / 2;
+            if sorted.len() % 2 == 1 {
+                sorted[midpoint]
+            } else {
+                (sorted[midpoint - 1] + sorted[midpoint]) / Decimal::from(2_u32)
+            }
+        }
+        VerifyAggregate::Mean => {
+            let mut total = Decimal::ZERO;
+            for sample in samples {
+                total += *sample;
+            }
+            total / Decimal::from(samples.len() as u64)
+        }
+        VerifyAggregate::Min => *samples.iter().min().expect("samples must not be empty"),
+        VerifyAggregate::Max => *samples.iter().max().expect("samples must not be empty"),
+        VerifyAggregate::Last => *samples.last().expect("samples must not be empty"),
+    }
+}
+
 fn cmd_verify(
     command: &str,
     format_str: &str,
     key: Option<&str>,
+    repeat: usize,
+    aggregate_str: &str,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let workspace = resolve_cwd(cwd);
     let fmt = parse_format(format_str)?;
+    let aggregate = parse_verify_aggregate(aggregate_str)?;
+    if repeat == 0 {
+        anyhow::bail!("verify repeat must be greater than zero");
+    }
+    if repeat > 1 && fmt == VerifyFormat::MetricsJson {
+        anyhow::bail!("repeated verify currently supports scalar format only");
+    }
 
     verify::screen_command(command)?;
-    let result = verify::run_verify(command, fmt, key, &workspace)?;
+    let mut results = Vec::with_capacity(repeat);
+    for _ in 0..repeat {
+        results.push(verify::run_verify(command, fmt, key, &workspace)?);
+    }
+    let samples = results
+        .iter()
+        .map(|result| result.metric)
+        .collect::<Vec<_>>();
+    let metric = aggregate_verify_samples(&samples, aggregate);
+    let last_result = results.last().expect("repeat must be greater than zero");
+    let duration_ms = results
+        .iter()
+        .map(|result| result.duration.as_millis())
+        .sum::<u128>();
 
     let out = serde_json::json!({
-        "metric": result.metric.to_string(),
-        "metrics": result.metrics.as_ref().map(|metrics| {
+        "metric": metric.to_string(),
+        "metrics": last_result.metrics.as_ref().map(|metrics| {
             metrics
                 .iter()
                 .map(|(key, value)| (key.clone(), value.to_string()))
                 .collect::<std::collections::BTreeMap<_, _>>()
         }),
-        "exit_code": result.exit_code,
-        "duration_ms": result.duration.as_millis(),
-        "stdout_tail": result.stdout.lines().rev().take(5).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>(),
-        "stderr_tail": result.stderr.lines().rev().take(3).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>(),
+        "repeat": repeat,
+        "aggregate": aggregate_str,
+        "samples": samples.iter().map(|sample| sample.to_string()).collect::<Vec<_>>(),
+        "exit_code": last_result.exit_code,
+        "duration_ms": duration_ms,
+        "stdout_tail": last_result.stdout.lines().rev().take(5).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>(),
+        "stderr_tail": last_result.stderr.lines().rev().take(3).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>(),
     });
     println!("{}", serde_json::to_string(&out)?);
     Ok(())

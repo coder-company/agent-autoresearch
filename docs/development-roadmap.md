@@ -6,6 +6,7 @@
 - [x] State machine with typed transitions
 - [x] TSV results + JSON state persistence
 - [x] Git rollback (revert + hard-reset)
+- [x] Noise-aware scalar verification repeats with aggregation
 - [x] 12 subcommands with full reference docs
 - [x] Exec mode for CI/CD
 - [x] 11 hook handlers

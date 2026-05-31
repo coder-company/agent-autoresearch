@@ -21,6 +21,7 @@ The agent-facing protocols delegate stateful work to the `autoresearch` binary:
 ```bash
 autoresearch init --verify "cat metric.txt" --direction lower
 autoresearch verify --command "cat metric.txt"
+autoresearch verify --command "cat metric.txt" --repeat 3 --aggregate median
 autoresearch decide --decision auto --metric 4 --commit abc1234 --description "improved"
 autoresearch status --summary
 autoresearch progress
@@ -58,6 +59,7 @@ Use `autoresearch runtime run` for supervised background Codex sessions and `aut
 Use `autoresearch env --format json` to capture CPU, disk, container, toolchain, and recommended parallel-worker context before planning long or parallel runs; pass `--environment-summary auto` to `init` to persist that probe summary in `results.tsv`.
 Use `autoresearch status --summary` for compact monitor-friendly counters.
 Use `autoresearch progress` for the current metric, trend, counters, escalation state, and terminal metric history sparkline.
+Use `autoresearch verify --repeat <n> --aggregate <median|mean|min|max|last>` for noisy scalar metrics; repeated verification returns the aggregate metric plus the raw samples.
 Use `autoresearch cost --per-iteration-usd <usd>` or token/rate flags to estimate completed, remaining, and projected run spend.
 Use `autoresearch dashboard --once` for a combined terminal view of status, trend, metric history, escalation, and recent rows; omit `--once` for live refresh.
 Use `autoresearch checkpoint --format json` inside long loops to run evals only when the active iteration reaches the configured or adaptive checkpoint interval.

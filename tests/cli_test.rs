@@ -207,6 +207,8 @@ fn test_api_manifest_lists_nested_commands_and_flags() {
         .stdout(predicate::str::contains("\"checkpoint\""))
         .stdout(predicate::str::contains("\"cost\""))
         .stdout(predicate::str::contains("\"per-iteration-usd\""))
+        .stdout(predicate::str::contains("\"repeat\""))
+        .stdout(predicate::str::contains("\"aggregate\""))
         .stdout(predicate::str::contains("\"dashboard\""))
         .stdout(predicate::str::contains("\"compare\""))
         .stdout(predicate::str::contains("\"hypothesis\""))
@@ -906,6 +908,56 @@ fn test_verify_metrics_json_returns_full_metric_map() {
         .stdout(predicate::str::contains("\"metric\":\"85.2\""))
         .stdout(predicate::str::contains(
             "\"metrics\":{\"coverage\":\"85.2\",\"failing\":\"3\"}",
+        ));
+}
+
+#[test]
+fn test_verify_repeat_aggregates_scalar_samples() {
+    let dir = TempDir::new().unwrap();
+    let command = "n=$(cat verify-count.txt 2>/dev/null || printf 0); n=$((n+1)); printf %s \"$n\" > verify-count.txt; case \"$n\" in 1) printf '1\\n';; 2) printf '3\\n';; *) printf '2\\n';; esac";
+
+    cmd()
+        .args([
+            "verify",
+            "--command",
+            command,
+            "--repeat",
+            "3",
+            "--aggregate",
+            "median",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"metric\":\"2\""))
+        .stdout(predicate::str::contains("\"repeat\":3"))
+        .stdout(predicate::str::contains("\"aggregate\":\"median\""))
+        .stdout(predicate::str::contains("\"samples\":[\"1\",\"3\",\"2\"]"));
+}
+
+#[test]
+fn test_verify_repeat_rejects_metrics_json() {
+    let dir = TempDir::new().unwrap();
+
+    cmd()
+        .args([
+            "verify",
+            "--command",
+            r#"echo '{"coverage":85.2}'"#,
+            "--format",
+            "metrics_json",
+            "--key",
+            "coverage",
+            "--repeat",
+            "2",
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "repeated verify currently supports scalar format only",
         ));
 }
 

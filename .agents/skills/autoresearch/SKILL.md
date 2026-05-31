@@ -81,7 +81,7 @@ git commit -m "experiment: <what changed and why>"
 ```
 
 ### Phase 5: Verify
-Run `autoresearch verify --format metrics_json --key <metric>` for structured output, or `autoresearch verify --command "<cmd>"` for scalar output.
+Run `autoresearch verify --format metrics_json --key <metric>` for structured output, or `autoresearch verify --command "<cmd>"` for scalar output. For noisy scalar metrics, use `--repeat N --aggregate median`.
 
 ### Phase 6: Guard (if configured)
 Run only after metric improvement. Must exit 0.

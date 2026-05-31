@@ -81,7 +81,7 @@ git commit -m "experiment: <what changed and why>"
 NEVER stage autoresearch-results/ or .codex-autoresearch/ artifacts.
 
 ### Phase 5: Verify
-Run `autoresearch verify --format metrics_json --key <metric>` for structured output, or `autoresearch verify --command "<cmd>"` for scalar output.
+Run `autoresearch verify --format metrics_json --key <metric>` for structured output, or `autoresearch verify --command "<cmd>"` for scalar output. For noisy scalar metrics, use `--repeat N --aggregate median`.
 If unparseable: rerun once. Still unparseable → crash.
 
 ### Phase 6: Guard (if configured)

@@ -93,7 +93,7 @@ If unbounded: omit "Stop after N turns" clause.
 - NEVER stage `autoresearch-results/` or `.codex-autoresearch/` artifacts
 
 ### Phase 5: Verify
-- Run `autoresearch verify --format metrics_json --key {primary_metric_key} --command "{verify command}"` for structured metrics, or `autoresearch verify --command "{verify command}"` for scalar metrics
+- Run `autoresearch verify --format metrics_json --key {primary_metric_key} --command "{verify command}"` for structured metrics, or `autoresearch verify --command "{verify command}"` for scalar metrics. For noisy scalar metrics, add `--repeat N --aggregate median`.
 - Calculate delta from previous retained metric
 - If verify output is unparseable: rerun once. If still unparseable → treat as crash.
 

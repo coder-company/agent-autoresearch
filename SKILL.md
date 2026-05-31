@@ -24,7 +24,7 @@ Autonomous goal-directed iteration. Modify → Verify → Keep/Discard → Repea
 2. Define ONE specific, testable hypothesis.
 3. Make ONE focused change within scope.
 4. Trial commit: `git add -- <scoped-files>; git commit -m "experiment: <desc>"`
-5. Verify: `autoresearch verify --format metrics_json --key "<metric-key>" --command "<cmd>"` when the command emits structured metrics; otherwise use `autoresearch verify --command "<cmd>"`.
+5. Verify: `autoresearch verify --format metrics_json --key "<metric-key>" --command "<cmd>"` when the command emits structured metrics; otherwise use `autoresearch verify --command "<cmd>"`. For noisy scalar metrics, add `--repeat N --aggregate median`.
 6. Guard (if configured): `autoresearch guard --command "<cmd>"`
 7. Decide: `autoresearch decide --decision auto --metric <val> --metrics-json '<json>' --commit <sha> --description "<text>"`
 8. Repeat.
@@ -113,7 +113,7 @@ Optional:
 | `autoresearch init --companion-repo-scope "../frontend=src/**/*.ts"` | Register a clean companion repo, persist it in context, and write its repo-local pointer |
 | `autoresearch health --strict` | Preflight git/artifact/disk/verify/context state before launch or resume; fail on warnings |
 | `autoresearch env --format json` | Probe CPU, disk, container, toolchains, and recommended parallelism for planning |
-| `autoresearch verify --command "..."` | Run verify → JSON `{metric, metrics, exit_code, duration_ms}` |
+| `autoresearch verify --command "..."` | Run verify → JSON `{metric, metrics, samples, exit_code, duration_ms}` |
 | `autoresearch verify --format metrics_json --key coverage --command "..."` | Parse structured metrics and select the optimization key |
 | `autoresearch guard --command "..."` | Run guard → JSON `{passed, duration_ms}` |
 | `autoresearch decide --decision auto --metric X --metrics-json '{...}' --description "..."` | Evaluate keep/discard, criteria gates, rollback, and escalation |

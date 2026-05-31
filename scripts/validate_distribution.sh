@@ -146,6 +146,9 @@ require_grep 'autoresearch status --summary' SKILL.md
 require_grep 'Metric history sparkline' README.md
 require_grep 'terminal metric history sparkline' docs/GUIDE.md
 require_grep '\[x\] Metric history graphing \(sparklines in terminal\)' docs/development-roadmap.md
+require_grep 'Noise-aware verification' README.md
+require_grep 'verify --repeat <n>' docs/GUIDE.md
+require_grep 'Noise-aware scalar verification repeats' docs/development-roadmap.md
 require_grep 'autoresearch checkpoint --format json' README.md
 require_grep 'autoresearch checkpoint --format json' docs/GUIDE.md
 require_grep 'Adaptive eval checkpoint command' docs/development-roadmap.md

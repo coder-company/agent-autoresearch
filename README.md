@@ -189,6 +189,7 @@ Covered in detail in the [guide](guide/):
 - **Terminal dashboard** — `autoresearch dashboard --once` renders status, metric history, escalation, and recent rows in one view
 - **Compact run status** — `autoresearch status --summary` prints monitor-friendly counters without full config payloads
 - **Metric history sparkline** — `autoresearch progress` graphs retained metric history directly in terminal output
+- **Noise-aware verification** — `autoresearch verify --repeat 3 --aggregate median` reruns scalar metrics and returns an aggregate with all samples
 - **Cost estimates** — `autoresearch cost --per-iteration-usd 0.25` projects completed and remaining token/API spend
 - **Eval checkpoints** — `autoresearch checkpoint --format json` runs evals only when the active run reaches its checkpoint interval
 - **Parallel worker execution** — `autoresearch parallel prepare/run/closeout/cleanup` creates isolated worker worktrees, launches prompts, merges and verifies the best result, logs `5a`/`5b` audit rows, and cleans up branches
