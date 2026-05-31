@@ -14,7 +14,7 @@ autoresearch fix --target "npx tsc --noEmit" --scope "src/**/*.ts" --category ty
 autoresearch improve --goal "Improve onboarding activation" --icp "Developer tools teams" --depth deep --iterations 24 --seeds 5 --evals --learn
 autoresearch prd --title "Improve onboarding" --problem "New users stall before first run"
 autoresearch security --scope "src/**/*.rs" --focus auth --depth deep --iterations 18 --diff --evals
-autoresearch ship --target "Release v1.2.0" --type code-release --dry-run --monitor 15
+autoresearch ship --target "Release v1.2.0" --type code-release --dry-run --monitor 15 --learn
 autoresearch scenario --target "Checkout flow" --domain web --format threat-scenarios --scope "src/checkout/**" --iterations 16 --debug
 autoresearch predict --proposal "Add cache warming to search results" --scope "src/search/**" --debug
 autoresearch reason --question "Should we replace the storage layer" --mode debate --domain software --iterations 11 --judges 7 --convergence 4 --predict
@@ -44,7 +44,7 @@ Native artifact generators default to ignored `autoresearch-results/<mode>/` pat
 `security --fail-on <severity> --fix` records the CI gate threshold, confirmed finding count, and downstream fix target metadata.
 `security --depth <level> --iterations <n> --diff --chain <targets> --evals` records audit budget, delta mode, explicit chain targets, and checkpoint propagation metadata.
 `ship` writes an 8-phase checklist, summary, ship log TSV, and handoff JSON without performing external ship actions.
-`ship --auto --force --rollback --monitor <minutes> --chain <targets>` records approval posture, rollback intent, monitoring window, and downstream handoff metadata without external side effects.
+`ship --auto --force --rollback --monitor <minutes> --learn` records approval posture, rollback intent, monitoring window, and downstream learn handoff metadata without external side effects.
 `scenario` writes a markdown artifact covering all 12 scenario dimensions for the requested target, domain, format, focus, and implementation scope.
 `scenario --domain <domain> --depth <level> --iterations <n> --evals --debug` records domain, exploration budget, checkpoint metadata, and downstream debug handoff context.
 `predict` writes a five-persona pre-implementation review with architecture, security, performance, UX, and adversarial findings.

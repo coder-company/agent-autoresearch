@@ -105,7 +105,7 @@ Use `autoresearch security --scope <glob> --focus <area>` to write a STRIDE + OW
 Add `--fail-on <severity>` and `--fix` to `autoresearch security` to record CI gate and repair-chain metadata for confirmed findings.
 Use `autoresearch security --scope <glob> --depth deep --iterations 18 --diff --chain fix --evals` to override the audit budget and record delta mode, downstream handoff, and checkpoint metadata.
 Use `autoresearch ship --target <thing> --type <kind> --dry-run` to write an 8-phase ship checklist, summary, ship log, and handoff JSON without external side effects.
-Use `autoresearch ship --target <thing> --auto --force --rollback --monitor 15 --chain learn` to record approval, rollback, monitoring, and downstream handoff metadata.
+Use `autoresearch ship --target <thing> --auto --force --rollback --monitor 15 --learn` to record approval, rollback, monitoring, and downstream learn handoff metadata.
 Use `autoresearch scenario --target <feature> --domain <general|web|mobile|api|cli|data-pipeline|infrastructure> --format <test-scenarios|threat-scenarios|use-cases|user-stories>` to write a 12-dimension scenario matrix for tests, threat modeling, or debug follow-up.
 Use `autoresearch scenario --target <feature> --domain web --depth deep --iterations 16 --evals --debug` to override the exploration budget and record domain, checkpoint metadata, and downstream debug handoff.
 Use `autoresearch predict --proposal <change>` to write a five-persona review covering architecture, security, performance, UX, and adversarial risks.

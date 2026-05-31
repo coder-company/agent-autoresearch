@@ -689,6 +689,9 @@ enum Commands {
         /// Generate only checklist artifacts
         #[arg(long)]
         checklist_only: bool,
+        /// Chain into learn mode after writing ship artifacts
+        #[arg(long)]
+        learn: bool,
         /// Comma-separated downstream command targets to record in handoff.json
         #[arg(long)]
         chain: Option<String>,
@@ -1686,6 +1689,7 @@ fn main() -> Result<()> {
             rollback,
             monitor,
             checklist_only,
+            learn,
             chain,
             output_dir,
             cwd,
@@ -1698,6 +1702,7 @@ fn main() -> Result<()> {
             rollback,
             monitor,
             checklist_only,
+            learn,
             chain,
             output_dir,
             cwd,
@@ -3559,12 +3564,14 @@ fn cmd_ship(
     rollback: bool,
     monitor_minutes: Option<u32>,
     checklist_only: bool,
+    learn: bool,
     chain: Option<String>,
     output_dir: Option<PathBuf>,
     cwd: Option<PathBuf>,
 ) -> Result<()> {
     let profile = resolve_ship_profile(auto, force, rollback, monitor_minutes)?;
-    let chain_targets = chain_targets_with_forced(chain.as_deref(), &[])?;
+    let forced_targets = if learn { &["learn"][..] } else { &[][..] };
+    let chain_targets = chain_targets_with_forced(chain.as_deref(), forced_targets)?;
     let next_target = next_chain_target_value(&chain_targets);
     let status = ship_handoff_status(dry_run, checklist_only, &profile);
     let workspace = resolve_workspace_root(cwd);

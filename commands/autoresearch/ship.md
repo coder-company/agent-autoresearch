@@ -1,7 +1,7 @@
 ---
 name: autoresearch:ship
 description: "Ship anything through 8 phases: checklist, dry-run, deploy, verify"
-argument-hint: "[Target: <what>] [--type <type>] [--dry-run] [--auto] [--force] [--rollback] [--checklist-only] [--monitor N]"
+argument-hint: "[Target: <what>] [--type <type>] [--dry-run] [--auto] [--force] [--rollback] [--checklist-only] [--monitor N] [--learn]"
 ---
 
 EXECUTE IMMEDIATELY.
@@ -17,6 +17,7 @@ Extract from $ARGUMENTS:
 - `--rollback` — undo last ship action
 - `--monitor N` — post-ship monitoring for N minutes
 - `--checklist-only` — only generate checklist, don't execute
+- `--learn` — shorthand for `--chain learn`
 - `--chain`, `--<subcommand>`
 
 Remaining text = description of what to ship.

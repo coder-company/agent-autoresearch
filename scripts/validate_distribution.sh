@@ -214,7 +214,8 @@ require_grep '`autoresearch security` writes' COMPARISON.md
 require_grep 'autoresearch ship --target' README.md
 require_grep 'autoresearch ship --target' docs/GUIDE.md
 require_grep 'autoresearch ship --target' references/binary-operations.md
-require_grep 'ship --auto --force --rollback' references/binary-operations.md
+require_grep 'ship --auto --force --rollback --monitor <minutes> --learn' references/binary-operations.md
+require_grep 'shorthand for `--chain learn`' commands/autoresearch/ship.md
 require_grep 'Native ship generator' docs/development-roadmap.md
 require_grep '`autoresearch ship` writes' COMPARISON.md
 require_grep 'autoresearch scenario --target' README.md

@@ -1155,6 +1155,35 @@ fn test_ship_controls_are_recorded_in_handoff() {
 }
 
 #[test]
+fn test_ship_learn_flag_records_learn_handoff() {
+    let dir = TempDir::new().unwrap();
+    let output_dir = dir.path().join("ship/release");
+
+    cmd()
+        .args([
+            "ship",
+            "--target",
+            "Release v1.2.0",
+            "--type",
+            "code-release",
+            "--learn",
+            "--output-dir",
+            output_dir.to_str().unwrap(),
+            "--cwd",
+            dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"next_target\":\"learn\""));
+
+    let handoff = std::fs::read_to_string(output_dir.join("handoff.json")).unwrap();
+    assert!(handoff.contains("\"source_command\": \"ship\""));
+    assert!(handoff.contains("\"chain\": ["));
+    assert!(handoff.contains("\"learn\""));
+    assert!(handoff.contains("\"next_target\": \"learn\""));
+}
+
+#[test]
 fn test_debug_writes_investigation_artifact_bundle() {
     let dir = TempDir::new().unwrap();
     std::fs::create_dir_all(dir.path().join("src/api")).unwrap();
