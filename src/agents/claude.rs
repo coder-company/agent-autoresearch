@@ -170,7 +170,7 @@ impl ClaudeAdapter {
                 "url": "https://github.com/coder-company"
             },
             "repository": "https://github.com/coder-company/agent-autoresearch",
-            "license": "MIT",
+            "license": "GPL-2.0-only",
             "keywords": [
                 "autonomous",
                 "iteration",

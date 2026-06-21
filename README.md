@@ -14,7 +14,7 @@
   <a href="https://opencode.ai"><img src="https://img.shields.io/badge/OpenCode-Skill-purple" alt="OpenCode Skill"></a>
   <a href="https://github.com/coder-company/agent-autoresearch/actions"><img src="https://github.com/coder-company/agent-autoresearch/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/coder-company/agent-autoresearch"><img src="https://img.shields.io/github/stars/coder-company/agent-autoresearch?style=social" alt="Stars"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="MIT License"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL_v2-blue.svg" alt="GPL v2 License"></a>
 </p>
 
 <p>
@@ -334,4 +334,4 @@ Built on ideas from [Karpathy's autoresearch](https://github.com/karpathy/autore
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+GNU General Public License v2.0 — see [LICENSE](LICENSE).

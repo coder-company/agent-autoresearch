@@ -2,7 +2,7 @@ class Autoresearch < Formula
   desc "Autonomous goal-directed iteration engine for coding agents"
   homepage "https://github.com/coder-company/agent-autoresearch"
   version "VERSION"
-  license "MIT"
+  license "GPL-2.0-only"
 
   on_macos do
     on_arm do

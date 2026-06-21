@@ -8,7 +8,7 @@
   },
   "homepage": "https://github.com/coder-company/agent-autoresearch",
   "repository": "https://github.com/coder-company/agent-autoresearch",
-  "license": "MIT",
+  "license": "GPL-2.0-only",
   "keywords": [
     "autoresearch",
     "codex",
