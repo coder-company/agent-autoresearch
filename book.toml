@@ -1,7 +1,7 @@
 [book]
 title = "Autoresearch"
 authors = ["Coder Company"]
-description = "Autonomous goal-directed iteration for coding agents"
+description = "Autonomous goal-directed iteration loop for Claude Code, Codex CLI, and OpenCode. Modify, verify, keep, discard, repeat."
 src = "docs"
 language = "en"
 
@@ -11,3 +11,16 @@ build-dir = "book"
 [output.html]
 git-repository-url = "https://github.com/coder-company/agent-autoresearch"
 edit-url-template = "https://github.com/coder-company/agent-autoresearch/edit/main/docs/{path}"
+site-url = "/"
+additional-css = ["theme/extra.css"]
+additional-js = []
+theme = "theme"
+
+[output.html.search]
+limit-results = 30
+use-boolean-and = true
+boost-title = 2
+boost-hierarchy = 1
+boost-paragraph = 1
+expand = true
+heading-split-level = 3

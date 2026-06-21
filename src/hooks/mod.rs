@@ -113,12 +113,31 @@ pub fn dispatch(hook_name: &str) -> Result<()> {
         "compaction-reanchor" => compaction_reanchor::run(input.as_ref()),
         "subagent-context" => subagent_context::run(input.as_ref()),
         "dev-rules-reminder" => dev_rules_reminder::run(input.as_ref()),
-        _ => HookResponse::allow(),
+        other => {
+            anyhow::bail!(
+                "Unknown hook {other:?}. Valid hooks: {}",
+                KNOWN_HOOKS.join(", ")
+            );
+        }
     };
 
     response.emit();
     Ok(())
 }
+
+const KNOWN_HOOKS: &[&str] = &[
+    "iteration-context",
+    "scout-block",
+    "privacy-block",
+    "dangerous-cmd-block",
+    "session-init",
+    "session-end",
+    "simplify-gate",
+    "stop-check",
+    "compaction-reanchor",
+    "subagent-context",
+    "dev-rules-reminder",
+];
 
 fn hook_disabled(hook_name: &str) -> bool {
     let env_key = format!(

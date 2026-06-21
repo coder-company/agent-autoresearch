@@ -7447,8 +7447,10 @@ fn cmd_evals(
         Some(p) => p,
         None => {
             let cwd = std::env::current_dir()?;
-            default_results_tsv(&cwd)
-                .context("No results.tsv found. Provide a path or run inside a git repo.")?
+            default_results_tsv(&cwd).context(
+                "No active run found. Start one with `autoresearch init`, or pass --file \
+                 pointing to a results.tsv from a previous run.",
+            )?
         }
     };
 
@@ -7929,7 +7931,7 @@ fn cmd_checkpoint(cwd: Option<PathBuf>, interval: Option<u32>, format: &str) -> 
     let results_dir = workspace.join("autoresearch-results");
     let state_path = results_dir.join("state.json");
     if !state_path.exists() {
-        anyhow::bail!("No active run (state.json not found)");
+        anyhow::bail!(NO_ACTIVE_RUN_HINT);
     }
     let state: RunState = serde_json::from_str(&std::fs::read_to_string(&state_path)?)?;
     let interval = checkpoint_interval(&state, interval)?;
@@ -9045,8 +9047,10 @@ fn mcp_status_payload(cwd: Option<PathBuf>) -> Result<serde_json::Value> {
 
 fn mcp_watch_snapshot_payload(cwd: Option<PathBuf>, lines: usize) -> Result<serde_json::Value> {
     let cwd = resolve_cwd(cwd);
-    let tsv_path = default_results_tsv(&cwd)
-        .context("No results.tsv found. Provide cwd inside a run workspace.")?;
+    let tsv_path = default_results_tsv(&cwd).context(
+        "No active run found. Start one with `autoresearch init`, or pass cwd pointing to a \
+         directory that contains autoresearch-results/results.tsv.",
+    )?;
     let (payloads, _) = watch_websocket_payloads(&tsv_path, lines, 0)?;
     Ok(serde_json::json!({
         "results_tsv": tsv_path.display().to_string(),
@@ -9357,7 +9361,7 @@ fn cmd_reanchor(cwd: Option<PathBuf>, format: &str) -> Result<()> {
     let state_path = results_dir.join("state.json");
     let context_path = results_dir.join("context.json");
     if !state_path.exists() || !context_path.exists() {
-        anyhow::bail!("No active run (state.json not found)");
+        anyhow::bail!(NO_ACTIVE_RUN_HINT);
     }
     let context = load_run_context(&workspace)?;
     let state: RunState = serde_json::from_str(
@@ -10929,7 +10933,7 @@ fn cmd_cost(
     let results_dir = workspace.join("autoresearch-results");
     let state_path = results_dir.join("state.json");
     if !state_path.exists() {
-        anyhow::bail!("No active run (state.json not found)");
+        anyhow::bail!(NO_ACTIVE_RUN_HINT);
     }
 
     let state: RunState = serde_json::from_str(&std::fs::read_to_string(&state_path)?)?;
@@ -10989,7 +10993,7 @@ fn render_dashboard(workspace: &Path, lines: usize) -> Result<String> {
     let results_dir = workspace.join("autoresearch-results");
     let state_path = results_dir.join("state.json");
     if !state_path.exists() {
-        anyhow::bail!("No active run (state.json not found)");
+        anyhow::bail!(NO_ACTIVE_RUN_HINT);
     }
 
     let state: RunState = serde_json::from_str(&std::fs::read_to_string(&state_path)?)?;
@@ -11074,7 +11078,7 @@ fn cmd_progress(cwd: Option<PathBuf>) -> Result<()> {
     let state_path = results_dir.join("state.json");
 
     if !state_path.exists() {
-        anyhow::bail!("No active run (state.json not found)");
+        anyhow::bail!(NO_ACTIVE_RUN_HINT);
     }
 
     let state: RunState = serde_json::from_str(&std::fs::read_to_string(&state_path)?)?;
@@ -11156,8 +11160,10 @@ fn cmd_watch(
         Some(parse_watch_format(format)?)
     };
     let cwd = resolve_cwd(cwd);
-    let tsv_path = default_results_tsv(&cwd)
-        .context("No results.tsv found. Provide --cwd inside a run workspace.")?;
+    let tsv_path = default_results_tsv(&cwd).context(
+        "No active run found. Start one with `autoresearch init --goal '...' --verify '...'`, \
+         or pass --cwd pointing to a directory that contains autoresearch-results/results.tsv.",
+    )?;
     if websocket {
         return cmd_watch_websocket(tsv_path, lines, once, interval_ms, websocket_addr);
     }
@@ -12228,6 +12234,10 @@ fn resolve_workspace_root(cwd: Option<PathBuf>) -> PathBuf {
         .and_then(|repo| repo.workdir())
         .unwrap_or(workspace)
 }
+
+const NO_ACTIVE_RUN_HINT: &str =
+    "No active run. Start one with `autoresearch init --goal '...' --verify '...'`, or pass \
+     --cwd pointing to a directory that contains autoresearch-results/state.json.";
 
 fn resolve_results_workspace(cwd: Option<PathBuf>) -> PathBuf {
     let workspace = resolve_cwd(cwd);
