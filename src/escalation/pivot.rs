@@ -151,9 +151,11 @@ mod tests {
 
     #[test]
     fn test_keep_resets_everything() {
-        let mut state = EscalationState::default();
-        state.consecutive_discards = 4;
-        state.pivots_since_last_keep = 2;
+        let mut state = EscalationState {
+            consecutive_discards: 4,
+            pivots_since_last_keep: 2,
+            ..EscalationState::default()
+        };
 
         state.record_keep();
         assert_eq!(state.consecutive_discards, 0);
@@ -162,8 +164,10 @@ mod tests {
 
     #[test]
     fn test_soft_blocker_after_3_pivots() {
-        let mut state = EscalationState::default();
-        state.pivots_since_last_keep = 3;
+        let mut state = EscalationState {
+            pivots_since_last_keep: 3,
+            ..EscalationState::default()
+        };
 
         // Any discard after 3 pivots without keep → soft blocker
         assert_eq!(state.record_discard(), EscalationAction::SoftBlocker);

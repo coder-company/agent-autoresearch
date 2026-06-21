@@ -1,4 +1,4 @@
-# Autoresearch: Autonomous Goal-Directed Iteration for Claude Code, Codex CLI, and OpenCode
+# Autoresearch: Autonomous Goal-Directed Iteration for Claude Code, Codex, and OpenCode
 
 <div align="center">
 

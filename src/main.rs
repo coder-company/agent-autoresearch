@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_arguments)]
+
 use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser, Subcommand};
 use rust_decimal::prelude::ToPrimitive;
@@ -7931,7 +7933,7 @@ fn cmd_checkpoint(cwd: Option<PathBuf>, interval: Option<u32>, format: &str) -> 
     }
     let state: RunState = serde_json::from_str(&std::fs::read_to_string(&state_path)?)?;
     let interval = checkpoint_interval(&state, interval)?;
-    let due = state.iteration > 0 && state.iteration % interval == 0;
+    let due = state.iteration > 0 && state.iteration.is_multiple_of(interval);
     if !due {
         let next_iteration = if state.iteration == 0 {
             interval
@@ -8878,9 +8880,7 @@ fn handle_mcp_request(
     let id = request.get("id").cloned();
     let method = request.get("method").and_then(|value| value.as_str());
 
-    if id.is_none() {
-        return None;
-    }
+    id.as_ref()?;
 
     let id = id.unwrap_or(serde_json::Value::Null);
     match method {
@@ -9149,7 +9149,7 @@ fn build_environment_probe(workspace: &Path) -> EnvironmentProbe {
         .iter()
         .filter_map(|(binary, present)| present.then_some(binary.as_str()))
         .collect::<Vec<_>>();
-    let recommended_parallel_workers = std::cmp::min(3, std::cmp::max(1, cpu_cores / 2));
+    let recommended_parallel_workers = (cpu_cores / 2).clamp(1, 3);
     let summary = format!(
         "cpu={} disk_mb={} container={} toolchains={}",
         cpu_cores,
@@ -9361,7 +9361,7 @@ fn cmd_reanchor(cwd: Option<PathBuf>, format: &str) -> Result<()> {
             .with_context(|| format!("failed to read {}", state_path.display()))?,
     )
     .with_context(|| format!("failed to parse {}", state_path.display()))?;
-    let due = state.iteration > 0 && state.iteration % 10 == 0;
+    let due = state.iteration > 0 && state.iteration.is_multiple_of(10);
     let next_due_iteration = ((state.iteration / 10) + 1) * 10;
     let checks = reanchor_reference_checks(&workspace, &context);
     let status = if checks
@@ -10797,7 +10797,7 @@ fn metric_history_sparkline(metrics: &[Decimal]) -> Option<String> {
     let min = metrics.iter().copied().min()?;
     let max = metrics.iter().copied().max()?;
     if min == max {
-        return Some(std::iter::repeat(LEVELS[0]).take(metrics.len()).collect());
+        return Some(std::iter::repeat_n(LEVELS[0], metrics.len()).collect());
     }
 
     let span = max - min;
@@ -11181,10 +11181,8 @@ fn cmd_watch(
         let header_columns = watch_header_columns(header);
 
         if printed_lines == 0 {
-            if format == WatchFormat::Tsv {
-                if !write_watch_line(header, format, &header_columns)? {
-                    return Ok(());
-                }
+            if format == WatchFormat::Tsv && !write_watch_line(header, format, &header_columns)? {
+                return Ok(());
             }
 
             let data_rows: Vec<&str> = visible_lines
@@ -11554,7 +11552,7 @@ fn run_search_request(
         });
         if log {
             let iteration = log_search_result(
-                &workspace,
+                workspace,
                 result["query"].as_str().unwrap_or(""),
                 0,
                 false,
@@ -11586,7 +11584,7 @@ fn run_search_request(
         }
         if log {
             let iteration =
-                log_search_result(&workspace, &query, search_result_count(&cached), true, "ok")?;
+                log_search_result(workspace, &query, search_result_count(&cached), true, "ok")?;
             if let Some(object) = cached.as_object_mut() {
                 object.insert("logged_iteration".to_string(), serde_json::json!(iteration));
             }
@@ -11597,7 +11595,7 @@ fn run_search_request(
     let output = Command::new("sh")
         .arg("-c")
         .arg(&provider_command)
-        .current_dir(&workspace)
+        .current_dir(workspace)
         .env("AUTORESEARCH_SEARCH_QUERY", &query)
         .env("AUTORESEARCH_SEARCH_LIMIT", limit.to_string())
         .output()
@@ -11626,7 +11624,7 @@ fn run_search_request(
     write_json_file(&cache_path, &result)?;
     if log {
         let iteration = log_search_result(
-            &workspace,
+            workspace,
             result["query"].as_str().unwrap_or(""),
             search_result_count(&result),
             false,

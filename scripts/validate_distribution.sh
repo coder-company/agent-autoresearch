@@ -526,7 +526,8 @@ require_grep 'integrations/vscode' docs/GUIDE.md
 require_grep '\[x\] VS Code extension for run visualization with source installer support' docs/development-roadmap.md
 require_grep 'src = "docs"' book.toml
 require_grep '\[Installation\]\(INSTALL\.md\)' docs/SUMMARY.md
-require_grep 'actions/deploy-pages@v4' .github/workflows/docs.yml
+require_grep 'wrangler@4 pages deploy book' .github/workflows/docs.yml
+require_grep 'autoresearch-coder' .github/workflows/docs.yml
 require_grep 'Comprehensive documentation site' docs/development-roadmap.md
 require_grep '^book/$' .gitignore
 if grep -q 'sed -i' "$ROOT/scripts/release.sh"; then

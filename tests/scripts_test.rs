@@ -273,7 +273,8 @@ fn install_script_supports_raw_github_bootstrap() {
     assert!(script.contains("curl -fsSL \"$INSTALL_ARCHIVE_URL\" -o \"$archive\""));
     assert!(script.contains("export AUTORESEARCH_BOOTSTRAP_TMP_DIR=\"$tmp_dir\""));
     assert!(script.contains("exec bash \"$source_dir/install.sh\" \"$@\""));
-    assert!(script.contains("raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh"));
+    assert!(script
+        .contains("raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh"));
 }
 
 #[test]
@@ -300,13 +301,12 @@ fn docs_workflow_builds_and_deploys_mdbook_site() {
     assert!(workflow.contains("workflow_dispatch:"));
     assert!(workflow.contains("book.toml"));
     assert!(workflow.contains("docs/**"));
-    assert!(workflow.contains("pages: write"));
-    assert!(workflow.contains("id-token: write"));
     assert!(workflow.contains("cargo install mdbook --locked"));
     assert!(workflow.contains("mdbook build"));
-    assert!(workflow.contains("actions/upload-pages-artifact@v3"));
-    assert!(workflow.contains("actions/deploy-pages@v4"));
-    assert!(workflow.contains("github-pages"));
+    assert!(workflow.contains("wrangler@4 pages deploy book"));
+    assert!(workflow.contains("autoresearch-coder"));
+    assert!(workflow.contains("CLOUDFLARE_API_TOKEN"));
+    assert!(workflow.contains("CLOUDFLARE_ACCOUNT_ID"));
 }
 
 #[test]
