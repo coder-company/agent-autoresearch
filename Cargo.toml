@@ -2,9 +2,14 @@
 name = "autoresearch"
 version = "0.1.0"
 edition = "2021"
-description = "Autonomous goal-directed iteration engine for coding agents"
+description = "Autonomous goal-directed iteration loop for Claude Code, Codex CLI, and OpenCode. Modify, verify, keep, discard, repeat."
 license = "MIT"
 repository = "https://github.com/coder-company/agent-autoresearch"
+homepage = "https://autoresearch.coder.company"
+documentation = "https://autoresearch.coder.company"
+readme = "README.md"
+keywords = ["claude-code", "codex", "agent", "automation", "iteration"]
+categories = ["command-line-utilities", "development-tools"]
 authors = ["Coder Company"]
 
 [dependencies]

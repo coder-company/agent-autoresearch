@@ -22,3 +22,6 @@ Thumbs.db
 
 # Autoresearch runtime artifacts (generated during use)
 autoresearch-results/
+
+# Wrangler local state
+.wrangler/

@@ -1,8 +1,10 @@
+# Autoresearch: Autonomous Goal-Directed Iteration for Claude Code, Codex CLI, and OpenCode
+
 <div align="center">
 
-<h2><b>Aim. Iterate. Arrive.</b></h2>
+<p><b>Aim. Iterate. Arrive.</b></p>
 
-<p><i>Autonomous goal-driven experimentation for Claude Code, Codex, and OpenCode.</i></p>
+<p><i>An autonomous experiment loop for coding agents. Modify, verify, keep, discard, repeat. Inspired by Karpathy's autoresearch, generalized to any verifiable goal: test coverage, type errors, latency, lint warnings, security findings, release readiness.</i></p>
 
 <p><b>13 command protocols · 11 native hooks · background runtime · parallel verified closeout</b></p>
 
