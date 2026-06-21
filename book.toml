@@ -12,9 +12,6 @@ build-dir = "book"
 git-repository-url = "https://github.com/coder-company/agent-autoresearch"
 edit-url-template = "https://github.com/coder-company/agent-autoresearch/edit/main/docs/{path}"
 site-url = "/"
-additional-css = ["theme/extra.css"]
-additional-js = []
-theme = "theme"
 
 [output.html.search]
 limit-results = 30
