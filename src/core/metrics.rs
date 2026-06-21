@@ -15,8 +15,13 @@ pub fn parse_scalar_metric(output: &str) -> Result<Decimal> {
         .context("Verify command produced no output")?
         .trim();
 
-    Decimal::from_str(line)
-        .with_context(|| format!("Cannot parse metric from final line: {line:?}"))
+    Decimal::from_str(line).with_context(|| {
+        format!(
+            "Verify command must output a single numeric metric on the final line, got {line:?}. \
+             Example: a shell command like `grep -c TODO src/ || echo 0` that prints just a number. \
+             For multiple metrics, switch to --format metrics_json and emit a JSON object."
+        )
+    })
 }
 
 /// Parse metrics from JSON output format.

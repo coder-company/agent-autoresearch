@@ -9355,6 +9355,10 @@ fn cmd_reanchor(cwd: Option<PathBuf>, format: &str) -> Result<()> {
     let workspace = resolve_results_workspace(cwd);
     let results_dir = workspace.join("autoresearch-results");
     let state_path = results_dir.join("state.json");
+    let context_path = results_dir.join("context.json");
+    if !state_path.exists() || !context_path.exists() {
+        anyhow::bail!("No active run (state.json not found)");
+    }
     let context = load_run_context(&workspace)?;
     let state: RunState = serde_json::from_str(
         &std::fs::read_to_string(&state_path)

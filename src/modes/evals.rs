@@ -191,7 +191,15 @@ fn parse_results_tsv_header(parts: &[&str]) -> Result<ResultsTsvColumns> {
 }
 
 fn require_column(headers: &[&str], label: &str, names: &[&str]) -> Result<usize> {
-    find_column(headers, names).with_context(|| format!("Missing required column {label}"))
+    find_column(headers, names).with_context(|| {
+        format!(
+            "TSV is missing required column {label:?}. \
+             Expected an autoresearch results.tsv with columns: \
+             iteration, commit, metric, delta, guard, status, description. \
+             Found headers: {found:?}",
+            found = headers.join(", "),
+        )
+    })
 }
 
 fn find_column(headers: &[&str], names: &[&str]) -> Option<usize> {
