@@ -25,3 +25,4 @@ autoresearch-results/
 
 # Wrangler local state
 .wrangler/
+book-tmp/
