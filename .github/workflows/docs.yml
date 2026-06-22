@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   build-deploy:
-    runs-on: [self-hosted, coder-company]
+    runs-on: [self-hosted, palantir-actions]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4

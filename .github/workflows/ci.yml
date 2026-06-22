@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, palantir-actions]
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
