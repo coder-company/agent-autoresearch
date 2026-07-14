@@ -56,7 +56,7 @@ Pick the install path for the current agent:
 - If you cannot infer a non-Pi agent, use --all.
 
 Run the selected installer non-interactively with bash, verify `autoresearch --help`, then tell me the command I should use to start Autoresearch in this agent.
-For Pi, first ensure the `autoresearch` binary is on `PATH`, then run `pi install git:github.com/coder-company/agent-autoresearch@v0.1.2`.
+For Pi, first ensure the `autoresearch` binary is on `PATH`, then run `pi install git:github.com/coder-company/agent-autoresearch@v0.1.3`.
 Start commands are `/autoresearch` for Claude Code, `$autoresearch` for Codex, and `/autoresearch` for OpenCode. Pi invokes `/skill:autoresearch`.
 Use a global install unless I explicitly asked for a project-local install.
 ```
@@ -91,7 +91,7 @@ Start with `/autoresearch`. Mode commands use underscores, such as `/autoresearc
 
 ```bash
 cargo binstall autoresearch
-pi install git:github.com/coder-company/agent-autoresearch@v0.1.2
+pi install git:github.com/coder-company/agent-autoresearch@v0.1.3
 ```
 
 The Pi package installs the Pi-native skill; the binary supplies mechanical verification and state management. Start Pi in your project and describe a measurable goal, or force the workflow with `/skill:autoresearch`.

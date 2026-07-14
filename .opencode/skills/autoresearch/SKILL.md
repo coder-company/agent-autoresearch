@@ -1,7 +1,7 @@
 ---
 name: autoresearch
 description: "Autonomous goal-directed iteration: modify, verify, keep/discard against any metric. Uses /goal for native multi-turn continuation."
-version: 0.1.2
+version: 0.1.3
 ---
 
 # Autoresearch — Autonomous Goal-Directed Iteration

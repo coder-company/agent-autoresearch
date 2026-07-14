@@ -10,14 +10,14 @@ Install the binary first, then add the versioned Pi package:
 
 ```bash
 cargo binstall autoresearch
-pi install git:github.com/coder-company/agent-autoresearch@v0.1.2
+pi install git:github.com/coder-company/agent-autoresearch@v0.1.3
 ```
 
 The command records the package in Pi's user settings. To install it only for
 the current project, use Pi's local settings instead:
 
 ```bash
-pi install -l git:github.com/coder-company/agent-autoresearch@v0.1.2
+pi install -l git:github.com/coder-company/agent-autoresearch@v0.1.3
 ```
 
 Verify both parts of the installation:

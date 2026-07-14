@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.3] — 2026-07-14
+
+### Changed
+
+- fix(ci): initialize isolated Rust homes in a step
+
 ## [0.1.2] — 2026-07-14
 
 ### Changed

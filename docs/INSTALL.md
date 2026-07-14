@@ -20,7 +20,7 @@ Pick the install path for the current agent:
 - If you cannot infer a non-Pi agent, use --all.
 
 Run the selected installer non-interactively with bash, verify `autoresearch --help`, then tell me the command I should use to start Autoresearch in this agent.
-For Pi, first ensure the `autoresearch` binary is on `PATH`, then run `pi install git:github.com/coder-company/agent-autoresearch@v0.1.2`.
+For Pi, first ensure the `autoresearch` binary is on `PATH`, then run `pi install git:github.com/coder-company/agent-autoresearch@v0.1.3`.
 Start commands are `/autoresearch` for Claude Code, `$autoresearch` for Codex, and `/autoresearch` for OpenCode. Pi invokes `/skill:autoresearch`.
 Use a global install unless I explicitly asked for a project-local install.
 ```
@@ -207,7 +207,7 @@ Install the native binary, then install the versioned Pi package from Git:
 
 ```bash
 cargo binstall autoresearch
-pi install git:github.com/coder-company/agent-autoresearch@v0.1.2
+pi install git:github.com/coder-company/agent-autoresearch@v0.1.3
 ```
 
 Pi records the package in its settings and loads the Pi-native `autoresearch` skill. Open Pi in the target project and describe a measurable improvement, or invoke the workflow directly:
@@ -216,7 +216,7 @@ Pi records the package in its settings and loads the Pi-native `autoresearch` sk
 /skill:autoresearch loop
 ```
 
-The Pi package intentionally does not run `autoresearch runtime run`, because that command supervises Codex workers. Pi runs stay in the active Pi session. Use `pi install -l git:github.com/coder-company/agent-autoresearch@v0.1.2` when the package should be recorded in `.pi/settings.json` instead of user settings.
+The Pi package intentionally does not run `autoresearch runtime run`, because that command supervises Codex workers. Pi runs stay in the active Pi session. Use `pi install -l git:github.com/coder-company/agent-autoresearch@v0.1.3` when the package should be recorded in `.pi/settings.json` instead of user settings.
 
 ## VS Code
 

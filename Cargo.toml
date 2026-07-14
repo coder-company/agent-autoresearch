@@ -1,6 +1,6 @@
 [package]
 name = "autoresearch"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 build = "build.rs"
 description = "Autonomous goal-directed iteration loop for Claude Code, Codex CLI, OpenCode, and Pi. Modify, verify, keep, discard, repeat."
