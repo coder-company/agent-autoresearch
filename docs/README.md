@@ -5,6 +5,7 @@ Start here when browsing the repository documentation directly.
 | Doc | Purpose |
 |-----|---------|
 | [Installation](INSTALL.md) | Install paths for Claude Code, Codex, OpenCode, Pi, and source builds |
+| [Pi Package](../guide/autoresearch-pi.md) | Git package install and active-session usage |
 | [Guide](GUIDE.md) | Command map, binary operations, artifacts, and guide links |
 | [Examples](EXAMPLES.md) | Copy-paste configs for common autoresearch goals |
 | [System Architecture](system-architecture.md) | Binary, agent package, runtime, and artifact architecture |

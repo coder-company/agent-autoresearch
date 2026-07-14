@@ -92,6 +92,7 @@ required_paths=(
     guide/README.md
     guide/autoresearch-codex.md
     guide/autoresearch-opencode.md
+    guide/autoresearch-pi.md
     references/core-principles.md
     references/runtime-protocol.md
     references/results-logging.md
@@ -448,6 +449,13 @@ require_grep 'guide/autoresearch-opencode\.md' README.md
 require_grep 'autoresearch-opencode\.md' guide/README.md
 require_grep '\.\./guide/autoresearch-opencode\.md' docs/GUIDE.md
 require_grep '/autoresearch_security' guide/autoresearch-opencode.md
+require_grep 'autoresearch-pi\.md' README.md
+require_grep 'autoresearch-pi\.md' docs/README.md
+require_grep 'autoresearch-pi\.md' docs/INSTALL.md
+require_grep 'autoresearch-pi\.md' docs/GUIDE.md
+require_grep 'autoresearch-pi\.md' guide/README.md
+require_grep '/skill:autoresearch' guide/autoresearch-pi.md
+require_grep 'runtime run' guide/autoresearch-pi.md
 require_grep 'bootstrap_source_tree' install.sh
 require_grep 'AUTORESEARCH_INSTALL_ARCHIVE_URL' install.sh
 require_grep '\-\-codex-plugin' docs/INSTALL.md

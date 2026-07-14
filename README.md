@@ -337,6 +337,7 @@ No. Every change is committed before verification. If it makes things worse, it 
 | [Hooks](guide/hooks.md) | Safety system reference |
 | [Codex](guide/autoresearch-codex.md) | Skill install, local plugin package, foreground/background runtime |
 | [OpenCode](guide/autoresearch-opencode.md) | Slash commands, underscore modes, global and project-local installs |
+| [Pi](guide/autoresearch-pi.md) | Git package install, skill invocation, and active-session workflow |
 | [Full Guide Index](guide/) | Per-command deep dives |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
 

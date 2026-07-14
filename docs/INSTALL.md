@@ -257,4 +257,4 @@ For repository contributors:
 ./scripts/run_contributor_gate.sh
 ```
 
-See [Getting Started](../guide/getting-started.md) and [Codex usage](../guide/autoresearch-codex.md) for first-run examples.
+See [Getting Started](../guide/getting-started.md), [Codex usage](../guide/autoresearch-codex.md), and [Pi usage](../guide/autoresearch-pi.md) for first-run examples.

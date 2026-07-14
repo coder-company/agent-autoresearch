@@ -6,7 +6,7 @@ Autoresearch is a loop controller for agents: define a measurable goal, modify o
 
 | Need | Use |
 |------|-----|
-| Improve a metric | `/autoresearch` or `$autoresearch` |
+| Improve a metric | `/autoresearch`, `$autoresearch`, or Pi `/skill:autoresearch` |
 | Pick a metric from a vague goal | `/autoresearch:plan` or `$autoresearch plan` |
 | Find a root cause | `/autoresearch:debug` or `$autoresearch debug` |
 | Reduce errors to zero | `/autoresearch:fix` or `$autoresearch fix` |
@@ -207,6 +207,7 @@ Do not commit `autoresearch-results/` or `.codex-autoresearch/`.
 - [Core Loop](../guide/autoresearch.md)
 - [Codex](../guide/autoresearch-codex.md)
 - [OpenCode](../guide/autoresearch-opencode.md)
+- [Pi](../guide/autoresearch-pi.md)
 - [Examples by Domain](../guide/examples-by-domain.md)
 - [Chains & Combinations](../guide/chains-and-combinations.md)
 - [Advanced Patterns](../guide/advanced-patterns.md)
