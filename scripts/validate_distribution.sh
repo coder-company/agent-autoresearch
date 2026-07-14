@@ -55,6 +55,7 @@ required_paths=(
     CONTEXT.md
     SKILL.md
     package.json
+    build.rs
     agents/openai.yaml
     agents/skill-openai.yaml
     .claude-plugin/marketplace.json

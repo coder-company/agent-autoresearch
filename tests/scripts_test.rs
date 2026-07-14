@@ -165,8 +165,10 @@ fn release_script_updates_agent_package_versions() {
     assert!(script.contains("update_json_version \"$ROOT/package.json\" \"$VERSION\""));
     assert!(script
         .contains("update_skill_version \"$ROOT/integrations/pi/skills/autoresearch/SKILL.md\""));
+    assert!(script.contains("update_pi_install_version()"));
     assert!(script
-        .contains("update_skill_version \"$ROOT/integrations/pi/skills/autoresearch/SKILL.md\""));
+        .contains("README.md docs/INSTALL.md guide/getting-started.md guide/autoresearch-pi.md"));
+    assert!(script.contains("guide/autoresearch-pi.md"));
     assert!(script.contains(".claude/skills/autoresearch/SKILL.md"));
 }
 
@@ -332,12 +334,31 @@ fn release_workflow_builds_prebuilt_binary_matrix() {
     assert!(workflow.contains("macos-15-intel"));
     assert!(workflow.contains("macos-14"));
     assert!(workflow.contains("cargo build --locked --release --target ${{ matrix.target }}"));
-    assert!(workflow.contains("actions/upload-artifact@v4"));
-    assert!(workflow.contains("actions/download-artifact@v4"));
+    assert!(workflow.contains("actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5"));
+    assert!(workflow.contains("persist-credentials: false"));
+    assert!(workflow.contains("dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30"));
+    assert!(!workflow.contains("actions/cache@"));
+    assert!(workflow.contains("actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02"));
+    assert!(workflow.contains("actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093"));
     assert!(workflow.contains("gh release upload \"$TAG\" --clobber"));
     assert!(workflow.contains("autoresearch-${ref_name}-${{ matrix.target }}"));
     assert!(workflow.contains("sha256sum"));
     assert!(workflow.contains("shasum -a 256"));
+    assert!(workflow.contains(
+        "CARGO_HOME: ${{ runner.temp }}/autoresearch-${{ github.run_id }}-${{ matrix.label }}/cargo"
+    ));
+    assert!(workflow.contains(
+        "RUSTUP_HOME: ${{ runner.temp }}/autoresearch-${{ github.run_id }}-${{ matrix.label }}/rustup"
+    ));
+}
+
+#[test]
+fn windows_build_script_links_advapi32() {
+    let root = repo_root();
+    let build_script = std::fs::read_to_string(root.join("build.rs")).unwrap();
+
+    assert!(build_script.contains("CARGO_CFG_TARGET_OS"));
+    assert!(build_script.contains("advapi32"));
 }
 
 #[test]

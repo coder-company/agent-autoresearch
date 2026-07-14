@@ -38,6 +38,15 @@ update_json_version() {
     fi
 }
 
+update_pi_install_version() {
+    local path="$1"
+    local tmp
+
+    tmp="$(mktemp)"
+    awk -v version="$VERSION" '{ gsub(/git:github\.com\/coder-company\/agent-autoresearch@v[0-9]+\.[0-9]+\.[0-9]+/, "git:github.com/coder-company/agent-autoresearch@v" version); print }' "$path" > "$tmp"
+    mv "$tmp" "$path"
+}
+
 update_skill_version() {
     local path="$1"
 
@@ -104,6 +113,9 @@ update_json_version "$ROOT/package.json" "$VERSION"
 update_skill_version "$ROOT/skills/autoresearch/SKILL.md"
 update_skill_version "$ROOT/.agents/skills/autoresearch/SKILL.md"
 update_skill_version "$ROOT/integrations/pi/skills/autoresearch/SKILL.md"
+for doc in README.md docs/INSTALL.md guide/getting-started.md guide/autoresearch-pi.md; do
+    update_pi_install_version "$ROOT/$doc"
+done
 
 # ── 4. Sync generated distributions ─────────────────────────────────
 echo "[3/10] Syncing generated distributions..."
@@ -186,6 +198,10 @@ git -C "$ROOT" add \
     Cargo.toml \
     Cargo.lock \
     docs/changelog.md \
+    README.md \
+    docs/INSTALL.md \
+    guide/getting-started.md \
+    guide/autoresearch-pi.md \
     .claude-plugin/plugin.json \
     .claude-plugin/marketplace.json \
     skills/autoresearch/SKILL.md \
