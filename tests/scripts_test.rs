@@ -344,12 +344,11 @@ fn release_workflow_builds_prebuilt_binary_matrix() {
     assert!(workflow.contains("autoresearch-${ref_name}-${{ matrix.target }}"));
     assert!(workflow.contains("sha256sum"));
     assert!(workflow.contains("shasum -a 256"));
-    assert!(workflow.contains(
-        "CARGO_HOME: ${{ runner.temp }}/autoresearch-${{ github.run_id }}-${{ matrix.label }}/cargo"
-    ));
-    assert!(workflow.contains(
-        "RUSTUP_HOME: ${{ runner.temp }}/autoresearch-${{ github.run_id }}-${{ matrix.label }}/rustup"
-    ));
+    assert!(workflow.contains("name: Isolate Rust toolchains"));
+    assert!(workflow
+        .contains("root=\"$RUNNER_TEMP/autoresearch-${GITHUB_RUN_ID}-${{ matrix.label }}\""));
+    assert!(workflow.contains("echo \"CARGO_HOME=$root/cargo\" >> \"$GITHUB_ENV\""));
+    assert!(workflow.contains("echo \"RUSTUP_HOME=$root/rustup\" >> \"$GITHUB_ENV\""));
 }
 
 #[test]

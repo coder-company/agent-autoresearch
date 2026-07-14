@@ -37,13 +37,16 @@ jobs:
           - label: windows-x86_64
             os: windows-latest
             target: x86_64-pc-windows-msvc
-    env:
-      CARGO_HOME: ${{ runner.temp }}/autoresearch-${{ github.run_id }}-${{ matrix.label }}/cargo
-      RUSTUP_HOME: ${{ runner.temp }}/autoresearch-${{ github.run_id }}-${{ matrix.label }}/rustup
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           persist-credentials: false
+      - name: Isolate Rust toolchains
+        shell: bash
+        run: |
+          root="$RUNNER_TEMP/autoresearch-${GITHUB_RUN_ID}-${{ matrix.label }}"
+          echo "CARGO_HOME=$root/cargo" >> "$GITHUB_ENV"
+          echo "RUSTUP_HOME=$root/rustup" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30
         with:
           targets: ${{ matrix.target }}
