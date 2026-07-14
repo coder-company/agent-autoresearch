@@ -1,7 +1,7 @@
 ---
 name: autoresearch
 description: Autonomous goal-directed iteration for Pi: modify, verify, keep, or discard.
-version: 0.1.1
+version: 0.1.2
 ---
 
 # Autoresearch for Pi

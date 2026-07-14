@@ -51,7 +51,7 @@ Mode commands use underscore names such as `/autoresearch_debug`, `/autoresearch
 
 ```bash
 cargo binstall autoresearch
-pi install git:github.com/coder-company/agent-autoresearch@v0.1.1
+pi install git:github.com/coder-company/agent-autoresearch@v0.1.2
 ```
 
 The Git-installable Pi package adds the Pi-native skill after the native binary is available. Open Pi in your target project and invoke `/skill:autoresearch`, or describe a measurable improvement so Pi loads the skill automatically. Pi runs remain in the active session; do not use the Codex-only `autoresearch runtime run` supervisor.

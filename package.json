@@ -1,6 +1,6 @@
 {
   "name": "autoresearch-pi",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Autonomous goal-directed iteration workflows for Pi.",
   "license": "GPL-2.0-only",
   "repository": "https://github.com/coder-company/agent-autoresearch",

@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.2] — 2026-07-14
+
+### Changed
+
+- fix(release): stabilize cross-platform builds
+- docs: add Pi package guide
+
 ## [0.1.1] — 2026-07-14
 
 ### Changed
