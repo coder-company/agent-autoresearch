@@ -36,11 +36,12 @@ fn test_help_exits_zero() {
 
 #[test]
 fn test_version_shows_version() {
+    let version = env!("CARGO_PKG_VERSION");
     cmd()
         .arg("--version")
         .assert()
         .success()
-        .stdout(predicate::str::contains("0.1.0"));
+        .stdout(predicate::str::contains(version));
 }
 
 #[test]
@@ -5488,7 +5489,10 @@ fn test_handoff_defaults_to_repo_root_results_from_subdir() {
         std::fs::read_to_string(dir.path().join("autoresearch-results/handoff.json")).unwrap();
     assert!(handoff.contains("\"version\": \"2.1.0\""));
     assert!(handoff.contains("\"protocol_version\": \"2.1.0\""));
-    assert!(handoff.contains("\"binary_version\": \"0.1.0\""));
+    assert!(handoff.contains(&format!(
+        "\"binary_version\": \"{}\"",
+        env!("CARGO_PKG_VERSION")
+    )));
     assert!(handoff.contains("\"source\": \"debug\""));
     assert!(handoff.contains("\"source_command\": \"debug\""));
     assert!(handoff.contains("\"status\": \"COMPLETE\""));

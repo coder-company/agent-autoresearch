@@ -7,6 +7,7 @@ version: 0.1.0
 # Autoresearch — Autonomous Goal-Directed Iteration
 
 ## Safety Invariants (all subcommands)
+
 - Never push, publish, or deploy without explicit user approval.
 - Bounded by default (25 iterations for the root loop; subcommands document their own defaults). Override with `Iterations: unlimited`.
 - All results logged to `autoresearch-results/` directory.
@@ -16,6 +17,7 @@ version: 0.1.0
 ## /goal Integration
 
 This skill uses Claude Code's `/goal` command as the native continuation engine. After setup:
+
 1. Baseline is measured.
 2. `/goal` is set with the completion condition.
 3. Each turn executes one full iteration of the protocol.
@@ -25,7 +27,7 @@ This skill uses Claude Code's `/goal` command as the native continuation engine.
 ## Subcommands
 
 | Command | Does | /goal Condition |
-|---|---|---|
+| --- | --- | --- |
 | `/autoresearch` | Iterate against a metric | `{metric} {direction} from {baseline} toward {target}` |
 | `/autoresearch:plan` | Convert a goal into validated config | No /goal (interactive) |
 | `/autoresearch:debug` | Hunt bugs: hypothesize → test → falsify | `cumulative findings keep increasing` |
@@ -43,6 +45,7 @@ This skill uses Claude Code's `/goal` command as the native continuation engine.
 ## Core Protocol (Each Turn)
 
 ### Phase 1: Read (git history as memory)
+
 - Read last 10-20 lines of `autoresearch-results/results.tsv`
 - Read `autoresearch-results/context.json` when present
 - Use `autoresearch api --format json` when an integration needs the stable command/flag manifest
@@ -62,33 +65,41 @@ This skill uses Claude Code's `/goal` command as the native continuation engine.
 - Consult `autoresearch-results/lessons.md` for strategy insights
 
 ### Phase 2: Ideate
+
 ONE specific, testable, atomic hypothesis. Different from all previous.
 
 Priority:
+
 1. Exploit last successful direction
 2. Try untested idea informed by lessons
 3. Simplify while preserving metric
 4. Attempt bolder change when small ideas stall
 
 ### Phase 3: Modify
+
 ONE focused change within scope. Must fit in one sentence.
 
 ### Phase 4: Trial Commit
+
 ```bash
 git add -- <scoped-files-only>
 git commit -m "experiment: <what changed and why>"
 ```
+
 NEVER stage autoresearch-results/ or .codex-autoresearch/ artifacts.
 
 ### Phase 5: Verify
+
 Run `autoresearch verify --format metrics_json --key <metric>` for structured output, or `autoresearch verify --command "<cmd>"` for scalar output. For noisy scalar metrics, use `--repeat N --aggregate median`.
 If unparseable: rerun once. Still unparseable → crash.
 
 ### Phase 6: Guard (if configured)
+
 Run only after metric improvement. Must exit 0.
 If fails → revert regardless of improvement.
 
 ### Phase 7: Decide
+
 - Prefer `autoresearch decide --decision auto --metric <value> --metrics-json '<json>' --commit <sha>`.
 - For parallel worker batches, use `autoresearch parallel prepare` to create worktrees and prompts, `autoresearch parallel run --timeout-seconds <seconds>` to launch workers and record crashes/timeouts, `autoresearch parallel closeout --batch-file <workers.json>` to merge, verify, and retain one result with `--merge-strategy cherry-pick|fast-forward|squash|rebase`, and `autoresearch parallel cleanup` after closeout. Use `autoresearch parallel template` only when worker branches already exist.
 - **keep** — improved + guard passed + required keep criteria passed → commit stays
@@ -99,13 +110,17 @@ Simplicity override: gain < 1% + added complexity = discard.
 Metric unchanged + simpler code = keep.
 
 ### Phase 8: Log
+
 The binary decision/log command appends to `autoresearch-results/results.tsv`:
+
 ```
 {iteration}\t{commit|-}\t{metric}\t{delta}\t{guard}\t{status}\t{description}
 ```
+
 Update `autoresearch-results/state.json`.
 
 ### Phase 9: Escalation
+
 - 3 consecutive discards → **REFINE**: adjust within strategy, consult lessons
 - 5 consecutive discards → **PIVOT**: abandon strategy entirely, fundamentally different approach
 - 2 PIVOTs without keep → **Web search**: look externally; `decide` auto-runs the cached search helper when `AUTORESEARCH_SEARCH_CMD` is configured
@@ -130,7 +145,7 @@ Update `autoresearch-results/state.json`.
 All under `autoresearch-results/` (never committed):
 
 | File | Purpose |
-|---|---|
+| --- | --- |
 | `results.tsv` | Every iteration: metric, delta, status, description |
 | `state.json` | Machine-readable resume snapshot |
 | `context.json` | Canonical run config, repo, baseline, and artifact pointers |
@@ -148,28 +163,31 @@ Use `autoresearch watch --lines 20 --format jsonl` from another terminal to tail
 
 ```tsv
 # metric_direction: higher
-iteration	commit	metric	delta	guard	status	description
-0	a1b2c3d	85.2	0	-	baseline	initial state
-1	b2c3d4e	87.1	+1.9	pass	keep	add auth edge case tests
-2	-	86.5	-0.6	-	discard	refactor broke 2 tests
-3	c3d4e5f	88.3	+1.2	pass	keep	add error handling tests
+iteration commit metric delta guard status description
+0 a1b2c3d 85.2 0 - baseline initial state
+1 b2c3d4e 87.1 +1.9 pass keep add auth edge case tests
+2 - 86.5 -0.6 - discard refactor broke 2 tests
+3 c3d4e5f 88.3 +1.2 pass keep add error handling tests
 ```
 
 ## Eval Checkpoints (--evals flag)
 
 Interval = floor(iterations / 3), min 1. Fixed 10 if unbounded.
 Every interval iterations:
+
 ```
 --- Eval Checkpoint (iterations {X}-{Y}) ---
 Metric: {start} → {end} ({delta}) | Kept: {n}/{total} | Trend: {up/flat/down}
 {one-line recommendation}
 ---
 ```
+
 If plateau 3+ checkpoints → recommend clearing /goal early.
 
 ## Chain Handoff
 
 Write `handoff.json` after completion:
+
 ```json
 {
   "version": "0.1.0",
@@ -181,6 +199,7 @@ Write `handoff.json` after completion:
   "config": {}
 }
 ```
+
 Invoke next --chain target. Propagate --evals.
 
 ## References
@@ -188,15 +207,18 @@ Invoke next --chain target. Propagate --evals.
 Load only what the current mode requires:
 
 ### Always loaded
+
 - `references/core-principles.md` — 8 foundational rules
 - `references/runtime-protocol.md` — Closeout order, state machine, TSV/verify contracts
 - `references/runtime-hard-invariants.md` — Primary execution checklist during active runs
 
 ### Before launch
+
 - `references/interaction-wizard.md` — Scan → questions → confirm → launch
 - `references/session-resume.md` — Detect and recover interrupted runs
 
 ### Mode-specific workflows
+
 - `references/loop-workflow.md` — Core iteration loop
 - `references/autonomous-loop-protocol.md` — Full loop detail (setup, recovery, escalation)
 - `references/debug-workflow.md` — Bug hunting protocol
@@ -206,6 +228,7 @@ Load only what the current mode requires:
 - `references/ship-workflow.md` — 8-phase ship workflow
 
 ### Cross-cutting protocols
+
 - `references/escalation.md` — REFINE → PIVOT → Web Search → Stop
 - `references/pivot-protocol.md` — Full escalation ladder detail
 - `references/lessons-protocol.md` — Cross-run learning extraction
@@ -219,6 +242,7 @@ Load only what the current mode requires:
 - `references/exec-workflow.md` — Non-interactive CI/CD mode
 
 ### Domain-specific
+
 - `references/security-checklist.md` — STRIDE + OWASP tables
 - `references/predict-personas.md` — Expert persona definitions
 - `references/reason-judge-protocol.md` — Adversarial debate judge protocol

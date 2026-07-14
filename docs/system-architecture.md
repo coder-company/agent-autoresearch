@@ -10,12 +10,14 @@ selection.
 |-----------|------|
 | `autoresearch` binary | CLI, hook dispatcher, verifier, rollback controller, runtime supervisor |
 | `.claude-plugin/marketplace.json` | Claude marketplace manifest pointing at the repo-root plugin package |
+| `package.json` | Pi package manifest for Git or npm installation |
 | `commands/` | Claude Code slash command instructions |
 | `skills/autoresearch/` | Claude/OpenCode skill package and shared references |
 | `.agents/skills/autoresearch/` | Codex/generic agent skill package |
 | `.agents/plugins/marketplace.json` | Local Codex marketplace root for the packaged plugin |
 | `plugins/autoresearch/` | Codex plugin package generated from `.agents/skills/autoresearch/` |
 | `.opencode/` | OpenCode command, skill, and helper-agent distribution |
+| `integrations/pi/skills/autoresearch/` | Pi-native skill and generated shared references |
 | `references/` | Protocol source docs copied into installable packages |
 | `autoresearch-results/` | Runtime artifacts created inside the user's target repo |
 

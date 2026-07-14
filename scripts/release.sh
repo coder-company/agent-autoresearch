@@ -100,8 +100,10 @@ echo "[2/10] Bumping agent package manifests..."
 update_json_version "$ROOT/.claude-plugin/plugin.json" "$VERSION"
 update_json_version "$ROOT/.claude-plugin/marketplace.json" "$VERSION"
 update_json_version "$ROOT/plugins/autoresearch/.codex-plugin/plugin.json" "$VERSION-codex.0"
+update_json_version "$ROOT/package.json" "$VERSION"
 update_skill_version "$ROOT/skills/autoresearch/SKILL.md"
 update_skill_version "$ROOT/.agents/skills/autoresearch/SKILL.md"
+update_skill_version "$ROOT/integrations/pi/skills/autoresearch/SKILL.md"
 
 # ── 4. Sync generated distributions ─────────────────────────────────
 echo "[3/10] Syncing generated distributions..."
@@ -190,7 +192,9 @@ git -C "$ROOT" add \
     .opencode/skills/autoresearch/SKILL.md \
     .agents/skills/autoresearch/SKILL.md \
     plugins/autoresearch/.codex-plugin/plugin.json \
-    plugins/autoresearch/skills/autoresearch
+    plugins/autoresearch/skills/autoresearch \
+    package.json \
+    integrations/pi/skills/autoresearch
 git -C "$ROOT" commit -m "release: v$VERSION"
 git -C "$ROOT" tag -a "v$VERSION" -m "Release v$VERSION"
 

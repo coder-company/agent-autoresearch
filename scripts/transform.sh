@@ -5,7 +5,8 @@
 # The .opencode/agents package is maintained directly for OpenCode subagents.
 # The .agents Codex skill entrypoint is maintained directly because it uses
 # a different invocation model, but its reference package is synced from the
-# same canonical references/ directory as OpenCode.
+# same canonical references/ directory as OpenCode. The Pi package keeps its
+# Pi-specific skill entrypoint under integrations/pi and syncs the same references.
 #
 # Usage: ./scripts/transform.sh
 
@@ -152,6 +153,19 @@ cp -R "$ROOT/.agents/skills/autoresearch" "$ROOT/plugins/autoresearch/skills/aut
 
 plugin_count=$(find "$ROOT/plugins/autoresearch" -type f | wc -l)
 
+# ── Pi package ──────────────────────────────────────────────────────────
+
+echo "Building integrations/pi skill package..."
+rm -rf "$ROOT/integrations/pi/skills/autoresearch/references"
+mkdir -p "$ROOT/integrations/pi/skills/autoresearch/references"
+cp "$ROOT"/references/*.md "$ROOT/integrations/pi/skills/autoresearch/references/"
+
+check_reference_links "$ROOT/integrations/pi/skills/autoresearch" \
+    "$ROOT"/integrations/pi/skills/autoresearch/SKILL.md \
+    "$ROOT"/integrations/pi/skills/autoresearch/references/*.md
+
+pi_count=$(find "$ROOT/integrations/pi" -type f | wc -l)
+
 # ── Summary ─────────────────────────────────────────────────────────
 
 echo ""
@@ -160,6 +174,7 @@ echo ".claude/    : $claude_count files"
 echo ".opencode/  : $opencode_count files"
 echo ".agents/    : $agents_count files"
 echo "plugin      : $plugin_count files"
+echo "Pi package  : $pi_count files"
 echo ""
 echo "Distributions:"
 echo "  .claude/commands/     — Claude local command surface"
@@ -169,3 +184,4 @@ echo "  .opencode/skills/      — OpenCode skill definitions"
 echo "  .opencode/agents/      — OpenCode helper subagents"
 echo "  .agents/skills/        — Generic agent skills (maintained directly)"
 echo "  plugins/autoresearch/  — Codex plugin package"
+echo "  integrations/pi/       — Pi package skill resources"

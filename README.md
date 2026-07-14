@@ -1,4 +1,4 @@
-# Autoresearch: Autonomous Goal-Directed Iteration for Claude Code, Codex, and OpenCode
+# Autoresearch: Autonomous Goal-Directed Iteration for Claude Code, Codex, OpenCode, and Pi
 
 <div align="center">
 
@@ -12,6 +12,7 @@
   <a href="https://docs.anthropic.com/en/docs/claude-code"><img src="https://img.shields.io/badge/Claude_Code-Plugin-blue?logo=anthropic&logoColor=white" alt="Claude Code Plugin"></a>
   <a href="https://developers.openai.com/codex"><img src="https://img.shields.io/badge/Codex-Skill-green?logo=openai&logoColor=white" alt="Codex Skill"></a>
   <a href="https://opencode.ai"><img src="https://img.shields.io/badge/OpenCode-Skill-purple" alt="OpenCode Skill"></a>
+  <a href="https://pi.dev"><img src="https://img.shields.io/badge/Pi-Package-orange" alt="Pi Package"></a>
   <a href="https://github.com/coder-company/agent-autoresearch/actions"><img src="https://github.com/coder-company/agent-autoresearch/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/coder-company/agent-autoresearch"><img src="https://img.shields.io/github/stars/coder-company/agent-autoresearch?style=social" alt="Stars"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL_v2-blue.svg" alt="GPL v2 License"></a>
@@ -47,14 +48,16 @@ Install Autoresearch in this environment.
 Use the installer from:
 https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh
 
-Pick the install flag for the current agent:
+Pick the install path for the current agent:
 - Claude Code: --claude
 - Codex: --codex
 - OpenCode: --opencode
-- If you cannot infer the agent, use --all.
+- Pi: install the Pi package after the binary is available (shown below).
+- If you cannot infer a non-Pi agent, use --all.
 
-Run the installer non-interactively with bash, verify `autoresearch --help`, then tell me the command I should use to start Autoresearch in this agent.
-Start commands are `/autoresearch` for Claude Code, `$autoresearch` for Codex, and `/autoresearch` for OpenCode.
+Run the selected installer non-interactively with bash, verify `autoresearch --help`, then tell me the command I should use to start Autoresearch in this agent.
+For Pi, first ensure the `autoresearch` binary is on `PATH`, then run `pi install git:github.com/coder-company/agent-autoresearch@v0.1.1`.
+Start commands are `/autoresearch` for Claude Code, `$autoresearch` for Codex, and `/autoresearch` for OpenCode. Pi invokes `/skill:autoresearch`.
 Use a global install unless I explicitly asked for a project-local install.
 ```
 
@@ -84,7 +87,16 @@ curl -fsSL https://raw.githubusercontent.com/coder-company/agent-autoresearch/ma
 
 Start with `/autoresearch`. Mode commands use underscores, such as `/autoresearch_debug`, `/autoresearch_fix`, and `/autoresearch_security`.
 
-Each command downloads the current source archive, builds the Rust binary, installs it on your `PATH`, and installs the selected agent package. For local/manual Claude installs, copy the generated `.claude/commands` and `.claude/skills/autoresearch` package from this repo into your target project.
+**Pi**
+
+```bash
+cargo binstall autoresearch
+pi install git:github.com/coder-company/agent-autoresearch@v0.1.1
+```
+
+The Pi package installs the Pi-native skill; the binary supplies mechanical verification and state management. Start Pi in your project and describe a measurable goal, or force the workflow with `/skill:autoresearch`.
+
+The Claude Code, Codex, and OpenCode commands download the current source archive, build the Rust binary, install it on your `PATH`, and install the selected agent package. The Pi package is Git-installable through `pi install` once the binary is available. For local/manual Claude installs, copy the generated `.claude/commands` and `.claude/skills/autoresearch` package from this repo into your target project.
 
 Open your project and go. The example below uses the Claude Code/OpenCode command; Codex users type `$autoresearch` instead.
 
@@ -314,7 +326,7 @@ No. Every change is committed before verification. If it makes things worse, it 
 | Doc | What it covers |
 |-----|---------------|
 | [Docs Index](docs/README.md) | Repository documentation map |
-| [Installation](docs/INSTALL.md) | Claude Code, Codex, OpenCode, source install |
+| [Installation](docs/INSTALL.md) | Claude Code, Codex, OpenCode, Pi, source install |
 | [Guide](docs/GUIDE.md) | Command map, binary operations, artifact contract |
 | [Examples](docs/EXAMPLES.md) | Copy-paste configs for common goals and parallel closeout |
 | [System Architecture](docs/system-architecture.md) | Binary, skill packages, artifacts, runtime flow |

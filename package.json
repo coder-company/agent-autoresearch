@@ -1,0 +1,26 @@
+{
+  "name": "autoresearch-pi",
+  "version": "0.1.0",
+  "description": "Autonomous goal-directed iteration workflows for Pi.",
+  "license": "GPL-2.0-only",
+  "repository": "https://github.com/coder-company/agent-autoresearch",
+  "homepage": "https://autoresearch.coder.company",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "autoresearch",
+    "autonomous",
+    "iteration",
+    "automation"
+  ],
+  "files": [
+    "integrations/pi/skills",
+    "LICENSE",
+    "README.md"
+  ],
+  "pi": {
+    "skills": [
+      "./integrations/pi/skills"
+    ]
+  }
+}

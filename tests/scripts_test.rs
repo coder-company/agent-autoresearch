@@ -162,6 +162,9 @@ fn release_script_updates_agent_package_versions() {
     assert!(script.contains(".agents/skills/autoresearch/SKILL.md"));
     assert!(script.contains("\"$ROOT/scripts/transform.sh\""));
     assert!(script.contains("plugins/autoresearch/skills/autoresearch"));
+    assert!(script.contains("update_json_version \"$ROOT/package.json\" \"$VERSION\""));
+    assert!(script
+        .contains("update_skill_version \"$ROOT/integrations/pi/skills/autoresearch/SKILL.md\""));
 }
 
 #[test]

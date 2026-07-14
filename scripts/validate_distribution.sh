@@ -54,6 +54,7 @@ required_paths=(
     CONTRIBUTING.md
     CONTEXT.md
     SKILL.md
+    package.json
     agents/openai.yaml
     agents/skill-openai.yaml
     .claude-plugin/marketplace.json
@@ -98,6 +99,7 @@ required_paths=(
     .opencode/skills/autoresearch/SKILL.md
     plugins/autoresearch/.codex-plugin/plugin.json
     plugins/autoresearch/skills/autoresearch/SKILL.md
+    integrations/pi/skills/autoresearch/SKILL.md
 )
 
 for path in "${required_paths[@]}"; do
@@ -113,6 +115,11 @@ require_grep '"\$schema": "https://anthropic.com/claude-code/marketplace.schema.
 require_grep '"source": "\."' .claude-plugin/marketplace.json
 require_grep '"path": "\./plugins/autoresearch"' .agents/plugins/marketplace.json
 require_grep '"installation": "AVAILABLE"' .agents/plugins/marketplace.json
+require_grep '"pi-package"' package.json
+require_grep '"\./integrations/pi/skills"' package.json
+require_grep '^name: autoresearch$' integrations/pi/skills/autoresearch/SKILL.md
+require_grep '/skill:autoresearch' integrations/pi/skills/autoresearch/SKILL.md
+require_grep 'Do not use `autoresearch runtime run` from Pi' integrations/pi/skills/autoresearch/SKILL.md
 cmp -s "$ROOT/agents/skill-openai.yaml" "$ROOT/.agents/skills/autoresearch/agents/openai.yaml" \
     || fail ".agents/skills/autoresearch/agents/openai.yaml drifted from agents/skill-openai.yaml"
 if grep -Eq '^(name|description|model|tools):' "$ROOT/.agents/skills/autoresearch/agents/openai.yaml"; then
@@ -393,7 +400,7 @@ require_grep 'autoresearch config validate' docs/GUIDE.md
 require_grep 'autoresearch config validate' docs/INSTALL.md
 require_grep 'Configuration file \(`\.autoresearch\.toml`\) for project-level defaults' docs/development-roadmap.md
 require_grep '\$autoresearch exec' guide/autoresearch-codex.md
-require_grep 'Claude Code, Codex, and OpenCode' README.md
+require_grep 'Claude Code, Codex, OpenCode, and Pi' README.md
 require_grep '13 command protocols · 11 native hooks · background runtime · parallel verified closeout' README.md
 require_grep 'Companion Repo' CONTEXT.md
 require_grep 'Structured Metrics' CONTEXT.md
@@ -429,12 +436,12 @@ require_grep '\.claude/commands' docs/INSTALL.md
 require_grep '\.claude/skills/autoresearch' docs/INSTALL.md
 require_grep 'Install Autoresearch in this environment\.' README.md
 require_grep 'Agent-Driven Install' docs/INSTALL.md
-require_grep 'Start commands are `/autoresearch` for Claude Code, `\$autoresearch` for Codex, and `/autoresearch` for OpenCode\.' README.md
+require_grep 'Pi invokes `/skill:autoresearch`' README.md
 require_grep 'curl -fsSL https://raw\.githubusercontent\.com/coder-company/agent-autoresearch/main/install\.sh \| bash -s -- --yes --codex' README.md
 require_grep 'curl -fsSL https://raw\.githubusercontent\.com/coder-company/agent-autoresearch/main/install\.sh \| bash -s -- --yes --opencode' README.md
 require_grep 'raw\.githubusercontent\.com/coder-company/agent-autoresearch/main/install\.sh' README.md
 require_grep 'raw\.githubusercontent\.com/coder-company/agent-autoresearch/main/install\.sh' docs/INSTALL.md
-require_grep 'Start commands are `/autoresearch` for Claude Code, `\$autoresearch` for Codex, and `/autoresearch` for OpenCode\.' docs/INSTALL.md
+require_grep 'Pi invokes `/skill:autoresearch`' docs/INSTALL.md
 require_grep 'curl -fsSL https://raw\.githubusercontent\.com/coder-company/agent-autoresearch/main/install\.sh \| bash -s -- --yes --codex --local' docs/INSTALL.md
 require_grep 'curl -fsSL https://raw\.githubusercontent\.com/coder-company/agent-autoresearch/main/install\.sh \| bash -s -- --yes --opencode --local' docs/INSTALL.md
 require_grep 'guide/autoresearch-opencode\.md' README.md
@@ -553,5 +560,6 @@ check_synced_reference_package "$ROOT/.agents/skills/autoresearch"
 check_synced_reference_package "$ROOT/plugins/autoresearch/skills/autoresearch"
 check_synced_reference_package "$ROOT/.opencode/skills/autoresearch"
 check_synced_reference_package "$ROOT/.claude/skills/autoresearch"
+check_synced_reference_package "$ROOT/integrations/pi/skills/autoresearch"
 
 echo "Distribution validation passed."

@@ -11,7 +11,7 @@ Use `$autoresearch [mode]` when the user wants an autonomous improve-verify loop
 ## Modes
 
 | Mode | Purpose |
-|---|---|
+| --- | --- |
 | `loop` | Core metric iteration |
 | `plan` | Goal-to-config wizard |
 | `debug` | Bug hunting |
@@ -40,6 +40,7 @@ For active execution, load `references/runtime-hard-invariants.md`, `references/
 For CI/non-interactive runs, load `references/exec-workflow.md`.
 
 Load only when needed:
+
 - `references/autonomous-loop-protocol.md`, `references/loop-workflow.md`
 - `references/plan-workflow.md`, `references/debug-workflow.md`, `references/fix-workflow.md`
 - `references/security-workflow.md`, `references/ship-workflow.md`

@@ -63,7 +63,8 @@ Claude local commands, Claude local skill references, and OpenCode command files
 are generated from the canonical `commands/`, `skills/`, and `references/` trees.
 The OpenCode `docs-manager` helper agent is maintained directly in `.opencode/agents/`,
 and Codex reference/plugin packages are generated from the maintained `.agents`
-skill package plus canonical `references/`:
+skill package plus canonical `references/`. The Pi-native skill under `integrations/pi/`
+is maintained directly and receives the same generated reference package:
 
 ```bash
 ./scripts/transform.sh
@@ -73,9 +74,11 @@ The script rewrites `.claude/commands/`, `.claude/skills/autoresearch/`,
 `.opencode/commands/` with underscore command names, refreshes
 `.opencode/skills/autoresearch/`, preserves `.opencode/agents/`, syncs
 `.agents/skills/autoresearch/references/` and skill-local agent metadata, and
-rebuilds `plugins/autoresearch/skills/autoresearch/` from `.agents/skills/autoresearch/`.
-Edit `.agents/skills/autoresearch/SKILL.md` directly when changing the Codex
-entrypoint; edit `references/` for shared protocol docs.
+rebuilds `plugins/autoresearch/skills/autoresearch/` from `.agents/skills/autoresearch/`,
+and refreshes `integrations/pi/skills/autoresearch/references/`. Edit
+`.agents/skills/autoresearch/SKILL.md` directly when changing the Codex entrypoint,
+edit `integrations/pi/skills/autoresearch/SKILL.md` when changing the Pi entrypoint,
+and edit `references/` for shared protocol docs.
 
 Validate the generated and maintained distributions without rewriting files:
 
@@ -83,7 +86,7 @@ Validate the generated and maintained distributions without rewriting files:
 ./scripts/validate_distribution.sh
 ```
 
-This checks required package files, Claude and Codex marketplace metadata, `$autoresearch` invocation examples, local install docs, and closed/synced reference links in `.agents/`, `plugins/autoresearch/`, and `.opencode/`.
+This checks required package files, Claude and Codex marketplace metadata, Pi package metadata, invocation examples, local install docs, and closed/synced reference links in `.agents/`, `plugins/autoresearch/`, `.opencode/`, and `integrations/pi/`.
 
 Run the lightweight end-to-end binary smoke:
 

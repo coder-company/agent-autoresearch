@@ -242,3 +242,34 @@ fn claude_local_package_is_synced_and_reference_closed() {
         );
     }
 }
+
+#[test]
+fn pi_package_exposes_a_closed_autoresearch_skill() {
+    let root = repo_root();
+    let manifest: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(root.join("package.json")).unwrap()).unwrap();
+
+    assert_eq!(manifest["name"], "autoresearch-pi");
+    assert!(manifest["keywords"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|keyword| keyword == "pi-package"));
+    assert_eq!(
+        manifest["pi"]["skills"],
+        serde_json::json!(["./integrations/pi/skills"])
+    );
+
+    let package_root = root.join("integrations/pi/skills/autoresearch");
+    let skill = fs::read_to_string(package_root.join("SKILL.md")).unwrap();
+    assert!(skill.contains("name: autoresearch"));
+    assert!(skill.contains("/skill:autoresearch"));
+    assert!(skill.contains("Do not use `autoresearch runtime run` from Pi"));
+
+    for reference in extract_reference_links(&skill) {
+        assert!(
+            package_root.join(&reference).is_file(),
+            "Pi skill lists {reference}, but the packaged file is missing"
+        );
+    }
+}

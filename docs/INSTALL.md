@@ -12,14 +12,16 @@ Install Autoresearch in this environment.
 Use the installer from:
 https://raw.githubusercontent.com/coder-company/agent-autoresearch/main/install.sh
 
-Pick the install flag for the current agent:
+Pick the install path for the current agent:
 - Claude Code: --claude
 - Codex: --codex
 - OpenCode: --opencode
-- If you cannot infer the agent, use --all.
+- Pi: install the Pi package after the binary is available (shown below).
+- If you cannot infer a non-Pi agent, use --all.
 
-Run the installer non-interactively with bash, verify `autoresearch --help`, then tell me the command I should use to start Autoresearch in this agent.
-Start commands are `/autoresearch` for Claude Code, `$autoresearch` for Codex, and `/autoresearch` for OpenCode.
+Run the selected installer non-interactively with bash, verify `autoresearch --help`, then tell me the command I should use to start Autoresearch in this agent.
+For Pi, first ensure the `autoresearch` binary is on `PATH`, then run `pi install git:github.com/coder-company/agent-autoresearch@v0.1.1`.
+Start commands are `/autoresearch` for Claude Code, `$autoresearch` for Codex, and `/autoresearch` for OpenCode. Pi invokes `/skill:autoresearch`.
 Use a global install unless I explicitly asked for a project-local install.
 ```
 
@@ -198,6 +200,23 @@ Project-local install from a local clone:
 ```
 
 The installer refuses empty, home, and parent config paths before replacing `skills/autoresearch`.
+
+## Pi
+
+Install the native binary, then install the versioned Pi package from Git:
+
+```bash
+cargo binstall autoresearch
+pi install git:github.com/coder-company/agent-autoresearch@v0.1.1
+```
+
+Pi records the package in its settings and loads the Pi-native `autoresearch` skill. Open Pi in the target project and describe a measurable improvement, or invoke the workflow directly:
+
+```text
+/skill:autoresearch loop
+```
+
+The Pi package intentionally does not run `autoresearch runtime run`, because that command supervises Codex workers. Pi runs stay in the active Pi session. Use `pi install -l git:github.com/coder-company/agent-autoresearch@v0.1.1` when the package should be recorded in `.pi/settings.json` instead of user settings.
 
 ## VS Code
 
