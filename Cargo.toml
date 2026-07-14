@@ -1,6 +1,6 @@
 [package]
 name = "autoresearch"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Autonomous goal-directed iteration loop for Claude Code, Codex CLI, and OpenCode. Modify, verify, keep, discard, repeat."
 license = "GPL-2.0-only"

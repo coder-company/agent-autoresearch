@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.1] — 2026-07-14
+
+### Changed
+
+- feat(pi): add Git-installable Pi package
+- ci: migrate self-hosted runners to palantir-actions label
+- fix(docs): remove unbuilt theme refs from book.toml so docs CI passes
+- chore: remove accidentally committed book-tmp scratch directory
+- ux: actionable error messages for watch, evals, progress, hook
+- ux: clearer errors for reanchor without run, scalar parse, evals tsv mismatch
+- license: switch from MIT to GNU GPL v2.0
+- fix: clear clippy lints, align distribution tests with Cloudflare Pages
+- seo: keyword H1, Cargo metadata, Cloudflare Pages docs deploy
+- docs: clarify codex and opencode installs
+- fix: support raw installer bootstrap
+- fix: refresh shorthand examples in readme
+- fix: support probe improve shorthand
+- fix: support predict improve shorthand
+- fix: support evals fail gates
+- fix: support evals target gate
+- fix: report evals anomalies
+- fix: support evals run comparison
+- fix: support evals chain handoff
+- fix: support evals plateau window
+
 ## [0.1.0] — 2025-05-27
 
 Initial release.

@@ -165,6 +165,9 @@ fn release_script_updates_agent_package_versions() {
     assert!(script.contains("update_json_version \"$ROOT/package.json\" \"$VERSION\""));
     assert!(script
         .contains("update_skill_version \"$ROOT/integrations/pi/skills/autoresearch/SKILL.md\""));
+    assert!(script
+        .contains("update_skill_version \"$ROOT/integrations/pi/skills/autoresearch/SKILL.md\""));
+    assert!(script.contains(".claude/skills/autoresearch/SKILL.md"));
 }
 
 #[test]

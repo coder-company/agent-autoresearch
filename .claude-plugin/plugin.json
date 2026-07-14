@@ -1,7 +1,7 @@
 {
   "name": "autoresearch",
   "description": "Autonomous improvement engine — modify, verify, keep/discard against any metric. Written in Rust for sub-5ms hook execution.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "Coder Company",
     "url": "https://github.com/coder-company"

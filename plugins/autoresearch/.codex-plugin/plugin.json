@@ -1,6 +1,6 @@
 {
   "name": "autoresearch",
-  "version": "0.1.0-codex.0",
+  "version": "0.1.1-codex.0",
   "description": "Autonomous improve-verify loops for Codex.",
   "author": {
     "name": "Coder Company",

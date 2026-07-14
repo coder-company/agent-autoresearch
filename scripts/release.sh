@@ -190,6 +190,7 @@ git -C "$ROOT" add \
     .claude-plugin/marketplace.json \
     skills/autoresearch/SKILL.md \
     .opencode/skills/autoresearch/SKILL.md \
+    .claude/skills/autoresearch/SKILL.md \
     .agents/skills/autoresearch/SKILL.md \
     plugins/autoresearch/.codex-plugin/plugin.json \
     plugins/autoresearch/skills/autoresearch \
